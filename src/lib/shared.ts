@@ -36,6 +36,19 @@ export const getFileExtension = (filename: string): string => {
   return filename.split('.').pop() ?? ''
 }
 
+export const truncateFilename = (filename: string, maxLength = 32): string => {
+  if (filename.length <= maxLength) return filename
+
+  const extension = filename.split('.').pop() ?? ''
+  const nameWithoutExt = filename.slice(0, filename.lastIndexOf('.'))
+
+  const availableLength = maxLength - extension.length - 4 // 4 for "..." and "."
+  const startLength = Math.ceil(availableLength / 2)
+  const endLength = Math.floor(availableLength / 2)
+
+  return `${nameWithoutExt.slice(0, startLength)}...${nameWithoutExt.slice(-endLength)}.${extension}`
+}
+
 // Common file type validation
 export const isValidImageFile = (file: File): boolean => {
   return file.type.startsWith('image/')

@@ -24,7 +24,7 @@ const toolCategories = [
     name: 'Documents',
     icon: FileText,
     route: '/documents',
-    tools: ['PDF Merge', 'PDF Split', 'Convert to PDF', 'Compress PDF'],
+    tools: ['PDF Merge', 'PDF Split', 'Compress PDF', 'Convert to PDF'],
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
   },
