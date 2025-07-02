@@ -67,11 +67,15 @@ export class ImageMagickProcessor {
   }
 
   async extractMetadata(imageFile: ImageFile): Promise<ImageMetadata> {
-    console.log('🖼️ ImageMagick: Starting metadata extraction', { fileName: imageFile.name })
+    console.log('🖼️ ImageMagick: Starting metadata extraction', {
+      fileName: imageFile.name,
+    })
     try {
       const arrayBuffer = await imageFile.file.arrayBuffer()
       const uint8Array = new Uint8Array(arrayBuffer)
-      console.log('🖼️ ImageMagick: File loaded into memory', { size: uint8Array.length })
+      console.log('🖼️ ImageMagick: File loaded into memory', {
+        size: uint8Array.length,
+      })
 
       return new Promise((resolve) => {
         ImageMagick.read(uint8Array, (img) => {
@@ -84,7 +88,10 @@ export class ImageMagickProcessor {
             depth: img.depth,
             compression: img.compression.toString(),
           }
-          console.log('🖼️ ImageMagick: Metadata extraction completed successfully', meta)
+          console.log(
+            '🖼️ ImageMagick: Metadata extraction completed successfully',
+            meta,
+          )
           resolve(meta)
         })
       })
@@ -109,45 +116,47 @@ export class ImageMagickProcessor {
     imageFile: ImageFile,
     options: ResizeOptions,
   ): Promise<Blob> {
-    console.log('🖼️ ImageMagick: Starting image resize', { 
-      fileName: imageFile.name, 
-      options 
+    console.log('🖼️ ImageMagick: Starting image resize', {
+      fileName: imageFile.name,
+      options,
     })
-    
+
     const arrayBuffer = await imageFile.file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
-    console.log('🖼️ ImageMagick: File loaded into memory', { size: uint8Array.length })
+    console.log('🖼️ ImageMagick: File loaded into memory', {
+      size: uint8Array.length,
+    })
 
     return new Promise((resolve) => {
       ImageMagick.read(uint8Array, (img) => {
-        console.log('🖼️ ImageMagick: Original image dimensions', { 
-          width: img.width, 
-          height: img.height 
+        console.log('🖼️ ImageMagick: Original image dimensions', {
+          width: img.width,
+          height: img.height,
         })
-        
+
         if (options.maintainAspectRatio) {
           const aspectRatio = img.width / img.height
           const targetAspectRatio = options.width / options.height
 
           if (aspectRatio > targetAspectRatio) {
             const newHeight = Math.round(options.width / aspectRatio)
-            console.log('🖼️ ImageMagick: Resizing with aspect ratio', { 
-              newWidth: options.width, 
-              newHeight 
+            console.log('🖼️ ImageMagick: Resizing with aspect ratio', {
+              newWidth: options.width,
+              newHeight,
             })
             img.resize(options.width, newHeight)
           } else {
             const newWidth = Math.round(options.height * aspectRatio)
-            console.log('🖼️ ImageMagick: Resizing with aspect ratio', { 
-              newWidth, 
-              newHeight: options.height 
+            console.log('🖼️ ImageMagick: Resizing with aspect ratio', {
+              newWidth,
+              newHeight: options.height,
             })
             img.resize(newWidth, options.height)
           }
         } else {
-          console.log('🖼️ ImageMagick: Resizing without aspect ratio', { 
-            newWidth: options.width, 
-            newHeight: options.height 
+          console.log('🖼️ ImageMagick: Resizing without aspect ratio', {
+            newWidth: options.width,
+            newHeight: options.height,
           })
           img.resize(options.width, options.height)
         }
@@ -164,13 +173,18 @@ export class ImageMagickProcessor {
           format = MagickFormat.Jpeg // Default
         }
 
-        console.log('🖼️ ImageMagick: Writing resized image', { format: format.toString() })
+        console.log('🖼️ ImageMagick: Writing resized image', {
+          format: format.toString(),
+        })
         img.write(format, (data: Uint8Array) => {
           const blob = new Blob([data], { type: imageFile.type })
-          console.log('🖼️ ImageMagick: Resize operation completed successfully', { 
-            originalSize: imageFile.size, 
-            newSize: blob.size 
-          })
+          console.log(
+            '🖼️ ImageMagick: Resize operation completed successfully',
+            {
+              originalSize: imageFile.size,
+              newSize: blob.size,
+            },
+          )
           resolve(blob)
         })
       })
@@ -181,31 +195,33 @@ export class ImageMagickProcessor {
     imageFile: ImageFile,
     options: ImageConvertOptions,
   ): Promise<Blob> {
-    console.log('🖼️ ImageMagick: Starting image conversion', { 
-      fileName: imageFile.name, 
-      options 
+    console.log('🖼️ ImageMagick: Starting image conversion', {
+      fileName: imageFile.name,
+      options,
     })
-    
+
     const arrayBuffer = await imageFile.file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
-    console.log('🖼️ ImageMagick: File loaded into memory', { size: uint8Array.length })
+    console.log('🖼️ ImageMagick: File loaded into memory', {
+      size: uint8Array.length,
+    })
 
     return new Promise((resolve) => {
       ImageMagick.read(uint8Array, (img) => {
         const format = this.getMagickFormat(options.targetFormat)
         const mimeType = this.getMimeType(options.targetFormat)
-        
-        console.log('🖼️ ImageMagick: Converting image format', { 
+
+        console.log('🖼️ ImageMagick: Converting image format', {
           originalFormat: img.format.toString(),
           targetFormat: format.toString(),
-          mimeType 
+          mimeType,
         })
 
         img.write(format, (data: Uint8Array) => {
           const blob = new Blob([data], { type: mimeType })
-          console.log('🖼️ ImageMagick: Conversion completed successfully', { 
-            originalSize: imageFile.size, 
-            newSize: blob.size 
+          console.log('🖼️ ImageMagick: Conversion completed successfully', {
+            originalSize: imageFile.size,
+            newSize: blob.size,
           })
           resolve(blob)
         })
@@ -217,20 +233,24 @@ export class ImageMagickProcessor {
     imageFile: ImageFile,
     options: ImageCompressOptions,
   ): Promise<Blob> {
-    console.log('🖼️ ImageMagick: Starting image compression', { 
-      fileName: imageFile.name, 
-      options 
+    console.log('🖼️ ImageMagick: Starting image compression', {
+      fileName: imageFile.name,
+      options,
     })
-    
+
     const arrayBuffer = await imageFile.file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
-    console.log('🖼️ ImageMagick: File loaded into memory', { size: uint8Array.length })
+    console.log('🖼️ ImageMagick: File loaded into memory', {
+      size: uint8Array.length,
+    })
 
     return new Promise((resolve) => {
       ImageMagick.read(uint8Array, (img) => {
         // Set quality for compression
         img.quality = options.quality
-        console.log('🖼️ ImageMagick: Setting compression quality', { quality: options.quality })
+        console.log('🖼️ ImageMagick: Setting compression quality', {
+          quality: options.quality,
+        })
 
         // Determine format based on original file type
         let format: MagickFormat
@@ -244,13 +264,18 @@ export class ImageMagickProcessor {
           format = MagickFormat.Jpeg // Default to JPEG for compression
         }
 
-        console.log('🖼️ ImageMagick: Writing compressed image', { format: format.toString() })
+        console.log('🖼️ ImageMagick: Writing compressed image', {
+          format: format.toString(),
+        })
         img.write(format, (data: Uint8Array) => {
           const blob = new Blob([data], { type: imageFile.type })
-          console.log('🖼️ ImageMagick: Compression completed successfully', { 
-            originalSize: imageFile.size, 
+          console.log('🖼️ ImageMagick: Compression completed successfully', {
+            originalSize: imageFile.size,
             newSize: blob.size,
-            compressionRatio: ((imageFile.size - blob.size) / imageFile.size * 100).toFixed(1) + '%'
+            compressionRatio:
+              (((imageFile.size - blob.size) / imageFile.size) * 100).toFixed(
+                1,
+              ) + '%',
           })
           resolve(blob)
         })

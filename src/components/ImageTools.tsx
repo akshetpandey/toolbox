@@ -70,17 +70,19 @@ export function ImageTools() {
 
   const handleFileSelect = useCallback(
     async (files: FileList) => {
-      console.log('🖼️ ImageTools: File selection started', { fileCount: files.length })
-      
+      console.log('🖼️ ImageTools: File selection started', {
+        fileCount: files.length,
+      })
+
       // Only take the first image file
       const file = files[0]
       if (file?.type.startsWith('image/')) {
-        console.log('🖼️ ImageTools: Processing image file', { 
-          name: file.name, 
-          size: file.size, 
-          type: file.type 
+        console.log('🖼️ ImageTools: Processing image file', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
         })
-        
+
         const preview = URL.createObjectURL(file)
 
         // Get image dimensions
@@ -118,7 +120,9 @@ export function ImageTools() {
         await extractMetadata(imageFile)
         console.log('🖼️ ImageTools: File selection completed successfully')
       } else {
-        console.warn('🖼️ ImageTools: Invalid file type selected', { type: file?.type })
+        console.warn('🖼️ ImageTools: Invalid file type selected', {
+          type: file?.type,
+        })
       }
     },
     [isInitialized, init],
@@ -140,7 +144,10 @@ export function ImageTools() {
 
   // Extract metadata using ImageMagick
   const extractMetadata = async (imageFile: ImageFile) => {
-    console.log('🖼️ ImageTools: Starting metadata extraction for', imageFile.name)
+    console.log(
+      '🖼️ ImageTools: Starting metadata extraction for',
+      imageFile.name,
+    )
     try {
       const meta = await imageMagickProcessor.extractMetadata(imageFile)
       console.log('🖼️ ImageTools: Metadata extraction successful', meta)
@@ -164,7 +171,9 @@ export function ImageTools() {
 
   const resizeImage = async (imageFile: ImageFile) => {
     if (!resizeWidth || !resizeHeight) {
-      console.warn('🖼️ ImageTools: Resize validation failed - missing dimensions')
+      console.warn(
+        '🖼️ ImageTools: Resize validation failed - missing dimensions',
+      )
       alert('Please enter both width and height')
       return
     }
@@ -173,7 +182,7 @@ export function ImageTools() {
       fileName: imageFile.name,
       targetWidth: resizeWidth,
       targetHeight: resizeHeight,
-      maintainAspectRatio
+      maintainAspectRatio,
     })
 
     setIsProcessing(true)
@@ -197,20 +206,25 @@ export function ImageTools() {
         maintainAspectRatio,
       }
 
-      console.log('🖼️ ImageTools: Calling ImageMagick resize with options', options)
+      console.log(
+        '🖼️ ImageTools: Calling ImageMagick resize with options',
+        options,
+      )
       const blob = await imageMagickProcessor.resizeImage(imageFile, options)
-      console.log('🖼️ ImageTools: Resize operation completed', { 
-        originalSize: imageFile.size, 
-        newSize: blob.size 
+      console.log('🖼️ ImageTools: Resize operation completed', {
+        originalSize: imageFile.size,
+        newSize: blob.size,
       })
-      
+
       const url = createObjectURL(blob)
       downloadFile(url, `resized_${imageFile.name}`)
       revokeObjectURL(url)
 
       clearInterval(progressInterval)
       setProgress(100)
-      console.log('🖼️ ImageTools: Resize operation successful - file downloaded')
+      console.log(
+        '🖼️ ImageTools: Resize operation successful - file downloaded',
+      )
       setTimeout(() => {
         setIsProcessing(false)
         setProgress(0)
@@ -226,7 +240,7 @@ export function ImageTools() {
   const convertImage = async (imageFile: ImageFile) => {
     console.log('🖼️ ImageTools: Starting image conversion', {
       fileName: imageFile.name,
-      targetFormat
+      targetFormat,
     })
 
     setIsProcessing(true)
@@ -248,13 +262,16 @@ export function ImageTools() {
         targetFormat,
       }
 
-      console.log('🖼️ ImageTools: Calling ImageMagick convert with options', options)
+      console.log(
+        '🖼️ ImageTools: Calling ImageMagick convert with options',
+        options,
+      )
       const blob = await imageMagickProcessor.convertImage(imageFile, options)
-      console.log('🖼️ ImageTools: Conversion completed', { 
-        originalSize: imageFile.size, 
-        newSize: blob.size 
+      console.log('🖼️ ImageTools: Conversion completed', {
+        originalSize: imageFile.size,
+        newSize: blob.size,
       })
-      
+
       const url = createObjectURL(blob)
       downloadFile(url, `${imageFile.name.split('.')[0]}.${targetFormat}`)
       revokeObjectURL(url)
@@ -277,7 +294,7 @@ export function ImageTools() {
   const compressImage = async (imageFile: ImageFile) => {
     console.log('🖼️ ImageTools: Starting image compression', {
       fileName: imageFile.name,
-      quality
+      quality,
     })
 
     setIsProcessing(true)
@@ -299,14 +316,19 @@ export function ImageTools() {
         quality,
       }
 
-      console.log('🖼️ ImageTools: Calling ImageMagick compress with options', options)
+      console.log(
+        '🖼️ ImageTools: Calling ImageMagick compress with options',
+        options,
+      )
       const blob = await imageMagickProcessor.compressImage(imageFile, options)
-      console.log('🖼️ ImageTools: Compression completed', { 
-        originalSize: imageFile.size, 
+      console.log('🖼️ ImageTools: Compression completed', {
+        originalSize: imageFile.size,
         newSize: blob.size,
-        compressionRatio: ((imageFile.size - blob.size) / imageFile.size * 100).toFixed(1) + '%'
+        compressionRatio:
+          (((imageFile.size - blob.size) / imageFile.size) * 100).toFixed(1) +
+          '%',
       })
-      
+
       const url = createObjectURL(blob)
       downloadFile(url, `compressed_${imageFile.name}`)
       revokeObjectURL(url)

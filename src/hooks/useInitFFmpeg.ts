@@ -17,9 +17,12 @@ let isInitialized = false
 let progressCallback: ((progress: number) => void) | null = null
 
 export function useInitFFmpeg(): UseInitFFmpegReturn {
-  const setProgressCallback = useCallback((callback: (progress: number) => void) => {
-    progressCallback = callback
-  }, [])
+  const setProgressCallback = useCallback(
+    (callback: (progress: number) => void) => {
+      progressCallback = callback
+    },
+    [],
+  )
 
   const [state, setState] = useState<UseInitFFmpegReturn>({
     ffmpeg: null,

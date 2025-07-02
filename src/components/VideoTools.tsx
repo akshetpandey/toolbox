@@ -41,7 +41,14 @@ import {
 } from 'lucide-react'
 
 export function VideoTools() {
-  const { ffmpeg, isInitialized, isInitializing, error, init, setProgressCallback } = useInitFFmpeg()
+  const {
+    ffmpeg,
+    isInitialized,
+    isInitializing,
+    error,
+    init,
+    setProgressCallback,
+  } = useInitFFmpeg()
   const search = useSearch({ from: '/videos' })
   const navigate = useNavigate()
   const [selectedFiles, setSelectedFiles] = useState<VideoFile[]>([])
@@ -106,17 +113,19 @@ export function VideoTools() {
 
   const handleFileSelect = useCallback(
     async (files: FileList) => {
-      console.log('🎬 VideoTools: File selection started', { fileCount: files.length })
-      
+      console.log('🎬 VideoTools: File selection started', {
+        fileCount: files.length,
+      })
+
       // Only take the first video file
       const file = files[0]
       if (file?.type.startsWith('video/')) {
-        console.log('🎬 VideoTools: Processing video file', { 
-          name: file.name, 
-          size: file.size, 
-          type: file.type 
+        console.log('🎬 VideoTools: Processing video file', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
         })
-        
+
         const preview = URL.createObjectURL(file)
 
         // Get video dimensions and duration
@@ -162,7 +171,9 @@ export function VideoTools() {
         await parseMetadata(videoFile)
         console.log('🎬 VideoTools: File selection completed successfully')
       } else {
-        console.warn('🎬 VideoTools: Invalid file type selected', { type: file?.type })
+        console.warn('🎬 VideoTools: Invalid file type selected', {
+          type: file?.type,
+        })
       }
     },
     [isInitialized, init],
@@ -170,7 +181,10 @@ export function VideoTools() {
 
   const parseMetadata = useCallback(
     async (videoFile: VideoFile) => {
-      console.log('🎬 VideoTools: Starting metadata parsing for', videoFile.name)
+      console.log(
+        '🎬 VideoTools: Starting metadata parsing for',
+        videoFile.name,
+      )
       const ffmpegProcessor = await getFfmpegProcessor()
       // Extract metadata with the new processor
       try {
@@ -217,7 +231,7 @@ export function VideoTools() {
       targetFormat,
       videoCodec,
       audioCodec,
-      preset
+      preset,
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
@@ -235,15 +249,15 @@ export function VideoTools() {
 
       console.log('🎬 VideoTools: Calling FFmpeg convert with options', options)
       const blob = await ffmpegProcessor.convertVideo(videoFile, options)
-      console.log('🎬 VideoTools: Conversion completed', { 
-        originalSize: videoFile.size, 
-        newSize: blob.size 
+      console.log('🎬 VideoTools: Conversion completed', {
+        originalSize: videoFile.size,
+        newSize: blob.size,
       })
-      
+
       // Generate filename with original name and new format
       const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
       const filename = `${originalName}.${targetFormat}`
-      
+
       // Download the file directly
       downloadFile(URL.createObjectURL(blob), filename)
 
@@ -261,7 +275,7 @@ export function VideoTools() {
     console.log('🎬 VideoTools: Starting video compression', {
       fileName: videoFile.name,
       crf,
-      preset
+      preset,
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
@@ -275,19 +289,24 @@ export function VideoTools() {
         preset,
       }
 
-      console.log('🎬 VideoTools: Calling FFmpeg compress with options', options)
+      console.log(
+        '🎬 VideoTools: Calling FFmpeg compress with options',
+        options,
+      )
       const blob = await ffmpegProcessor.compressVideo(videoFile, options)
-      console.log('🎬 VideoTools: Compression completed', { 
-        originalSize: videoFile.size, 
+      console.log('🎬 VideoTools: Compression completed', {
+        originalSize: videoFile.size,
         newSize: blob.size,
-        compressionRatio: ((videoFile.size - blob.size) / videoFile.size * 100).toFixed(1) + '%'
+        compressionRatio:
+          (((videoFile.size - blob.size) / videoFile.size) * 100).toFixed(1) +
+          '%',
       })
-      
+
       // Generate filename with original name and compressed suffix
       const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
       const extension = videoFile.name.split('.').pop() ?? 'mp4'
       const filename = `${originalName}_compressed.${extension}`
-      
+
       // Download the file directly
       downloadFile(URL.createObjectURL(blob), filename)
 
@@ -305,7 +324,7 @@ export function VideoTools() {
     console.log('🎬 VideoTools: Starting video trimming', {
       fileName: videoFile.name,
       startTime,
-      endTime
+      endTime,
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
@@ -321,16 +340,16 @@ export function VideoTools() {
 
       console.log('🎬 VideoTools: Calling FFmpeg trim with options', options)
       const blob = await ffmpegProcessor.trimVideo(videoFile, options)
-      console.log('🎬 VideoTools: Trimming completed', { 
-        originalSize: videoFile.size, 
-        newSize: blob.size 
+      console.log('🎬 VideoTools: Trimming completed', {
+        originalSize: videoFile.size,
+        newSize: blob.size,
       })
-      
+
       // Generate filename with original name and trimmed suffix
       const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
       const extension = videoFile.name.split('.').pop() ?? 'mp4'
       const filename = `${originalName}_trimmed.${extension}`
-      
+
       // Download the file directly
       downloadFile(URL.createObjectURL(blob), filename)
 
@@ -347,7 +366,7 @@ export function VideoTools() {
   const extractAudio = async (videoFile: VideoFile) => {
     console.log('🎬 VideoTools: Starting audio extraction', {
       fileName: videoFile.name,
-      audioFormat
+      audioFormat,
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
@@ -360,22 +379,27 @@ export function VideoTools() {
         audioFormat,
       }
 
-      console.log('🎬 VideoTools: Calling FFmpeg extract audio with options', options)
+      console.log(
+        '🎬 VideoTools: Calling FFmpeg extract audio with options',
+        options,
+      )
       const blob = await ffmpegProcessor.extractAudio(videoFile, options)
-      console.log('🎬 VideoTools: Audio extraction completed', { 
-        originalSize: videoFile.size, 
-        newSize: blob.size 
+      console.log('🎬 VideoTools: Audio extraction completed', {
+        originalSize: videoFile.size,
+        newSize: blob.size,
       })
-      
+
       // Generate filename with original name and audio format
       const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
       const filename = `${originalName}.${audioFormat}`
-      
+
       // Download the file directly
       downloadFile(URL.createObjectURL(blob), filename)
 
       setProgress(100)
-      console.log('🎬 VideoTools: Audio extraction successful - file downloaded')
+      console.log(
+        '🎬 VideoTools: Audio extraction successful - file downloaded',
+      )
     } catch (error) {
       console.error('🎬 VideoTools: Error during audio extraction:', error)
       alert('Error extracting audio. Please try again.')

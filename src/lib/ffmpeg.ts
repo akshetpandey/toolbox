@@ -76,7 +76,9 @@ export class FFmpegProcessor {
   }
 
   async extractMetadata(videoFile: VideoFile): Promise<VideoMetadata> {
-    console.log('🎬 FFmpeg: Starting metadata extraction', { fileName: videoFile.name })
+    console.log('🎬 FFmpeg: Starting metadata extraction', {
+      fileName: videoFile.name,
+    })
     try {
       const inputFileName = 'input' + this.getFileExtension(videoFile.name)
       console.log('🎬 FFmpeg: Writing input file', { inputFileName })
@@ -172,7 +174,10 @@ export class FFmpegProcessor {
         // Ignore cleanup errors
       }
 
-      console.log('🎬 FFmpeg: Metadata extraction completed successfully', metadata)
+      console.log(
+        '🎬 FFmpeg: Metadata extraction completed successfully',
+        metadata,
+      )
       return metadata
     } catch (error) {
       console.error('🎬 FFmpeg: Error extracting metadata:', error)
@@ -196,11 +201,11 @@ export class FFmpegProcessor {
     videoFile: VideoFile,
     options: VideoConvertOptions,
   ): Promise<Blob> {
-    console.log('🎬 FFmpeg: Starting video conversion', { 
-      fileName: videoFile.name, 
-      options 
+    console.log('🎬 FFmpeg: Starting video conversion', {
+      fileName: videoFile.name,
+      options,
     })
-    
+
     const inputFileName = 'input' + this.getFileExtension(videoFile.name)
     const outputFileName = `output.${options.targetFormat}`
 
@@ -235,7 +240,7 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Video conversion completed successfully')
-    
+
     return this.createBlobFromFFmpegOutput(
       data,
       `video/${options.targetFormat}`,
@@ -246,11 +251,11 @@ export class FFmpegProcessor {
     videoFile: VideoFile,
     options: VideoCompressOptions,
   ): Promise<Blob> {
-    console.log('🎬 FFmpeg: Starting video compression', { 
-      fileName: videoFile.name, 
-      options 
+    console.log('🎬 FFmpeg: Starting video compression', {
+      fileName: videoFile.name,
+      options,
     })
-    
+
     const inputFileName = 'input' + this.getFileExtension(videoFile.name)
     const outputFileName = `compressed.${this.getFileExtension(videoFile.name)}`
 
@@ -279,16 +284,16 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Video compression completed successfully')
-    
+
     return this.createBlobFromFFmpegOutput(data, videoFile.type)
   }
 
   async trimVideo(videoFile: VideoFile, options: TrimOptions): Promise<Blob> {
-    console.log('🎬 FFmpeg: Starting video trimming', { 
-      fileName: videoFile.name, 
-      options 
+    console.log('🎬 FFmpeg: Starting video trimming', {
+      fileName: videoFile.name,
+      options,
     })
-    
+
     const inputFileName = 'input' + this.getFileExtension(videoFile.name)
     const outputFileName = `trimmed.${this.getFileExtension(videoFile.name)}`
 
@@ -313,7 +318,7 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Video trimming completed successfully')
-    
+
     return this.createBlobFromFFmpegOutput(data, videoFile.type)
   }
 
@@ -321,11 +326,11 @@ export class FFmpegProcessor {
     videoFile: VideoFile,
     options: AudioExtractOptions,
   ): Promise<Blob> {
-    console.log('🎬 FFmpeg: Starting audio extraction', { 
-      fileName: videoFile.name, 
-      options 
+    console.log('🎬 FFmpeg: Starting audio extraction', {
+      fileName: videoFile.name,
+      options,
     })
-    
+
     const inputFileName = 'input' + this.getFileExtension(videoFile.name)
     const outputFileName = `audio.${options.audioFormat}`
 
@@ -374,7 +379,7 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Audio extraction completed successfully')
-    
+
     return this.createBlobFromFFmpegOutput(data, `audio/${options.audioFormat}`)
   }
 }
