@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as ImagesRouteImport } from './routes/images'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as IndexRouteImport } from './routes/index'
 
 const VideosRoute = VideosRouteImport.update({
@@ -23,6 +24,11 @@ const ImagesRoute = ImagesRouteImport.update({
   path: '/images',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/documents': typeof DocumentsRoute
   '/images': typeof ImagesRoute
   '/videos': typeof VideosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/documents': typeof DocumentsRoute
   '/images': typeof ImagesRoute
   '/videos': typeof VideosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/documents': typeof DocumentsRoute
   '/images': typeof ImagesRoute
   '/videos': typeof VideosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/images' | '/videos'
+  fullPaths: '/' | '/documents' | '/images' | '/videos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/images' | '/videos'
-  id: '__root__' | '/' | '/images' | '/videos'
+  to: '/' | '/documents' | '/images' | '/videos'
+  id: '__root__' | '/' | '/documents' | '/images' | '/videos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DocumentsRoute: typeof DocumentsRoute
   ImagesRoute: typeof ImagesRoute
   VideosRoute: typeof VideosRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DocumentsRoute: DocumentsRoute,
   ImagesRoute: ImagesRoute,
   VideosRoute: VideosRoute,
 }
