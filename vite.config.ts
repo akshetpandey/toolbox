@@ -1,26 +1,27 @@
 import { defineConfig } from 'vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
-import { wrapVinxiConfigWithSentry } from '@sentry/tanstackstart-react'
-
-const config = defineConfig({
+export default defineConfig({
+  build: {
+    sourcemap: true, // Source map generation must be turned on
+  },
   plugins: [
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
     tailwindcss(),
-    tanstackStart(),
+    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    react(),
+    sentryVitePlugin({
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      org: "happy-human",
+      project: "toolbox-react",
+      telemetry: false,
+    }),
   ],
-})
-
-export default wrapVinxiConfigWithSentry(config, {
-  org: process.env.VITE_SENTRY_ORG,
-  project: process.env.VITE_SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Only print logs for uploading source maps in CI
-  // Set to `true` to suppress logs
-  silent: !process.env.CI,
 })
