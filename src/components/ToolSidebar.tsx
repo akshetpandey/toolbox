@@ -13,7 +13,6 @@ import {
   Sparkles,
   Zap,
   Shield,
-  Settings,
   Home
 } from 'lucide-react'
 

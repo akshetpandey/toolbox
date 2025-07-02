@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,19 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ImageMagick, MagickFormat } from '@imagemagick/magick-wasm'
+import { useInitImageMagick } from '@/hooks/useInitImageMagick'
 
-import { 
-  Upload, 
-  Image as ImageIcon, 
-  Info, 
-  Maximize, 
+import {
+  Upload,
+  Image as ImageIcon,
+  Info,
+  Maximize,
   FileImage,
   Loader2,
-  Sparkles,
   Settings,
   Zap,
-  CheckCircle2,
-  ArrowRight
 } from 'lucide-react'
 
 interface ImageFile {
@@ -43,23 +42,23 @@ interface ImageMetadata {
 }
 
 export function ImageTools() {
+  const { isInitialized, isInitializing, error } = useInitImageMagick()
   const search = useSearch({ from: '/images' })
   const navigate = useNavigate()
   const [selectedFiles, setSelectedFiles] = useState<ImageFile[]>([])
-  const [processedFiles, setProcessedFiles] = useState<{ [key: string]: Blob }>({})
   const [metadata, setMetadata] = useState<{ [key: string]: ImageMetadata }>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Get the current active tab from URL search params
-  const activeTab = search?.tab || "metadata"
+  const activeTab = search?.tab || 'metadata'
   
   // Handle tab changes
   const handleTabChange = (value: string) => {
     navigate({
       to: '/images',
-      search: { tab: value }
+      search: { tab: value },
     })
   }
   
@@ -79,10 +78,10 @@ export function ImageTools() {
     if (maintainAspectRatio && selectedFiles.length > 0) {
       const imageFile = selectedFiles[0]
       const originalDimensions = imageFile.dimensions
-      
+
       if (originalDimensions) {
         const aspectRatio = originalDimensions.width / originalDimensions.height
-        
+
         // If width is entered, calculate height
         if (resizeWidth && !resizeHeight) {
           const newHeight = Math.round(parseInt(resizeWidth) / aspectRatio)
@@ -107,13 +106,15 @@ export function ImageTools() {
     const file = files[0]
     if (file && file.type.startsWith('image/')) {
       const preview = URL.createObjectURL(file)
-      
+
       // Get image dimensions
       const img = new Image()
-      const dimensions = await new Promise<{ width: number; height: number }>((resolve) => {
-        img.onload = () => resolve({ width: img.width, height: img.height })
-        img.src = preview
-      })
+      const dimensions = await new Promise<{ width: number; height: number }>(
+        (resolve) => {
+          img.onload = () => resolve({ width: img.width, height: img.height })
+          img.src = preview
+        },
+      )
 
       const imageFile = {
         file,
@@ -121,46 +122,67 @@ export function ImageTools() {
         name: file.name,
         size: file.size,
         type: file.type,
-        dimensions
+        dimensions,
       }
-      
+
       setSelectedFiles([imageFile])
-      setProcessedFiles({})
       setMetadata({})
-      
+
       // Automatically extract metadata
       await extractMetadata(imageFile)
     }
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    if (e.dataTransfer.files) {
-      handleFileSelect(e.dataTransfer.files)
-    }
-  }, [handleFileSelect])
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer.files) {
+        handleFileSelect(e.dataTransfer.files)
+      }
+    },
+    [handleFileSelect],
+  )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
   }, [])
 
-  // Placeholder functions for ImageMagick functionality
+  // Extract metadata using ImageMagick
   const extractMetadata = async (imageFile: ImageFile) => {
-    // Mock metadata extraction
-    const meta: ImageMetadata = {
-      width: imageFile.dimensions?.width || 0,
-      height: imageFile.dimensions?.height || 0,
-      format: imageFile.type.split('/')[1].toUpperCase(),
-      size: imageFile.size,
-      colorspace: 'sRGB',
-      depth: 8,
-      compression: 'None'
-    }
+    try {
+      const arrayBuffer = await imageFile.file.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
+      
+      ImageMagick.read(uint8Array, (img) => {
+        const meta: ImageMetadata = {
+          width: img.width,
+          height: img.height,
+          format: img.format.toString(),
+          size: imageFile.size,
+          colorspace: img.colorSpace.toString(),
+          depth: img.depth,
+          compression: img.compression.toString(),
+        }
 
-    setMetadata(prev => ({ ...prev, [imageFile.name]: meta }))
+        setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
+      })
+    } catch (error) {
+      console.error('Error extracting metadata:', error)
+      // Fallback to basic metadata
+      const meta: ImageMetadata = {
+        width: imageFile.dimensions?.width || 0,
+        height: imageFile.dimensions?.height || 0,
+        format: imageFile.type.split('/')[1].toUpperCase(),
+        size: imageFile.size,
+        colorspace: 'sRGB',
+        depth: 8,
+        compression: 'None',
+      }
+      setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
+    }
   }
 
-  const resizeImage = async (imageFile: ImageFile) => {
+    const resizeImage = async (imageFile: ImageFile) => {
     if (!resizeWidth || !resizeHeight) {
       alert('Please enter both width and height')
       return
@@ -171,7 +193,7 @@ export function ImageTools() {
     
     // Simulate progress
     const progressInterval = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev) => {
         if (prev >= 90) {
           clearInterval(progressInterval)
           return 90
@@ -181,12 +203,10 @@ export function ImageTools() {
     }, 100)
 
     try {
-      // Canvas-based resize as placeholder
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      const img = new Image()
+      const arrayBuffer = await imageFile.file.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
       
-      img.onload = () => {
+      ImageMagick.read(uint8Array, (img) => {
         const newWidth = parseInt(resizeWidth)
         const newHeight = parseInt(resizeHeight)
         
@@ -195,41 +215,45 @@ export function ImageTools() {
           const targetAspectRatio = newWidth / newHeight
           
           if (aspectRatio > targetAspectRatio) {
-            canvas.width = newWidth
-            canvas.height = newWidth / aspectRatio
+            img.resize(newWidth, Math.round(newWidth / aspectRatio))
           } else {
-            canvas.width = newHeight * aspectRatio
-            canvas.height = newHeight
+            img.resize(Math.round(newHeight * aspectRatio), newHeight)
           }
         } else {
-          canvas.width = newWidth
-          canvas.height = newHeight
+          img.resize(newWidth, newHeight)
         }
         
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height)
+        // Determine format based on original file type
+        let format: MagickFormat
+        if (imageFile.type.includes('jpeg') || imageFile.type.includes('jpg')) {
+          format = MagickFormat.Jpeg
+        } else if (imageFile.type.includes('png')) {
+          format = MagickFormat.Png
+        } else if (imageFile.type.includes('webp')) {
+          format = MagickFormat.WebP
+        } else {
+          format = MagickFormat.Jpeg // Default
+        }
         
-        canvas.toBlob((blob) => {
-          if (blob) {
-            // Automatically download the file
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `resized_${imageFile.name}`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-          }
+        img.write(format, (data: Uint8Array) => {
+          const blob = new Blob([data], { type: imageFile.type })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `resized_${imageFile.name}`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+          
           clearInterval(progressInterval)
           setProgress(100)
           setTimeout(() => {
             setIsProcessing(false)
             setProgress(0)
           }, 500)
-        }, imageFile.type)
-      }
-      
-      img.src = imageFile.preview
+        })
+      })
     } catch (error) {
       console.error('Error resizing image:', error)
       clearInterval(progressInterval)
@@ -241,10 +265,10 @@ export function ImageTools() {
   const convertImage = async (imageFile: ImageFile) => {
     setIsProcessing(true)
     setProgress(0)
-    
+
     // Simulate progress
     const progressInterval = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev) => {
         if (prev >= 90) {
           clearInterval(progressInterval)
           return 90
@@ -254,41 +278,50 @@ export function ImageTools() {
     }, 100)
 
     try {
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      const img = new Image()
+      const arrayBuffer = await imageFile.file.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
       
-      img.onload = () => {
-        canvas.width = img.width
-        canvas.height = img.height
-        ctx?.drawImage(img, 0, 0)
+      ImageMagick.read(uint8Array, (img) => {
+        let format: MagickFormat
+        let mimeType: string
         
-        let mimeType = 'image/webp'
-        if (targetFormat === 'png') mimeType = 'image/png'
-        else if (targetFormat === 'jpg') mimeType = 'image/jpeg'
+        switch (targetFormat) {
+          case 'webp':
+            format = MagickFormat.WebP
+            mimeType = 'image/webp'
+            break
+          case 'png':
+            format = MagickFormat.Png
+            mimeType = 'image/png'
+            break
+          case 'jpg':
+            format = MagickFormat.Jpeg
+            mimeType = 'image/jpeg'
+            break
+          default:
+            format = MagickFormat.WebP
+            mimeType = 'image/webp'
+        }
         
-        canvas.toBlob((blob) => {
-          if (blob) {
-            // Automatically download the file
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${imageFile.name.split('.')[0]}.${targetFormat}`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-          }
+        img.write(format, (data: Uint8Array) => {
+          const blob = new Blob([data], { type: mimeType })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${imageFile.name.split('.')[0]}.${targetFormat}`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+          
           clearInterval(progressInterval)
           setProgress(100)
           setTimeout(() => {
             setIsProcessing(false)
             setProgress(0)
           }, 500)
-        }, mimeType)
-      }
-      
-      img.src = imageFile.preview
+        })
+      })
     } catch (error) {
       console.error('Error converting image:', error)
       clearInterval(progressInterval)
@@ -300,10 +333,10 @@ export function ImageTools() {
   const compressImage = async (imageFile: ImageFile) => {
     setIsProcessing(true)
     setProgress(0)
-    
+
     // Simulate progress
     const progressInterval = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev) => {
         if (prev >= 90) {
           clearInterval(progressInterval)
           return 90
@@ -313,57 +346,50 @@ export function ImageTools() {
     }, 100)
 
     try {
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      const img = new Image()
+      const arrayBuffer = await imageFile.file.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
       
-      img.onload = () => {
-        canvas.width = img.width
-        canvas.height = img.height
-        ctx?.drawImage(img, 0, 0)
+      ImageMagick.read(uint8Array, (img) => {
+        // Set quality for compression
+        img.quality = quality
         
-        canvas.toBlob((blob) => {
-          if (blob) {
-            // Automatically download the file
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `compressed_${imageFile.name}`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-          }
+        // Determine format based on original file type
+        let format: MagickFormat
+        if (imageFile.type.includes('jpeg') || imageFile.type.includes('jpg')) {
+          format = MagickFormat.Jpeg
+        } else if (imageFile.type.includes('png')) {
+          format = MagickFormat.Png
+        } else if (imageFile.type.includes('webp')) {
+          format = MagickFormat.WebP
+        } else {
+          format = MagickFormat.Jpeg // Default to JPEG for compression
+        }
+        
+        img.write(format, (data: Uint8Array) => {
+          const blob = new Blob([data], { type: imageFile.type })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `compressed_${imageFile.name}`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+          
           clearInterval(progressInterval)
           setProgress(100)
           setTimeout(() => {
             setIsProcessing(false)
             setProgress(0)
           }, 500)
-        }, imageFile.type, quality / 100)
-      }
-      
-      img.src = imageFile.preview
+        })
+      })
     } catch (error) {
       console.error('Error compressing image:', error)
       clearInterval(progressInterval)
       setIsProcessing(false)
       setProgress(0)
     }
-  }
-
-  const downloadProcessedFile = (fileName: string) => {
-    const blob = processedFiles[fileName]
-    if (!blob) return
-    
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName // Use the filename as-is since it already has the correct extension
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
   }
 
   const formatFileSize = (bytes: number): string => {
@@ -376,11 +402,11 @@ export function ImageTools() {
 
   const handleWidthChange = (value: string) => {
     setResizeWidth(value)
-    
+
     if (maintainAspectRatio && selectedFiles.length > 0) {
       const imageFile = selectedFiles[0]
       const originalDimensions = imageFile.dimensions
-      
+
       if (originalDimensions && value) {
         const aspectRatio = originalDimensions.width / originalDimensions.height
         const newHeight = Math.round(parseInt(value) / aspectRatio)
@@ -391,17 +417,38 @@ export function ImageTools() {
 
   const handleHeightChange = (value: string) => {
     setResizeHeight(value)
-    
+
     if (maintainAspectRatio && selectedFiles.length > 0) {
       const imageFile = selectedFiles[0]
       const originalDimensions = imageFile.dimensions
-      
+
       if (originalDimensions && value) {
         const aspectRatio = originalDimensions.width / originalDimensions.height
         const newWidth = Math.round(parseInt(value) * aspectRatio)
         setResizeWidth(newWidth.toString())
       }
     }
+  }
+
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-background/80 z-50 fixed top-0 left-0">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <span className="text-lg text-foreground">Loading image tools...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-background/80 z-50 fixed top-0 left-0">
+        <div className="flex flex-col items-center gap-4">
+          <span className="text-lg text-red-500">Failed to load image tools: {error}</span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -441,15 +488,25 @@ export function ImageTools() {
                       <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Upload className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-lg font-medium text-foreground mb-2">Drop an image here</h3>
+                      <h3 className="text-lg font-medium text-foreground mb-2">
+                        Drop an image here
+                      </h3>
                       <p className="text-sm text-muted-foreground mb-4">
                         Supports JPG, PNG, WebP, GIF
                       </p>
                       <div className="flex flex-wrap justify-center gap-2">
-                        <Badge variant="secondary" className="text-xs">JPG</Badge>
-                        <Badge variant="secondary" className="text-xs">PNG</Badge>
-                        <Badge variant="secondary" className="text-xs">WebP</Badge>
-                        <Badge variant="secondary" className="text-xs">GIF</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          JPG
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          PNG
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          WebP
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          GIF
+                        </Badge>
                       </div>
                     </div>
                   ) : (
@@ -465,7 +522,9 @@ export function ImageTools() {
                           <div className="w-6 h-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
                             <FileImage className="h-3 w-3 text-primary" />
                           </div>
-                          <span className="text-sm font-medium text-foreground">Selected Image</span>
+                          <span className="text-sm font-medium text-foreground">
+                            Selected Image
+                          </span>
                         </div>
                         <Button
                           variant="outline"
@@ -473,7 +532,6 @@ export function ImageTools() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedFiles([])
-                            setProcessedFiles({})
                             setMetadata({})
                           }}
                           className="hover:bg-red-500 hover:text-red-foreground text-xs"
@@ -481,7 +539,7 @@ export function ImageTools() {
                           Clear
                         </Button>
                       </div>
-                      
+
                       <div className="space-y-2">
                         {selectedFiles.map((file) => (
                           <div key={file.name} className="space-y-2">
@@ -491,23 +549,33 @@ export function ImageTools() {
                                 alt={file.name}
                                 className="w-full max-h-64 object-contain rounded-lg bg-muted/20"
                                 style={{
-                                  minHeight: file.dimensions && file.dimensions.height > file.dimensions.width ? '200px' : '120px'
+                                  minHeight:
+                                    file.dimensions &&
+                                    file.dimensions.height >
+                                      file.dimensions.width
+                                      ? '200px'
+                                      : '120px',
                                 }}
                               />
                             </div>
                             <div className="space-y-1">
-                              <p className="font-medium text-foreground truncate text-sm">{file.name}</p>
+                              <p className="font-medium text-foreground truncate text-sm">
+                                {file.name}
+                              </p>
                               <div className="flex items-center justify-between text-xs text-muted-foreground">
                                 <span>{formatFileSize(file.size)}</span>
                                 {file.dimensions && (
-                                  <span>{file.dimensions.width} × {file.dimensions.height}</span>
+                                  <span>
+                                    {file.dimensions.width} ×{' '}
+                                    {file.dimensions.height}
+                                  </span>
                                 )}
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                      
+
                       <div className="mt-3 pt-3 border-t border-border/50">
                         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                           <Upload className="w-3 h-3" />
@@ -521,7 +589,9 @@ export function ImageTools() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
+                    onChange={(e) =>
+                      e.target.files && handleFileSelect(e.target.files)
+                    }
                   />
                 </CardContent>
               </Card>
@@ -530,249 +600,359 @@ export function ImageTools() {
             {/* Right 2/3 - Tools */}
             <div className="w-2/3">
               <div className="animate-fade-in">
-                <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+                <Tabs
+                  value={activeTab}
+                  onValueChange={handleTabChange}
+                  className="space-y-4"
+                >
                   <TabsList className="flat-card border-0 grid w-full grid-cols-4 h-10">
-                    <TabsTrigger value="metadata" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm">
+                    <TabsTrigger
+                      value="metadata"
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                    >
                       <Info className="w-4 h-4 mr-2" />
                       Metadata
                     </TabsTrigger>
-                    <TabsTrigger value="resize" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm">
+                    <TabsTrigger
+                      value="resize"
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                    >
                       <Maximize className="w-4 h-4 mr-2" />
                       Resize
                     </TabsTrigger>
-                    <TabsTrigger value="convert" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm">
+                    <TabsTrigger
+                      value="convert"
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                    >
                       <Settings className="w-4 h-4 mr-2" />
                       Convert
                     </TabsTrigger>
-                    <TabsTrigger value="compress" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm">
+                    <TabsTrigger
+                      value="compress"
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                    >
                       <Zap className="w-4 h-4 mr-2" />
                       Compress
                     </TabsTrigger>
                   </TabsList>
 
-                    <TabsContent value="metadata">
-                      <Card className="glass-card border-0">
-                        <CardContent className="p-6">
-                          {selectedFiles.length > 0 && metadata[selectedFiles[0].name] ? (
-                            <div className="grid grid-cols-2 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Dimensions:</span>
-                                <span className="font-medium">{metadata[selectedFiles[0].name].width} × {metadata[selectedFiles[0].name].height}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Format:</span>
-                                <span className="font-medium">{metadata[selectedFiles[0].name].format}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Colorspace:</span>
-                                <span className="font-medium">{metadata[selectedFiles[0].name].colorspace}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Bit Depth:</span>
-                                <span className="font-medium">{metadata[selectedFiles[0].name].depth}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Compression:</span>
-                                <span className="font-medium">{metadata[selectedFiles[0].name].compression}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Size:</span>
-                                <span className="font-medium">{formatFileSize(metadata[selectedFiles[0].name].size)}</span>
-                              </div>
+                  <TabsContent value="metadata">
+                    <Card className="glass-card border-0">
+                      <CardContent className="p-6">
+                        {selectedFiles.length > 0 &&
+                        metadata[selectedFiles[0].name] ? (
+                          <div className="grid grid-cols-2 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Dimensions:
+                              </span>
+                              <span className="font-medium">
+                                {metadata[selectedFiles[0].name].width} ×{' '}
+                                {metadata[selectedFiles[0].name].height}
+                              </span>
                             </div>
-                          ) : (
-                            <div className="flex items-center justify-center h-32">
-                              <div className="text-center text-muted-foreground">
-                                <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">Select an image to view metadata</p>
-                              </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Format:
+                              </span>
+                              <span className="font-medium">
+                                {metadata[selectedFiles[0].name].format}
+                              </span>
                             </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="resize">
-                      <Card className="glass-card border-0">
-                        <CardContent className="p-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="width" className="text-sm font-medium">Width (px)</Label>
-                              <Input
-                                id="width"
-                                type="number"
-                                value={resizeWidth}
-                                onChange={(e) => handleWidthChange(e.target.value)}
-                                placeholder="800"
-                                className="border-border/50"
-                              />
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Colorspace:
+                              </span>
+                              <span className="font-medium">
+                                {metadata[selectedFiles[0].name].colorspace}
+                              </span>
                             </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="height" className="text-sm font-medium">Height (px)</Label>
-                              <Input
-                                id="height"
-                                type="number"
-                                value={resizeHeight}
-                                onChange={(e) => handleHeightChange(e.target.value)}
-                                placeholder="600"
-                                className="border-border/50"
-                              />
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Bit Depth:
+                              </span>
+                              <span className="font-medium">
+                                {metadata[selectedFiles[0].name].depth}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Compression:
+                              </span>
+                              <span className="font-medium">
+                                {metadata[selectedFiles[0].name].compression}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Size:
+                              </span>
+                              <span className="font-medium">
+                                {formatFileSize(
+                                  metadata[selectedFiles[0].name].size,
+                                )}
+                              </span>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="aspect-ratio"
-                              checked={maintainAspectRatio}
-                              onCheckedChange={(checked) => setMaintainAspectRatio(checked as boolean)}
-                            />
-                            <Label htmlFor="aspect-ratio" className="text-sm font-medium cursor-pointer">
-                              Keep aspect ratio
+                        ) : (
+                          <div className="flex items-center justify-center h-32">
+                            <div className="text-center text-muted-foreground">
+                              <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">
+                                Select an image to view metadata
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="resize">
+                    <Card className="glass-card border-0">
+                      <CardContent className="p-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="width"
+                              className="text-sm font-medium"
+                            >
+                              Width (px)
                             </Label>
-                          </div>
-
-                          {progress > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Processing...</span>
-                                <span>{progress}%</span>
-                              </div>
-                              <Progress value={progress} className="w-full h-2" />
-                            </div>
-                          )}
-
-                          <div className="flex justify-end">
-                            <Button
-                              onClick={() => resizeImage(selectedFiles[0])}
-                              disabled={isProcessing || !resizeWidth || !resizeHeight || selectedFiles.length === 0}
-                              className="bg-purple-500 hover:bg-purple-600"
-                            >
-                              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                              Resize & Download
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="convert">
-                      <Card className="glass-card border-0">
-                        <CardContent className="p-6 space-y-4">
-                          <div className="space-y-3">
-                            <Label className="text-sm font-medium">Target Format</Label>
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="radio"
-                                  id="webp"
-                                  name="format"
-                                  value="webp"
-                                  checked={targetFormat === 'webp'}
-                                  onChange={(e) => setTargetFormat(e.target.value)}
-                                  className="w-4 h-4 text-primary border-border/50"
-                                />
-                                <Label htmlFor="webp" className="text-sm font-normal cursor-pointer">WebP (Recommended)</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="radio"
-                                  id="png"
-                                  name="format"
-                                  value="png"
-                                  checked={targetFormat === 'png'}
-                                  onChange={(e) => setTargetFormat(e.target.value)}
-                                  className="w-4 h-4 text-primary border-border/50"
-                                />
-                                <Label htmlFor="png" className="text-sm font-normal cursor-pointer">PNG (Lossless)</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="radio"
-                                  id="jpg"
-                                  name="format"
-                                  value="jpg"
-                                  checked={targetFormat === 'jpg'}
-                                  onChange={(e) => setTargetFormat(e.target.value)}
-                                  className="w-4 h-4 text-primary border-border/50"
-                                />
-                                <Label htmlFor="jpg" className="text-sm font-normal cursor-pointer">JPG (Compressed)</Label>
-                              </div>
-                            </div>
-                          </div>
-
-                          {progress > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Converting...</span>
-                                <span>{progress}%</span>
-                              </div>
-                              <Progress value={progress} className="w-full h-2" />
-                            </div>
-                          )}
-
-                          <div className="flex justify-end">
-                            <Button
-                              onClick={() => convertImage(selectedFiles[0])}
-                              disabled={isProcessing || selectedFiles.length === 0}
-                              className="bg-green-500 hover:bg-green-600"
-                            >
-                              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                              Convert & Download
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="compress">
-                      <Card className="glass-card border-0">
-                        <CardContent className="p-6 space-y-4">
-                          <div className="space-y-3">
-                            <Label htmlFor="quality" className="text-sm font-medium">Quality: {quality}%</Label>
                             <Input
-                              id="quality"
-                              type="range"
-                              min="1"
-                              max="100"
-                              value={quality}
-                              onChange={(e) => setQuality(parseInt(e.target.value))}
-                              className="w-full"
+                              id="width"
+                              type="number"
+                              value={resizeWidth}
+                              onChange={(e) =>
+                                handleWidthChange(e.target.value)
+                              }
+                              placeholder="800"
+                              className="border-border/50"
                             />
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Smaller file</span>
-                              <span>Better quality</span>
-                            </div>
                           </div>
-
-                          {progress > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Compressing...</span>
-                                <span>{progress}%</span>
-                              </div>
-                              <Progress value={progress} className="w-full h-2" />
-                            </div>
-                          )}
-
-                          <div className="flex justify-end">
-                            <Button
-                              onClick={() => compressImage(selectedFiles[0])}
-                              disabled={isProcessing || selectedFiles.length === 0}
-                              className="bg-orange-500 hover:bg-orange-600"
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="height"
+                              className="text-sm font-medium"
                             >
-                              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                              Compress & Download
-                            </Button>
+                              Height (px)
+                            </Label>
+                            <Input
+                              id="height"
+                              type="number"
+                              value={resizeHeight}
+                              onChange={(e) =>
+                                handleHeightChange(e.target.value)
+                              }
+                              placeholder="600"
+                              className="border-border/50"
+                            />
                           </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-                  </Tabs>
-                </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="aspect-ratio"
+                            checked={maintainAspectRatio}
+                            onCheckedChange={(checked) =>
+                              setMaintainAspectRatio(checked as boolean)
+                            }
+                          />
+                          <Label
+                            htmlFor="aspect-ratio"
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            Keep aspect ratio
+                          </Label>
+                        </div>
+
+                        {progress > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Processing...</span>
+                              <span>{progress}%</span>
+                            </div>
+                            <Progress value={progress} className="w-full h-2" />
+                          </div>
+                        )}
+
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={() => resizeImage(selectedFiles[0])}
+                            disabled={
+                              isProcessing ||
+                              !resizeWidth ||
+                              !resizeHeight ||
+                              selectedFiles.length === 0
+                            }
+                            className="bg-purple-500 hover:bg-purple-600"
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            Resize & Download
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="convert">
+                    <Card className="glass-card border-0">
+                      <CardContent className="p-6 space-y-4">
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">
+                            Target Format
+                          </Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                id="webp"
+                                name="format"
+                                value="webp"
+                                checked={targetFormat === 'webp'}
+                                onChange={(e) =>
+                                  setTargetFormat(e.target.value)
+                                }
+                                className="w-4 h-4 text-primary border-border/50"
+                              />
+                              <Label
+                                htmlFor="webp"
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                WebP (Recommended)
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                id="png"
+                                name="format"
+                                value="png"
+                                checked={targetFormat === 'png'}
+                                onChange={(e) =>
+                                  setTargetFormat(e.target.value)
+                                }
+                                className="w-4 h-4 text-primary border-border/50"
+                              />
+                              <Label
+                                htmlFor="png"
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                PNG (Lossless)
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                id="jpg"
+                                name="format"
+                                value="jpg"
+                                checked={targetFormat === 'jpg'}
+                                onChange={(e) =>
+                                  setTargetFormat(e.target.value)
+                                }
+                                className="w-4 h-4 text-primary border-border/50"
+                              />
+                              <Label
+                                htmlFor="jpg"
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                JPG (Compressed)
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {progress > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Converting...</span>
+                              <span>{progress}%</span>
+                            </div>
+                            <Progress value={progress} className="w-full h-2" />
+                          </div>
+                        )}
+
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={() => convertImage(selectedFiles[0])}
+                            disabled={
+                              isProcessing || selectedFiles.length === 0
+                            }
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            Convert & Download
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="compress">
+                    <Card className="glass-card border-0">
+                      <CardContent className="p-6 space-y-4">
+                        <div className="space-y-3">
+                          <Label
+                            htmlFor="quality"
+                            className="text-sm font-medium"
+                          >
+                            Quality: {quality}%
+                          </Label>
+                          <Input
+                            id="quality"
+                            type="range"
+                            min="1"
+                            max="100"
+                            value={quality}
+                            onChange={(e) =>
+                              setQuality(parseInt(e.target.value))
+                            }
+                            className="w-full"
+                          />
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Smaller file</span>
+                            <span>Better quality</span>
+                          </div>
+                        </div>
+
+                        {progress > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Compressing...</span>
+                              <span>{progress}%</span>
+                            </div>
+                            <Progress value={progress} className="w-full h-2" />
+                          </div>
+                        )}
+
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={() => compressImage(selectedFiles[0])}
+                            disabled={
+                              isProcessing || selectedFiles.length === 0
+                            }
+                            className="bg-orange-500 hover:bg-orange-600"
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            Compress & Download
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   )
-} 
+}
