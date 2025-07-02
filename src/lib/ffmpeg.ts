@@ -1,12 +1,71 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile } from '@ffmpeg/util'
 
+export interface VideoStream {
+  index: number
+  codec_name: string
+  codec_long_name: string
+  profile?: string
+  width: number
+  height: number
+  display_aspect_ratio?: string
+  sample_aspect_ratio?: string
+  pix_fmt?: string
+  color_range?: string
+  color_space?: string
+  color_transfer?: string
+  color_primaries?: string
+  r_frame_rate: string
+  avg_frame_rate: string
+  fps?: number
+  level?: number
+}
+
+export interface AudioStream {
+  index: number
+  codec_name: string
+  codec_long_name: string
+  profile?: string
+  sample_rate: number
+  channels: number
+  channel_layout?: string
+  sample_fmt?: string
+  bit_rate?: number
+  bits_per_sample?: number
+  language?: string
+  title?: string
+  is_default?: boolean
+}
+
+export interface SubtitleStream {
+  index: number
+  codec_name: string
+  codec_long_name: string
+  language?: string
+  title?: string
+  is_default?: boolean
+  is_forced?: boolean
+}
+
+export interface FormatInfo {
+  filename: string
+  format_name: string
+  format_long_name: string
+  duration: number
+  size: number
+  bit_rate: number
+  nb_streams: number
+}
+
 export interface VideoMetadata {
+  format: FormatInfo
+  video_streams: VideoStream[]
+  audio_streams: AudioStream[]
+  subtitle_streams: SubtitleStream[]
+  // Legacy fields for backward compatibility
   duration: number
   width: number
   height: number
-  format: string
-  size: number
   bitrate: string
   fps: string
   codec: string
@@ -43,16 +102,60 @@ export interface AudioExtractOptions {
   audioFormat: string
 }
 
+interface FFProbeStream {
+  index?: number
+  codec_type?: string
+  codec_name?: string
+  codec_long_name?: string
+  profile?: string
+  width?: number
+  height?: number
+  display_aspect_ratio?: string
+  sample_aspect_ratio?: string
+  pix_fmt?: string
+  color_range?: string
+  color_space?: string
+  color_transfer?: string
+  color_primaries?: string
+  r_frame_rate?: string
+  avg_frame_rate?: string
+  level?: number
+  sample_rate?: number
+  channels?: number
+  channel_layout?: string
+  sample_fmt?: string
+  bit_rate?: string
+  bits_per_sample?: number
+  disposition?: {
+    default?: number
+    forced?: number
+  }
+  tags?: {
+    language?: string
+    title?: string
+  }
+}
+
+interface FFProbeFormat {
+  filename?: string
+  format_name?: string
+  format_long_name?: string
+  duration?: string
+  size?: string
+  bit_rate?: string
+  nb_streams?: number
+}
+
+interface FFProbeOutput {
+  streams?: FFProbeStream[]
+  format?: FFProbeFormat
+}
+
 export class FFmpegProcessor {
   private ffmpeg: FFmpeg
-  private progressCallback?: (progress: number) => void
 
   constructor(ffmpeg: FFmpeg) {
     this.ffmpeg = ffmpeg
-  }
-
-  setProgressCallback(callback: (progress: number) => void) {
-    this.progressCallback = callback
   }
 
   private getFileExtension(filename: string): string {
@@ -87,18 +190,6 @@ export class FFmpegProcessor {
         await fetchFile(videoFile.file),
       )
 
-      // Initialize metadata with basic info
-      const metadata: VideoMetadata = {
-        duration: videoFile.duration ?? 0,
-        width: videoFile.dimensions?.width ?? 0,
-        height: videoFile.dimensions?.height ?? 0,
-        format: videoFile.type.split('/')[1].toUpperCase(),
-        size: videoFile.size,
-        bitrate: 'Unknown',
-        fps: 'Unknown',
-        codec: 'Unknown',
-      }
-
       // Use ffprobe to get detailed metadata in JSON format
       console.log('🎬 FFmpeg: Running ffprobe for detailed metadata')
       await this.ffmpeg.ffprobe([
@@ -117,52 +208,103 @@ export class FFmpegProcessor {
       console.log('🎬 FFmpeg: Reading ffprobe output')
       const jsonData = await this.ffmpeg.readFile('metadata.json')
       const jsonString = new TextDecoder().decode(jsonData as Uint8Array)
-      const probeData = JSON.parse(jsonString) as {
-        format: { format_name: string; duration: string; bit_rate: string }
-        streams: {
-          codec_type: string
-          codec_name: string
-          width: number
-          height: number
-          r_frame_rate: string
-        }[]
-      }
+      const probeData = JSON.parse(jsonString) as FFProbeOutput
 
       // Extract format information
-      if (probeData.format) {
-        metadata.format =
-          probeData.format.format_name?.toUpperCase() || metadata.format
-        if (probeData.format.duration) {
-          metadata.duration = parseFloat(probeData.format.duration)
-        }
-        if (probeData.format.bit_rate) {
-          const bitrateKbps = Math.round(
-            parseInt(probeData.format.bit_rate) / 1000,
-          )
-          metadata.bitrate = `${bitrateKbps} kbps`
-        }
+      const formatInfo: FormatInfo = {
+        filename: probeData.format?.filename ?? videoFile.name,
+        format_name: probeData.format?.format_name ?? 'Unknown',
+        format_long_name: probeData.format?.format_long_name ?? 'Unknown',
+        duration: probeData.format?.duration
+          ? parseFloat(probeData.format.duration)
+          : (videoFile.duration ?? 0),
+        size: probeData.format?.size
+          ? parseInt(probeData.format.size)
+          : videoFile.size,
+        bit_rate: probeData.format?.bit_rate
+          ? parseInt(probeData.format.bit_rate)
+          : 0,
+        nb_streams: probeData.format?.nb_streams ?? 0,
       }
 
-      // Extract video stream information
-      if (probeData.streams) {
-        const videoStream = probeData.streams.find(
-          (stream: { codec_type: string }) => stream.codec_type === 'video',
-        )
-        if (videoStream) {
-          metadata.codec = videoStream.codec_name || 'Unknown'
-          metadata.width = videoStream.width || metadata.width
-          metadata.height = videoStream.height || metadata.height
-
-          // Extract frame rate
-          if (videoStream.r_frame_rate) {
-            const [num, den] = videoStream.r_frame_rate.split('/')
-            if (num && den) {
-              const fps =
-                Math.round((parseInt(num) / parseInt(den)) * 100) / 100
-              metadata.fps = `${fps} fps`
+      // Extract video streams
+      const videoStreams: VideoStream[] =
+        probeData.streams
+          ?.filter((stream: FFProbeStream) => stream.codec_type === 'video')
+          .map((stream: FFProbeStream) => {
+            const fps = stream.r_frame_rate
+              ? this.calculateFps(stream.r_frame_rate)
+              : undefined
+            return {
+              index: stream.index ?? 0,
+              codec_name: stream.codec_name ?? 'Unknown',
+              codec_long_name: stream.codec_long_name ?? 'Unknown',
+              profile: stream.profile,
+              width: stream.width ?? 0,
+              height: stream.height ?? 0,
+              display_aspect_ratio: stream.display_aspect_ratio,
+              sample_aspect_ratio: stream.sample_aspect_ratio,
+              pix_fmt: stream.pix_fmt,
+              color_range: stream.color_range,
+              color_space: stream.color_space,
+              color_transfer: stream.color_transfer,
+              color_primaries: stream.color_primaries,
+              r_frame_rate: stream.r_frame_rate ?? '0/0',
+              avg_frame_rate: stream.avg_frame_rate ?? '0/0',
+              fps,
+              level: stream.level,
             }
-          }
-        }
+          }) ?? []
+
+      // Extract audio streams
+      const audioStreams: AudioStream[] =
+        probeData.streams
+          ?.filter((stream: FFProbeStream) => stream.codec_type === 'audio')
+          .map((stream: FFProbeStream) => ({
+            index: stream.index ?? 0,
+            codec_name: stream.codec_name ?? 'Unknown',
+            codec_long_name: stream.codec_long_name ?? 'Unknown',
+            profile: stream.profile,
+            sample_rate: stream.sample_rate ?? 0,
+            channels: stream.channels ?? 0,
+            channel_layout: stream.channel_layout,
+            sample_fmt: stream.sample_fmt,
+            bit_rate: stream.bit_rate ? parseInt(stream.bit_rate) : undefined,
+            bits_per_sample: stream.bits_per_sample,
+            language: stream.tags?.language,
+            title: stream.tags?.title,
+            is_default: stream.disposition?.default === 1,
+          })) ?? []
+
+      // Extract subtitle streams
+      const subtitleStreams: SubtitleStream[] =
+        probeData.streams
+          ?.filter((stream: FFProbeStream) => stream.codec_type === 'subtitle')
+          .map((stream: FFProbeStream) => ({
+            index: stream.index ?? 0,
+            codec_name: stream.codec_name ?? 'Unknown',
+            codec_long_name: stream.codec_long_name ?? 'Unknown',
+            language: stream.tags?.language,
+            title: stream.tags?.title,
+            is_default: stream.disposition?.default === 1,
+            is_forced: stream.disposition?.forced === 1,
+          })) ?? []
+
+      // Build complete metadata object
+      const metadata: VideoMetadata = {
+        format: formatInfo,
+        video_streams: videoStreams,
+        audio_streams: audioStreams,
+        subtitle_streams: subtitleStreams,
+        // Legacy fields for backward compatibility
+        duration: formatInfo.duration,
+        width: videoStreams[0]?.width ?? videoFile.dimensions?.width ?? 0,
+        height: videoStreams[0]?.height ?? videoFile.dimensions?.height ?? 0,
+        bitrate: formatInfo.bit_rate
+          ? `${Math.round(formatInfo.bit_rate / 1000)} kbps`
+          : 'Unknown',
+        fps: videoStreams[0]?.fps ? `${videoStreams[0].fps} fps` : 'Unknown',
+        codec: videoStreams[0]?.codec_name ?? 'Unknown',
       }
 
       // Clean up files
@@ -182,12 +324,22 @@ export class FFmpegProcessor {
     } catch (error) {
       console.error('🎬 FFmpeg: Error extracting metadata:', error)
       // Fallback to basic metadata
-      const fallbackMetadata = {
+      const fallbackMetadata: VideoMetadata = {
+        format: {
+          filename: videoFile.name,
+          format_name: videoFile.type.split('/')[1]?.toUpperCase() ?? 'Unknown',
+          format_long_name: 'Unknown',
+          duration: videoFile.duration ?? 0,
+          size: videoFile.size,
+          bit_rate: 0,
+          nb_streams: 0,
+        },
+        video_streams: [],
+        audio_streams: [],
+        subtitle_streams: [],
         duration: videoFile.duration ?? 0,
         width: videoFile.dimensions?.width ?? 0,
         height: videoFile.dimensions?.height ?? 0,
-        format: videoFile.type.split('/')[1].toUpperCase(),
-        size: videoFile.size,
         bitrate: 'Unknown',
         fps: 'Unknown',
         codec: 'Unknown',
@@ -195,6 +347,15 @@ export class FFmpegProcessor {
       console.log('🎬 FFmpeg: Using fallback metadata', fallbackMetadata)
       return fallbackMetadata
     }
+  }
+
+  private calculateFps(frameRate: string): number | undefined {
+    if (!frameRate || frameRate === '0/0') return undefined
+    const [num, den] = frameRate.split('/')
+    if (num && den && parseInt(den) !== 0) {
+      return Math.round((parseInt(num) / parseInt(den)) * 100) / 100
+    }
+    return undefined
   }
 
   async convertVideo(

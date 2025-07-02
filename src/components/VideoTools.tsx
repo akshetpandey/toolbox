@@ -68,8 +68,6 @@ export function VideoTools() {
   const ffmpegProcessorRef = useRef<FFmpegProcessor | null>(null)
   const getFfmpegProcessor = useCallback(async (): Promise<FFmpegProcessor> => {
     if (ffmpegProcessorRef.current) {
-      // Set progress callback on existing processor
-      ffmpegProcessorRef.current.setProgressCallback(setProgress)
       return ffmpegProcessorRef.current
     }
 
@@ -79,7 +77,6 @@ export function VideoTools() {
       throw new Error('Failed to initialize FFmpeg')
     }
     const proc = new FFmpegProcessor(core)
-    proc.setProgressCallback(setProgress)
     ffmpegProcessorRef.current = proc
     return proc
   }, [isInitialized, ffmpeg, init])
@@ -115,11 +112,12 @@ export function VideoTools() {
     async (files: FileList) => {
       console.log('🎬 VideoTools: File selection started', {
         fileCount: files.length,
+        files: files,
       })
 
       // Only take the first video file
       const file = files[0]
-      if (file?.type.startsWith('video/')) {
+      if (file?.type.startsWith('video/') || file.name.endsWith('.mkv')) {
         console.log('🎬 VideoTools: Processing video file', {
           name: file.name,
           size: file.size,
@@ -171,7 +169,7 @@ export function VideoTools() {
         await parseMetadata(videoFile)
         console.log('🎬 VideoTools: File selection completed successfully')
       } else {
-        console.warn('🎬 VideoTools: Invalid file type selected', {
+        console.warn('🎬 VideoTools: Invalid file type selected. ', {
           type: file?.type,
         })
       }
@@ -195,11 +193,22 @@ export function VideoTools() {
         console.error('🎬 VideoTools: Error extracting metadata:', error)
         // Fallback to basic metadata
         const meta: VideoMetadata = {
+          format: {
+            filename: videoFile.name,
+            format_name:
+              videoFile.type.split('/')[1]?.toUpperCase() ?? 'Unknown',
+            format_long_name: 'Unknown',
+            duration: videoFile.duration ?? 0,
+            size: videoFile.size,
+            bit_rate: 0,
+            nb_streams: 0,
+          },
+          video_streams: [],
+          audio_streams: [],
+          subtitle_streams: [],
           duration: videoFile.duration ?? 0,
           width: videoFile.dimensions?.width ?? 0,
           height: videoFile.dimensions?.height ?? 0,
-          format: videoFile.type.split('/')[1].toUpperCase(),
-          size: videoFile.size,
           bitrate: 'Unknown',
           fps: 'Unknown',
           codec: 'Unknown',
@@ -473,9 +482,6 @@ export function VideoTools() {
                       <h3 className="text-lg font-medium text-foreground mb-2">
                         Drop a video here
                       </h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Supports MP4, WebM, AVI, MOV
-                      </p>
                       <div className="flex flex-wrap justify-center gap-2">
                         <Badge variant="secondary" className="text-xs">
                           MP4
@@ -488,6 +494,9 @@ export function VideoTools() {
                         </Badge>
                         <Badge variant="secondary" className="text-xs">
                           MOV
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          MKV
                         </Badge>
                       </div>
                     </div>
@@ -574,7 +583,7 @@ export function VideoTools() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="video/*"
+                    accept="video/*,.mkv"
                     className="hidden"
                     onChange={(e) =>
                       e.target.files && void handleFileSelect(e.target.files)
@@ -635,68 +644,389 @@ export function VideoTools() {
                       <CardContent className="p-6">
                         {selectedFiles.length > 0 &&
                         metadata[selectedFiles[0].name] ? (
-                          <div className="grid grid-cols-2 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Duration:
-                              </span>
-                              <span className="font-medium">
-                                {formatDuration(
-                                  metadata[selectedFiles[0].name].duration,
-                                )}
-                              </span>
+                          <div className="space-y-6">
+                            {/* Format Information */}
+                            <div>
+                              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <Info className="h-5 w-5 text-blue-500" />
+                                Format Information
+                              </h3>
+                              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">
+                                      Container:
+                                    </span>
+                                    <span className="font-medium">
+                                      {
+                                        metadata[selectedFiles[0].name].format
+                                          .format_name
+                                      }
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">
+                                      Duration:
+                                    </span>
+                                    <span className="font-medium">
+                                      {formatDuration(
+                                        metadata[selectedFiles[0].name].format
+                                          .duration,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">
+                                      File Size:
+                                    </span>
+                                    <span className="font-medium">
+                                      {formatFileSize(
+                                        metadata[selectedFiles[0].name].format
+                                          .size,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">
+                                      Overall Bitrate:
+                                    </span>
+                                    <span className="font-medium">
+                                      {metadata[selectedFiles[0].name].format
+                                        .bit_rate > 0
+                                        ? `${Math.round(metadata[selectedFiles[0].name].format.bit_rate / 1000)} kbps`
+                                        : 'Unknown'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between col-span-2">
+                                    <span className="text-muted-foreground">
+                                      Streams:
+                                    </span>
+                                    <span className="font-medium">
+                                      {
+                                        metadata[selectedFiles[0].name].format
+                                          .nb_streams
+                                      }{' '}
+                                      total
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Dimensions:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].width} ×{' '}
-                                {metadata[selectedFiles[0].name].height}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Format:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].format}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Size:
-                              </span>
-                              <span className="font-medium">
-                                {formatFileSize(
-                                  metadata[selectedFiles[0].name].size,
-                                )}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Bitrate:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].bitrate}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                FPS:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].fps}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Codec:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].codec}
-                              </span>
-                            </div>
+
+                            {/* Video Streams */}
+                            {metadata[selectedFiles[0].name].video_streams
+                              .length > 0 && (
+                              <div>
+                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                  <VideoIcon className="h-5 w-5 text-purple-500" />
+                                  Video Streams (
+                                  {
+                                    metadata[selectedFiles[0].name]
+                                      .video_streams.length
+                                  }
+                                  )
+                                </h3>
+                                <div className="space-y-3">
+                                  {metadata[
+                                    selectedFiles[0].name
+                                  ].video_streams.map((stream) => (
+                                    <div
+                                      key={stream.index}
+                                      className="bg-muted/50 p-4 rounded-lg"
+                                    >
+                                      <div className="flex items-center justify-between mb-2">
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs"
+                                        >
+                                          Stream #{stream.index}
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {stream.codec_long_name}
+                                        </span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">
+                                            Codec:
+                                          </span>
+                                          <span className="font-medium">
+                                            {stream.codec_name.toUpperCase()}
+                                            {stream.profile &&
+                                              ` (${stream.profile})`}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">
+                                            Resolution:
+                                          </span>
+                                          <span className="font-medium">
+                                            {stream.width} × {stream.height}
+                                          </span>
+                                        </div>
+                                        {stream.display_aspect_ratio && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Aspect Ratio:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.display_aspect_ratio}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.fps && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Frame Rate:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.fps} fps
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.pix_fmt && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Pixel Format:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.pix_fmt}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.color_space && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Color Space:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.color_space}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.color_range && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Color Range:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.color_range}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.color_transfer && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Transfer:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.color_transfer}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Audio Streams */}
+                            {metadata[selectedFiles[0].name].audio_streams
+                              .length > 0 && (
+                              <div>
+                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                  <Volume2 className="h-5 w-5 text-green-500" />
+                                  Audio Streams (
+                                  {
+                                    metadata[selectedFiles[0].name]
+                                      .audio_streams.length
+                                  }
+                                  )
+                                </h3>
+                                <div className="space-y-3">
+                                  {metadata[
+                                    selectedFiles[0].name
+                                  ].audio_streams.map((stream) => (
+                                    <div
+                                      key={stream.index}
+                                      className="bg-muted/50 p-4 rounded-lg"
+                                    >
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            Stream #{stream.index}
+                                          </Badge>
+                                          {stream.is_default && (
+                                            <Badge
+                                              variant="default"
+                                              className="text-xs"
+                                            >
+                                              Default
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          {stream.codec_long_name}
+                                        </span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">
+                                            Codec:
+                                          </span>
+                                          <span className="font-medium">
+                                            {stream.codec_name.toUpperCase()}
+                                            {stream.profile &&
+                                              ` (${stream.profile})`}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">
+                                            Sample Rate:
+                                          </span>
+                                          <span className="font-medium">
+                                            {stream.sample_rate} Hz
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">
+                                            Channels:
+                                          </span>
+                                          <span className="font-medium">
+                                            {stream.channels}
+                                            {stream.channel_layout &&
+                                              ` (${stream.channel_layout})`}
+                                          </span>
+                                        </div>
+                                        {stream.bit_rate && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Bitrate:
+                                            </span>
+                                            <span className="font-medium">
+                                              {Math.round(
+                                                stream.bit_rate / 1000,
+                                              )}{' '}
+                                              kbps
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.language && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Language:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.language.toUpperCase()}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.title && (
+                                          <div className="flex justify-between col-span-2">
+                                            <span className="text-muted-foreground">
+                                              Title:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.title}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Subtitle Streams */}
+                            {metadata[selectedFiles[0].name].subtitle_streams
+                              .length > 0 && (
+                              <div>
+                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                  <FileVideo className="h-5 w-5 text-orange-500" />
+                                  Subtitle Streams (
+                                  {
+                                    metadata[selectedFiles[0].name]
+                                      .subtitle_streams.length
+                                  }
+                                  )
+                                </h3>
+                                <div className="space-y-3">
+                                  {metadata[
+                                    selectedFiles[0].name
+                                  ].subtitle_streams.map((stream) => (
+                                    <div
+                                      key={stream.index}
+                                      className="bg-muted/50 p-4 rounded-lg"
+                                    >
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            Stream #{stream.index}
+                                          </Badge>
+                                          {stream.is_default && (
+                                            <Badge
+                                              variant="default"
+                                              className="text-xs"
+                                            >
+                                              Default
+                                            </Badge>
+                                          )}
+                                          {stream.is_forced && (
+                                            <Badge
+                                              variant="destructive"
+                                              className="text-xs"
+                                            >
+                                              Forced
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          {stream.codec_long_name}
+                                        </span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">
+                                            Format:
+                                          </span>
+                                          <span className="font-medium">
+                                            {stream.codec_name.toUpperCase()}
+                                          </span>
+                                        </div>
+                                        {stream.language && (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">
+                                              Language:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.language.toUpperCase()}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {stream.title && (
+                                          <div className="flex justify-between col-span-2">
+                                            <span className="text-muted-foreground">
+                                              Title:
+                                            </span>
+                                            <span className="font-medium">
+                                              {stream.title}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center justify-center h-32">

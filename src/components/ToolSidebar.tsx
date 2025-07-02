@@ -8,7 +8,12 @@ const toolCategories = [
     name: 'Image',
     icon: Image,
     route: '/images',
-    tools: ['Resize Image', 'Convert Format', 'Compress Image'],
+    tools: [
+      'Image Metadata',
+      'Resize Image',
+      'Convert Format',
+      'Compress Image',
+    ],
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
   },
@@ -16,7 +21,13 @@ const toolCategories = [
     name: 'Video',
     icon: Video,
     route: '/videos',
-    tools: ['Convert Format', 'Compress Video', 'Trim Video', 'Extract Audio'],
+    tools: [
+      'Video Metadata',
+      'Convert Format',
+      'Compress Video',
+      'Trim Video',
+      'Extract Audio',
+    ],
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
   },
@@ -130,6 +141,7 @@ export function ToolSidebar() {
                           'Resize Image': 'resize',
                           'Convert Format': 'convert',
                           'Compress Image': 'compress',
+                          'Image Metadata': 'metadata',
                         }
                         const tab = toolMap[tool]
                         if (tab) {
@@ -158,6 +170,7 @@ export function ToolSidebar() {
                           'Compress Video': 'compress',
                           'Extract Audio': 'audio',
                           'Trim Video': 'trim',
+                          'Video Metadata': 'metadata',
                         }
                         const tab = toolMap[tool]
                         if (tab) {
