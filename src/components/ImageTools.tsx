@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,8 +8,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ImageMagick, MagickFormat } from '@imagemagick/magick-wasm'
 import { useInitImageMagick } from '@/hooks/useInitImageMagick'
+import {
+  ImageMagickProcessor,
+  type ImageFile,
+  type ImageMetadata,
+  type ResizeOptions,
+  type ImageConvertOptions,
+  type ImageCompressOptions,
+  formatFileSize,
+  downloadFile,
+  createObjectURL,
+  revokeObjectURL,
+} from '@/lib/imagemagick'
 
 import {
   Upload,
@@ -22,46 +33,30 @@ import {
   Zap,
 } from 'lucide-react'
 
-interface ImageFile {
-  file: File
-  preview: string
-  name: string
-  size: number
-  type: string
-  dimensions?: { width: number; height: number }
-}
-
-interface ImageMetadata {
-  width: number
-  height: number
-  format: string
-  size: number
-  colorspace: string
-  depth: number
-  compression: string
-}
-
 export function ImageTools() {
-  const { isInitialized, isInitializing, error } = useInitImageMagick()
+  const { isInitialized, isInitializing, error, init } = useInitImageMagick()
   const search = useSearch({ from: '/images' })
   const navigate = useNavigate()
   const [selectedFiles, setSelectedFiles] = useState<ImageFile[]>([])
-  const [metadata, setMetadata] = useState<{ [key: string]: ImageMetadata }>({})
+  const [metadata, setMetadata] = useState<Record<string, ImageMetadata>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
+  // Create ImageMagick processor instance - use useMemo to prevent recreation on every render
+  const imageMagickProcessor = useMemo(() => new ImageMagickProcessor(), [])
+
   // Get the current active tab from URL search params
-  const activeTab = search?.tab || 'metadata'
-  
+  const activeTab = search?.tab ?? 'metadata'
+
   // Handle tab changes
-  const handleTabChange = (value: string) => {
-    navigate({
+  const handleTabChange = async (value: string) => {
+    await navigate({
       to: '/images',
       search: { tab: value },
     })
   }
-  
+
   // Resize settings
   const [resizeWidth, setResizeWidth] = useState('')
   const [resizeHeight, setResizeHeight] = useState('')
@@ -73,71 +68,67 @@ export function ImageTools() {
   // Compress settings
   const [quality, setQuality] = useState(85)
 
-  // Auto-update dimensions when aspect ratio is maintained
-  useEffect(() => {
-    if (maintainAspectRatio && selectedFiles.length > 0) {
-      const imageFile = selectedFiles[0]
-      const originalDimensions = imageFile.dimensions
+  const handleFileSelect = useCallback(
+    async (files: FileList) => {
+      console.log('🖼️ ImageTools: File selection started', { fileCount: files.length })
+      
+      // Only take the first image file
+      const file = files[0]
+      if (file?.type.startsWith('image/')) {
+        console.log('🖼️ ImageTools: Processing image file', { 
+          name: file.name, 
+          size: file.size, 
+          type: file.type 
+        })
+        
+        const preview = URL.createObjectURL(file)
 
-      if (originalDimensions) {
-        const aspectRatio = originalDimensions.width / originalDimensions.height
+        // Get image dimensions
+        const img = new Image()
+        const dimensions = await new Promise<{ width: number; height: number }>(
+          (resolve) => {
+            img.onload = () => resolve({ width: img.width, height: img.height })
+            img.src = preview
+          },
+        )
 
-        // If width is entered, calculate height
-        if (resizeWidth && !resizeHeight) {
-          const newHeight = Math.round(parseInt(resizeWidth) / aspectRatio)
-          setResizeHeight(newHeight.toString())
+        console.log('🖼️ ImageTools: Image dimensions extracted', dimensions)
+
+        const imageFile = {
+          file,
+          preview,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          dimensions,
         }
-        // If height is entered, calculate width
-        else if (resizeHeight && !resizeWidth) {
-          const newWidth = Math.round(parseInt(resizeHeight) * aspectRatio)
-          setResizeWidth(newWidth.toString())
+
+        setSelectedFiles([imageFile])
+        setMetadata({})
+
+        // Initialize ImageMagick if not already initialized
+        if (!isInitialized) {
+          console.log('🖼️ ImageTools: Initializing ImageMagick...')
+          await init()
+          console.log('🖼️ ImageTools: ImageMagick initialization completed')
         }
-        // If both are entered, prioritize width and recalculate height
-        else if (resizeWidth && resizeHeight) {
-          const newHeight = Math.round(parseInt(resizeWidth) / aspectRatio)
-          setResizeHeight(newHeight.toString())
-        }
+
+        // Automatically extract metadata
+        console.log('🖼️ ImageTools: Starting metadata extraction...')
+        await extractMetadata(imageFile)
+        console.log('🖼️ ImageTools: File selection completed successfully')
+      } else {
+        console.warn('🖼️ ImageTools: Invalid file type selected', { type: file?.type })
       }
-    }
-  }, [maintainAspectRatio, selectedFiles])
-
-  const handleFileSelect = useCallback(async (files: FileList) => {
-    // Only take the first image file
-    const file = files[0]
-    if (file && file.type.startsWith('image/')) {
-      const preview = URL.createObjectURL(file)
-
-      // Get image dimensions
-      const img = new Image()
-      const dimensions = await new Promise<{ width: number; height: number }>(
-        (resolve) => {
-          img.onload = () => resolve({ width: img.width, height: img.height })
-          img.src = preview
-        },
-      )
-
-      const imageFile = {
-        file,
-        preview,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        dimensions,
-      }
-
-      setSelectedFiles([imageFile])
-      setMetadata({})
-
-      // Automatically extract metadata
-      await extractMetadata(imageFile)
-    }
-  }, [])
+    },
+    [isInitialized, init],
+  )
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault()
       if (e.dataTransfer.files) {
-        handleFileSelect(e.dataTransfer.files)
+        await handleFileSelect(e.dataTransfer.files)
       }
     },
     [handleFileSelect],
@@ -149,48 +140,45 @@ export function ImageTools() {
 
   // Extract metadata using ImageMagick
   const extractMetadata = async (imageFile: ImageFile) => {
+    console.log('🖼️ ImageTools: Starting metadata extraction for', imageFile.name)
     try {
-      const arrayBuffer = await imageFile.file.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-      
-      ImageMagick.read(uint8Array, (img) => {
-        const meta: ImageMetadata = {
-          width: img.width,
-          height: img.height,
-          format: img.format.toString(),
-          size: imageFile.size,
-          colorspace: img.colorSpace.toString(),
-          depth: img.depth,
-          compression: img.compression.toString(),
-        }
-
-        setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
-      })
+      const meta = await imageMagickProcessor.extractMetadata(imageFile)
+      console.log('🖼️ ImageTools: Metadata extraction successful', meta)
+      setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
     } catch (error) {
-      console.error('Error extracting metadata:', error)
+      console.error('🖼️ ImageTools: Error extracting metadata:', error)
       // Fallback to basic metadata
       const meta: ImageMetadata = {
-        width: imageFile.dimensions?.width || 0,
-        height: imageFile.dimensions?.height || 0,
+        width: imageFile.dimensions?.width ?? 0,
+        height: imageFile.dimensions?.height ?? 0,
         format: imageFile.type.split('/')[1].toUpperCase(),
         size: imageFile.size,
         colorspace: 'sRGB',
         depth: 8,
         compression: 'None',
       }
+      console.log('🖼️ ImageTools: Using fallback metadata', meta)
       setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
     }
   }
 
-    const resizeImage = async (imageFile: ImageFile) => {
+  const resizeImage = async (imageFile: ImageFile) => {
     if (!resizeWidth || !resizeHeight) {
+      console.warn('🖼️ ImageTools: Resize validation failed - missing dimensions')
       alert('Please enter both width and height')
       return
     }
 
+    console.log('🖼️ ImageTools: Starting image resize operation', {
+      fileName: imageFile.name,
+      targetWidth: resizeWidth,
+      targetHeight: resizeHeight,
+      maintainAspectRatio
+    })
+
     setIsProcessing(true)
     setProgress(0)
-    
+
     // Simulate progress
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -203,59 +191,32 @@ export function ImageTools() {
     }, 100)
 
     try {
-      const arrayBuffer = await imageFile.file.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-      
-      ImageMagick.read(uint8Array, (img) => {
-        const newWidth = parseInt(resizeWidth)
-        const newHeight = parseInt(resizeHeight)
-        
-        if (maintainAspectRatio) {
-          const aspectRatio = img.width / img.height
-          const targetAspectRatio = newWidth / newHeight
-          
-          if (aspectRatio > targetAspectRatio) {
-            img.resize(newWidth, Math.round(newWidth / aspectRatio))
-          } else {
-            img.resize(Math.round(newHeight * aspectRatio), newHeight)
-          }
-        } else {
-          img.resize(newWidth, newHeight)
-        }
-        
-        // Determine format based on original file type
-        let format: MagickFormat
-        if (imageFile.type.includes('jpeg') || imageFile.type.includes('jpg')) {
-          format = MagickFormat.Jpeg
-        } else if (imageFile.type.includes('png')) {
-          format = MagickFormat.Png
-        } else if (imageFile.type.includes('webp')) {
-          format = MagickFormat.WebP
-        } else {
-          format = MagickFormat.Jpeg // Default
-        }
-        
-        img.write(format, (data: Uint8Array) => {
-          const blob = new Blob([data], { type: imageFile.type })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `resized_${imageFile.name}`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-          
-          clearInterval(progressInterval)
-          setProgress(100)
-          setTimeout(() => {
-            setIsProcessing(false)
-            setProgress(0)
-          }, 500)
-        })
+      const options: ResizeOptions = {
+        width: parseInt(resizeWidth),
+        height: parseInt(resizeHeight),
+        maintainAspectRatio,
+      }
+
+      console.log('🖼️ ImageTools: Calling ImageMagick resize with options', options)
+      const blob = await imageMagickProcessor.resizeImage(imageFile, options)
+      console.log('🖼️ ImageTools: Resize operation completed', { 
+        originalSize: imageFile.size, 
+        newSize: blob.size 
       })
+      
+      const url = createObjectURL(blob)
+      downloadFile(url, `resized_${imageFile.name}`)
+      revokeObjectURL(url)
+
+      clearInterval(progressInterval)
+      setProgress(100)
+      console.log('🖼️ ImageTools: Resize operation successful - file downloaded')
+      setTimeout(() => {
+        setIsProcessing(false)
+        setProgress(0)
+      }, 500)
     } catch (error) {
-      console.error('Error resizing image:', error)
+      console.error('🖼️ ImageTools: Error during resize operation:', error)
       clearInterval(progressInterval)
       setIsProcessing(false)
       setProgress(0)
@@ -263,6 +224,11 @@ export function ImageTools() {
   }
 
   const convertImage = async (imageFile: ImageFile) => {
+    console.log('🖼️ ImageTools: Starting image conversion', {
+      fileName: imageFile.name,
+      targetFormat
+    })
+
     setIsProcessing(true)
     setProgress(0)
 
@@ -278,52 +244,30 @@ export function ImageTools() {
     }, 100)
 
     try {
-      const arrayBuffer = await imageFile.file.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-      
-      ImageMagick.read(uint8Array, (img) => {
-        let format: MagickFormat
-        let mimeType: string
-        
-        switch (targetFormat) {
-          case 'webp':
-            format = MagickFormat.WebP
-            mimeType = 'image/webp'
-            break
-          case 'png':
-            format = MagickFormat.Png
-            mimeType = 'image/png'
-            break
-          case 'jpg':
-            format = MagickFormat.Jpeg
-            mimeType = 'image/jpeg'
-            break
-          default:
-            format = MagickFormat.WebP
-            mimeType = 'image/webp'
-        }
-        
-        img.write(format, (data: Uint8Array) => {
-          const blob = new Blob([data], { type: mimeType })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `${imageFile.name.split('.')[0]}.${targetFormat}`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-          
-          clearInterval(progressInterval)
-          setProgress(100)
-          setTimeout(() => {
-            setIsProcessing(false)
-            setProgress(0)
-          }, 500)
-        })
+      const options: ImageConvertOptions = {
+        targetFormat,
+      }
+
+      console.log('🖼️ ImageTools: Calling ImageMagick convert with options', options)
+      const blob = await imageMagickProcessor.convertImage(imageFile, options)
+      console.log('🖼️ ImageTools: Conversion completed', { 
+        originalSize: imageFile.size, 
+        newSize: blob.size 
       })
+      
+      const url = createObjectURL(blob)
+      downloadFile(url, `${imageFile.name.split('.')[0]}.${targetFormat}`)
+      revokeObjectURL(url)
+
+      clearInterval(progressInterval)
+      setProgress(100)
+      console.log('🖼️ ImageTools: Conversion successful - file downloaded')
+      setTimeout(() => {
+        setIsProcessing(false)
+        setProgress(0)
+      }, 500)
     } catch (error) {
-      console.error('Error converting image:', error)
+      console.error('🖼️ ImageTools: Error during conversion:', error)
       clearInterval(progressInterval)
       setIsProcessing(false)
       setProgress(0)
@@ -331,6 +275,11 @@ export function ImageTools() {
   }
 
   const compressImage = async (imageFile: ImageFile) => {
+    console.log('🖼️ ImageTools: Starting image compression', {
+      fileName: imageFile.name,
+      quality
+    })
+
     setIsProcessing(true)
     setProgress(0)
 
@@ -346,58 +295,35 @@ export function ImageTools() {
     }, 100)
 
     try {
-      const arrayBuffer = await imageFile.file.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-      
-      ImageMagick.read(uint8Array, (img) => {
-        // Set quality for compression
-        img.quality = quality
-        
-        // Determine format based on original file type
-        let format: MagickFormat
-        if (imageFile.type.includes('jpeg') || imageFile.type.includes('jpg')) {
-          format = MagickFormat.Jpeg
-        } else if (imageFile.type.includes('png')) {
-          format = MagickFormat.Png
-        } else if (imageFile.type.includes('webp')) {
-          format = MagickFormat.WebP
-        } else {
-          format = MagickFormat.Jpeg // Default to JPEG for compression
-        }
-        
-        img.write(format, (data: Uint8Array) => {
-          const blob = new Blob([data], { type: imageFile.type })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `compressed_${imageFile.name}`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-          
-          clearInterval(progressInterval)
-          setProgress(100)
-          setTimeout(() => {
-            setIsProcessing(false)
-            setProgress(0)
-          }, 500)
-        })
+      const options: ImageCompressOptions = {
+        quality,
+      }
+
+      console.log('🖼️ ImageTools: Calling ImageMagick compress with options', options)
+      const blob = await imageMagickProcessor.compressImage(imageFile, options)
+      console.log('🖼️ ImageTools: Compression completed', { 
+        originalSize: imageFile.size, 
+        newSize: blob.size,
+        compressionRatio: ((imageFile.size - blob.size) / imageFile.size * 100).toFixed(1) + '%'
       })
+      
+      const url = createObjectURL(blob)
+      downloadFile(url, `compressed_${imageFile.name}`)
+      revokeObjectURL(url)
+
+      clearInterval(progressInterval)
+      setProgress(100)
+      console.log('🖼️ ImageTools: Compression successful - file downloaded')
+      setTimeout(() => {
+        setIsProcessing(false)
+        setProgress(0)
+      }, 500)
     } catch (error) {
-      console.error('Error compressing image:', error)
+      console.error('🖼️ ImageTools: Error during compression:', error)
       clearInterval(progressInterval)
       setIsProcessing(false)
       setProgress(0)
     }
-  }
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
   const handleWidthChange = (value: string) => {
@@ -435,7 +361,9 @@ export function ImageTools() {
       <div className="flex items-center justify-center h-screen w-screen bg-background/80 z-50 fixed top-0 left-0">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <span className="text-lg text-foreground">Loading image tools...</span>
+          <span className="text-lg text-foreground">
+            Loading image tools...
+          </span>
         </div>
       </div>
     )
@@ -445,7 +373,9 @@ export function ImageTools() {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-background/80 z-50 fixed top-0 left-0">
         <div className="flex flex-col items-center gap-4">
-          <span className="text-lg text-red-500">Failed to load image tools: {error}</span>
+          <span className="text-lg text-red-500">
+            Failed to load image tools: {error}
+          </span>
         </div>
       </div>
     )
@@ -481,7 +411,7 @@ export function ImageTools() {
                     // Upload interface when no files are selected
                     <div
                       className="border-2 border-dashed border-primary/20 rounded-xl p-6 text-center hover:border-primary/40 transition-all duration-300 cursor-pointer group h-full flex flex-col justify-center"
-                      onDrop={handleDrop}
+                      onDrop={(e) => void handleDrop(e)}
                       onDragOver={handleDragOver}
                       onClick={() => fileInputRef.current?.click()}
                     >
@@ -513,7 +443,7 @@ export function ImageTools() {
                     // Display uploaded file
                     <div
                       className="border-2 border-dashed border-primary/20 rounded-xl p-4 hover:border-primary/40 transition-all duration-300 cursor-pointer group"
-                      onDrop={handleDrop}
+                      onDrop={(e) => void handleDrop(e)}
                       onDragOver={handleDragOver}
                       onClick={() => fileInputRef.current?.click()}
                     >
@@ -590,7 +520,7 @@ export function ImageTools() {
                     accept="image/*"
                     className="hidden"
                     onChange={(e) =>
-                      e.target.files && handleFileSelect(e.target.files)
+                      e.target.files && void handleFileSelect(e.target.files)
                     }
                   />
                 </CardContent>
@@ -602,7 +532,7 @@ export function ImageTools() {
               <div className="animate-fade-in">
                 <Tabs
                   value={activeTab}
-                  onValueChange={handleTabChange}
+                  onValueChange={(value) => void handleTabChange(value)}
                   className="space-y-4"
                 >
                   <TabsList className="flat-card border-0 grid w-full grid-cols-4 h-10">
@@ -778,7 +708,7 @@ export function ImageTools() {
 
                         <div className="flex justify-end">
                           <Button
-                            onClick={() => resizeImage(selectedFiles[0])}
+                            onClick={() => void resizeImage(selectedFiles[0])}
                             disabled={
                               isProcessing ||
                               !resizeWidth ||
@@ -877,7 +807,7 @@ export function ImageTools() {
 
                         <div className="flex justify-end">
                           <Button
-                            onClick={() => convertImage(selectedFiles[0])}
+                            onClick={() => void convertImage(selectedFiles[0])}
                             disabled={
                               isProcessing || selectedFiles.length === 0
                             }
@@ -932,7 +862,7 @@ export function ImageTools() {
 
                         <div className="flex justify-end">
                           <Button
-                            onClick={() => compressImage(selectedFiles[0])}
+                            onClick={() => void compressImage(selectedFiles[0])}
                             disabled={
                               isProcessing || selectedFiles.length === 0
                             }

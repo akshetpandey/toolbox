@@ -7,10 +7,5 @@
   "git": true,
   "version": 1,
   "framework": "react-cra",
-  "chosenAddOns": [
-    "shadcn",
-    "sentry",
-    "eslint",
-    "start"
-  ]
+  "chosenAddOns": ["shadcn", "sentry", "eslint", "start"]
 }

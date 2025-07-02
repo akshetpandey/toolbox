@@ -8,7 +8,10 @@ interface SearchBarProps {
   placeholder?: string
 }
 
-export function SearchBar({ onSearch, placeholder = "Search for tools..." }: SearchBarProps) {
+export function SearchBar({
+  onSearch,
+  placeholder = 'Search for tools...',
+}: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
 
@@ -51,11 +54,11 @@ export function SearchBar({ onSearch, placeholder = "Search for tools..." }: Sea
           </Button>
         )}
       </div>
-      
+
       {/* Subtle glow effect when focused */}
       {isFocused && (
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-2xl blur-xl -z-10 animate-pulse" />
       )}
     </div>
   )
-} 
+}

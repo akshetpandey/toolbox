@@ -7,15 +7,20 @@
 body {
   @apply m-0;
   font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  font-feature-settings:
+    'kern' 1,
+    'liga' 1,
+    'calt' 1;
 }
 
 code {
   font-family:
-    'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+    'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro',
+    monospace;
 }
 
 :root {
@@ -45,7 +50,7 @@ code {
   --chart-4: oklch(0.75 0.2 60);
   --chart-5: oklch(0.8 0.15 300);
   --radius: 0.75rem;
-  
+
   /* Sidebar colors */
   --sidebar: oklch(0.98 0.001 285.823);
   --sidebar-foreground: oklch(0.25 0.005 285.823);
@@ -55,7 +60,7 @@ code {
   --sidebar-accent-foreground: oklch(0.25 0.005 285.823);
   --sidebar-border: oklch(0.92 0.003 285.823);
   --sidebar-ring: oklch(0.55 0.15 250);
-  
+
   /* Glass morphism effects */
   --glass-bg: oklch(1 0 0 / 0.8);
   --glass-border: oklch(0.92 0.003 285.823 / 0.2);

@@ -5,15 +5,12 @@ import { Link, useLocation } from '@tanstack/react-router'
 import {
   Image,
   Video,
-  FileText,
-  Archive,
-  Hash,
   ChevronLeft,
   ChevronRight,
   Sparkles,
   Zap,
   Shield,
-  Home
+  Home,
 } from 'lucide-react'
 
 const toolCategories = [
@@ -26,71 +23,65 @@ const toolCategories = [
       'Resize Image',
       'Convert Format',
       'Compress Image',
-      'Extract Metadata'
     ],
     color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10'
+    bgColor: 'bg-blue-500/10',
   },
   {
     name: 'Video',
     icon: Video,
+    route: '/videos',
     description: 'Convert, compress, trim',
     tools: [
       'Convert Format',
       'Compress Video',
-      'Extract Audio',
       'Trim Video',
-      'Add Watermark'
+      'Extract Audio',
     ],
     color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10'
+    bgColor: 'bg-purple-500/10',
   },
-  {
-    name: 'Documents',
-    icon: FileText,
-    description: 'PDF, text, compression',
-    tools: [
-      'PDF Merge',
-      'PDF Split',
-      'Convert to PDF',
-      'Extract Text',
-      'Compress PDF'
-    ],
-    color: 'text-green-500',
-    bgColor: 'bg-green-500/10'
-  },
-  {
-    name: 'Archives',
-    icon: Archive,
-    description: 'Create, extract, compress',
-    tools: [
-      'Create Archive',
-      'Extract Archive',
-      'Compress Files',
-      'Archive Info'
-    ],
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-500/10'
-  },
-  {
-    name: 'Hashing',
-    icon: Hash,
-    description: 'MD5, SHA256, checksums',
-    tools: [
-      'MD5 Hash',
-      'SHA256 Hash',
-      'File Checksum',
-      'Compare Hashes'
-    ],
-    color: 'text-red-500',
-    bgColor: 'bg-red-500/10'
-  },
+  // {
+  //   name: 'Documents',
+  //   icon: FileText,
+  //   description: 'PDF, text, compression',
+  //   tools: [
+  //     'PDF Merge',
+  //     'PDF Split',
+  //     'Convert to PDF',
+  //     'Extract Text',
+  //     'Compress PDF',
+  //   ],
+  //   color: 'text-green-500',
+  //   bgColor: 'bg-green-500/10',
+  // },
+  // {
+  //   name: 'Archives',
+  //   icon: Archive,
+  //   description: 'Create, extract, compress',
+  //   tools: [
+  //     'Create Archive',
+  //     'Extract Archive',
+  //     'Compress Files',
+  //     'Archive Info',
+  //   ],
+  //   color: 'text-orange-500',
+  //   bgColor: 'bg-orange-500/10',
+  // },
+  // {
+  //   name: 'Hashing',
+  //   icon: Hash,
+  //   description: 'MD5, SHA256, checksums',
+  //   tools: ['MD5 Hash', 'SHA256 Hash', 'File Checksum', 'Compare Hashes'],
+  //   color: 'text-red-500',
+  //   bgColor: 'bg-red-500/10',
+  // },
 ]
 
 export function ToolSidebar() {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
-  
+
   // Default to expanded on home page, collapsed on others
   const [isCollapsed, setIsCollapsed] = useState(!isHomePage)
 
@@ -104,7 +95,7 @@ export function ToolSidebar() {
   }
 
   return (
-    <div 
+    <div
       className={`${isCollapsed ? 'w-20' : 'w-80'} glass border-r border-border/50 h-screen transition-all duration-300 ease-in-out flex flex-col ${isCollapsed ? 'cursor-pointer' : ''}`}
       onClick={isCollapsed ? toggleSidebar : undefined}
     >
@@ -152,9 +143,12 @@ export function ToolSidebar() {
                     </Button>
                   </Link>
                 </div>
-                
+
                 {toolCategories.map((category) => (
-                  <div key={category.name} className="flex flex-col items-center">
+                  <div
+                    key={category.name}
+                    className="flex flex-col items-center"
+                  >
                     {category.route ? (
                       <Link to={category.route}>
                         <Button
@@ -190,8 +184,12 @@ export function ToolSidebar() {
                         <Home className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">Home</h3>
-                        <p className="text-xs text-muted-foreground">Dashboard overview</p>
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                          Home
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Dashboard overview
+                        </p>
                       </div>
                     </div>
                   </Link>
@@ -203,15 +201,23 @@ export function ToolSidebar() {
                     <div key={category.name} className="space-y-1">
                       {/* Category header */}
                       <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors group">
-                        <div className={`w-10 h-10 ${category.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                          <category.icon className={`h-5 w-5 ${category.color}`} />
+                        <div
+                          className={`w-10 h-10 ${category.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}
+                        >
+                          <category.icon
+                            className={`h-5 w-5 ${category.color}`}
+                          />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{category.name}</h3>
-                          <p className="text-xs text-muted-foreground">{category.description}</p>
+                          <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                            {category.name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {category.description}
+                          </p>
                         </div>
                         {category.route && (
-                          <Link 
+                          <Link
                             to={category.route}
                             className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
                           >
@@ -219,22 +225,21 @@ export function ToolSidebar() {
                           </Link>
                         )}
                       </div>
-                      
+
                       {/* Tool list */}
                       <div className="ml-13 space-y-1">
                         {category.tools.map((tool) => {
                           // Create tool-specific links for image tools
                           if (category.name === 'Image' && category.route) {
-                            const toolMap: { [key: string]: string } = {
+                            const toolMap: Record<string, string> = {
                               'Resize Image': 'resize',
-                              'Convert Format': 'convert', 
+                              'Convert Format': 'convert',
                               'Compress Image': 'compress',
-                              'Extract Metadata': 'metadata'
                             }
                             const tab = toolMap[tool]
                             if (tab) {
                               return (
-                                <Link 
+                                <Link
                                   key={tool}
                                   to={category.route}
                                   search={{ tab }}
@@ -250,7 +255,35 @@ export function ToolSidebar() {
                               )
                             }
                           }
-                          
+
+                          // Create tool-specific links for video tools
+                          if (category.name === 'Video' && category.route) {
+                            const toolMap: Record<string, string> = {
+                              'Convert Format': 'convert',
+                              'Compress Video': 'compress',
+                              'Extract Audio': 'audio',
+                              'Trim Video': 'trim',
+                            }
+                            const tab = toolMap[tool]
+                            if (tab) {
+                              return (
+                                <Link
+                                  key={tool}
+                                  to={category.route}
+                                  search={{ tab }}
+                                  className="w-full"
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                                  >
+                                    {tool}
+                                  </Button>
+                                </Link>
+                              )
+                            }
+                          }
+
                           return (
                             <Button
                               key={tool}
@@ -284,4 +317,4 @@ export function ToolSidebar() {
       </div>
     </div>
   )
-} 
+}

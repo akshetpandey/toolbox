@@ -1,80 +1,98 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { initializeImageMagick } from '@imagemagick/magick-wasm'
 
 interface UseInitImageMagickReturn {
   isInitialized: boolean
   isInitializing: boolean
   error: string | null
+  init: () => Promise<void>
 }
 
 let initializationPromise: Promise<void> | null = null
 let isInitialized = false
 
-const wasmLocation = new URL('@imagemagick/magick-wasm/magick.wasm', import.meta.url);
+const wasmLocation = new URL(
+  '@imagemagick/magick-wasm/magick.wasm',
+  import.meta.url,
+)
+
 export function useInitImageMagick(): UseInitImageMagickReturn {
   const [state, setState] = useState<UseInitImageMagickReturn>({
     isInitialized: false,
     isInitializing: false,
     error: null,
+    init: () => Promise.resolve(),
   })
 
-  useEffect(() => {
-    const initImageMagick = async () => {
-      // If already initialized, return immediately
-      if (isInitialized) {
-        setState({
-          isInitialized: true,
-          isInitializing: false,
-          error: null,
-        })
-        return
-      }
-
-      // If initialization is already in progress, wait for it
-      if (initializationPromise) {
-        setState(prev => ({ ...prev, isInitializing: true }))
-        try {
-          await initializationPromise
-          setState({
-            isInitialized: true,
-            isInitializing: false,
-            error: null,
-          })
-        } catch (error) {
-          setState({
-            isInitialized: false,
-            isInitializing: false,
-            error: error instanceof Error ? error.message : 'Failed to initialize ImageMagick',
-          })
-        }
-        return
-      }
-
-      // Start initialization
-      setState(prev => ({ ...prev, isInitializing: true }))
-      
-      initializationPromise = initializeImageMagick(wasmLocation)
-      
-      try {
-        await initializationPromise
-        isInitialized = true
-        setState({
-          isInitialized: true,
-          isInitializing: false,
-          error: null,
-        })
-      } catch (error) {
-        initializationPromise = null
-        setState({
-          isInitialized: false,
-          isInitializing: false,
-          error: error instanceof Error ? error.message : 'Failed to initialize ImageMagick',
-        })
-      }
+  const init = useCallback(async () => {
+    // If already initialized, return immediately
+    if (isInitialized) {
+      setState((prev) => ({
+        ...prev,
+        isInitialized: true,
+        isInitializing: false,
+        error: null,
+      }))
+      return
     }
 
-    initImageMagick()
+    // If initialization is already in progress, wait for it
+    if (initializationPromise) {
+      setState((prev) => ({ ...prev, isInitializing: true }))
+      try {
+        await initializationPromise
+        setState((prev) => ({
+          ...prev,
+          isInitialized: true,
+          isInitializing: false,
+          error: null,
+        }))
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          isInitialized: false,
+          isInitializing: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to initialize ImageMagick',
+        }))
+      }
+      return
+    }
+
+    // Start initialization
+    setState((prev) => ({ ...prev, isInitializing: true, error: null }))
+
+    initializationPromise = initializeImageMagick(wasmLocation)
+
+    try {
+      await initializationPromise
+      isInitialized = true
+      setState((prev) => ({
+        ...prev,
+        isInitialized: true,
+        isInitializing: false,
+        error: null,
+      }))
+    } catch (error) {
+      initializationPromise = null
+      setState((prev) => ({
+        ...prev,
+        isInitialized: false,
+        isInitializing: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to initialize ImageMagick',
+      }))
+    }
   }, [])
 
-  return state
-} 
+  return {
+    isInitialized: state.isInitialized,
+    isInitializing: state.isInitializing,
+    error: state.error,
+    init,
+  }
+}
