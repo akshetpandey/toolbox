@@ -165,8 +165,17 @@ export function VideoTools() {
           console.log('🎬 VideoTools: FFmpeg initialization completed')
         }
 
+        // Mount the input file
+        console.log('🎬 VideoTools: Mounting input file', {
+          name: videoFile.name,
+          size: videoFile.size,
+          type: videoFile.type,
+        })
+        await mountInputFile(videoFile)
+
+        // Parse the metadata
         console.log('🎬 VideoTools: Starting metadata parsing...')
-        await parseMetadata(videoFile)
+        await parseMetadata()
         console.log('🎬 VideoTools: File selection completed successfully')
       } else {
         console.warn('🎬 VideoTools: Invalid file type selected. ', {
@@ -177,48 +186,58 @@ export function VideoTools() {
     [isInitialized, init],
   )
 
-  const parseMetadata = useCallback(
-    async (videoFile: VideoFile) => {
-      console.log(
-        '🎬 VideoTools: Starting metadata parsing for',
-        videoFile.name,
-      )
+  const mountInputFile = useCallback(
+    async (file: VideoFile) => {
       const ffmpegProcessor = await getFfmpegProcessor()
-      // Extract metadata with the new processor
-      try {
-        const meta = await ffmpegProcessor.extractMetadata(videoFile)
-        console.log('🎬 VideoTools: Metadata parsing successful', meta)
-        setMetadata((prev) => ({ ...prev, [videoFile.name]: meta }))
-      } catch (error) {
-        console.error('🎬 VideoTools: Error extracting metadata:', error)
-        // Fallback to basic metadata
-        const meta: VideoMetadata = {
-          format: {
-            filename: videoFile.name,
-            format_name:
-              videoFile.type.split('/')[1]?.toUpperCase() ?? 'Unknown',
-            format_long_name: 'Unknown',
-            duration: videoFile.duration ?? 0,
-            size: videoFile.size,
-            bit_rate: 0,
-            nb_streams: 0,
-          },
-          video_streams: [],
-          audio_streams: [],
-          subtitle_streams: [],
-          duration: videoFile.duration ?? 0,
-          width: videoFile.dimensions?.width ?? 0,
-          height: videoFile.dimensions?.height ?? 0,
-          bitrate: 'Unknown',
-          fps: 'Unknown',
-          codec: 'Unknown',
-        }
-        console.log('🎬 VideoTools: Using fallback metadata', meta)
-        setMetadata((prev) => ({ ...prev, [videoFile.name]: meta }))
-      }
+      await ffmpegProcessor.unmountInputFile()
+      await ffmpegProcessor.mountInputFile(file)
     },
     [getFfmpegProcessor],
   )
+
+  const parseMetadata = useCallback(async () => {
+    console.log('🎬 VideoTools: Starting metadata parsing for')
+    const ffmpegProcessor = await getFfmpegProcessor()
+    // Extract metadata with the new processor
+    try {
+      const meta = await ffmpegProcessor.extractMetadata()
+      console.log('🎬 VideoTools: Metadata parsing successful', meta)
+      setMetadata((prev) => ({
+        ...prev,
+        [ffmpegProcessor.inputFile?.name ?? '']: meta,
+      }))
+    } catch (error) {
+      console.error('🎬 VideoTools: Error extracting metadata:', error)
+      // Fallback to basic metadata
+      const meta: VideoMetadata = {
+        format: {
+          filename: ffmpegProcessor.inputFile?.name ?? 'Unknown',
+          format_name:
+            ffmpegProcessor.inputFile?.type.split('/')[1]?.toUpperCase() ??
+            'Unknown',
+          format_long_name: 'Unknown',
+          duration: ffmpegProcessor.inputFile?.duration ?? 0,
+          size: ffmpegProcessor.inputFile?.size ?? 0,
+          bit_rate: 0,
+          nb_streams: 0,
+        },
+        video_streams: [],
+        audio_streams: [],
+        subtitle_streams: [],
+        duration: ffmpegProcessor.inputFile?.duration ?? 0,
+        width: ffmpegProcessor.inputFile?.dimensions?.width ?? 0,
+        height: ffmpegProcessor.inputFile?.dimensions?.height ?? 0,
+        bitrate: 'Unknown',
+        fps: 'Unknown',
+        codec: 'Unknown',
+      }
+      console.log('🎬 VideoTools: Using fallback metadata', meta)
+      setMetadata((prev) => ({
+        ...prev,
+        [ffmpegProcessor.inputFile?.name ?? '']: meta,
+      }))
+    }
+  }, [getFfmpegProcessor])
 
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
@@ -234,9 +253,8 @@ export function VideoTools() {
     e.preventDefault()
   }, [])
 
-  const convertVideo = async (videoFile: VideoFile) => {
+  const convertVideo = async () => {
     console.log('🎬 VideoTools: Starting video conversion', {
-      fileName: videoFile.name,
       targetFormat,
       videoCodec,
       audioCodec,
@@ -257,14 +275,17 @@ export function VideoTools() {
       }
 
       console.log('🎬 VideoTools: Calling FFmpeg convert with options', options)
-      const blob = await ffmpegProcessor.convertVideo(videoFile, options)
+      const blob = await ffmpegProcessor.convertVideo(options)
       console.log('🎬 VideoTools: Conversion completed', {
-        originalSize: videoFile.size,
+        originalSize: ffmpegProcessor.inputFile?.size,
         newSize: blob.size,
       })
 
       // Generate filename with original name and new format
-      const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
+      const originalName = ffmpegProcessor.inputFile?.name.replace(
+        /\.[^/.]+$/,
+        '',
+      ) // Remove extension
       const filename = `${originalName}.${targetFormat}`
 
       // Download the file directly
@@ -280,9 +301,8 @@ export function VideoTools() {
     }
   }
 
-  const compressVideo = async (videoFile: VideoFile) => {
+  const compressVideo = async () => {
     console.log('🎬 VideoTools: Starting video compression', {
-      fileName: videoFile.name,
       crf,
       preset,
     })
@@ -302,18 +322,25 @@ export function VideoTools() {
         '🎬 VideoTools: Calling FFmpeg compress with options',
         options,
       )
-      const blob = await ffmpegProcessor.compressVideo(videoFile, options)
+      const blob = await ffmpegProcessor.compressVideo(options)
       console.log('🎬 VideoTools: Compression completed', {
-        originalSize: videoFile.size,
+        originalSize: ffmpegProcessor.inputFile?.size,
         newSize: blob.size,
         compressionRatio:
-          (((videoFile.size - blob.size) / videoFile.size) * 100).toFixed(1) +
-          '%',
+          (
+            ((ffmpegProcessor.inputFile?.size ?? 0 - blob.size) /
+              (ffmpegProcessor.inputFile?.size ?? 0)) *
+            100
+          ).toFixed(1) + '%',
       })
 
       // Generate filename with original name and compressed suffix
-      const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
-      const extension = videoFile.name.split('.').pop() ?? 'mp4'
+      const originalName = ffmpegProcessor.inputFile?.name.replace(
+        /\.[^/.]+$/,
+        '',
+      ) // Remove extension
+      const extension =
+        ffmpegProcessor.inputFile?.name.split('.').pop() ?? 'mp4'
       const filename = `${originalName}_compressed.${extension}`
 
       // Download the file directly
@@ -329,9 +356,8 @@ export function VideoTools() {
     }
   }
 
-  const trimVideo = async (videoFile: VideoFile) => {
+  const trimVideo = async () => {
     console.log('🎬 VideoTools: Starting video trimming', {
-      fileName: videoFile.name,
       startTime,
       endTime,
     })
@@ -348,15 +374,19 @@ export function VideoTools() {
       }
 
       console.log('🎬 VideoTools: Calling FFmpeg trim with options', options)
-      const blob = await ffmpegProcessor.trimVideo(videoFile, options)
+      const blob = await ffmpegProcessor.trimVideo(options)
       console.log('🎬 VideoTools: Trimming completed', {
-        originalSize: videoFile.size,
+        originalSize: ffmpegProcessor.inputFile?.size,
         newSize: blob.size,
       })
 
       // Generate filename with original name and trimmed suffix
-      const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
-      const extension = videoFile.name.split('.').pop() ?? 'mp4'
+      const originalName = ffmpegProcessor.inputFile?.name.replace(
+        /\.[^/.]+$/,
+        '',
+      ) // Remove extension
+      const extension =
+        ffmpegProcessor.inputFile?.name.split('.').pop() ?? 'mp4'
       const filename = `${originalName}_trimmed.${extension}`
 
       // Download the file directly
@@ -372,9 +402,8 @@ export function VideoTools() {
     }
   }
 
-  const extractAudio = async (videoFile: VideoFile) => {
+  const extractAudio = async () => {
     console.log('🎬 VideoTools: Starting audio extraction', {
-      fileName: videoFile.name,
       audioFormat,
     })
 
@@ -392,14 +421,17 @@ export function VideoTools() {
         '🎬 VideoTools: Calling FFmpeg extract audio with options',
         options,
       )
-      const blob = await ffmpegProcessor.extractAudio(videoFile, options)
+      const blob = await ffmpegProcessor.extractAudio(options)
       console.log('🎬 VideoTools: Audio extraction completed', {
-        originalSize: videoFile.size,
+        originalSize: ffmpegProcessor.inputFile?.size,
         newSize: blob.size,
       })
 
       // Generate filename with original name and audio format
-      const originalName = videoFile.name.replace(/\.[^/.]+$/, '') // Remove extension
+      const originalName = ffmpegProcessor.inputFile?.name.replace(
+        /\.[^/.]+$/,
+        '',
+      ) // Remove extension
       const filename = `${originalName}.${audioFormat}`
 
       // Download the file directly
@@ -1156,10 +1188,7 @@ export function VideoTools() {
 
                         <div className="flex justify-end">
                           <Button
-                            onClick={() =>
-                              selectedFiles[0] &&
-                              void convertVideo(selectedFiles[0])
-                            }
+                            onClick={() => void convertVideo()}
                             disabled={
                               isProcessing || selectedFiles.length === 0
                             }
@@ -1247,10 +1276,7 @@ export function VideoTools() {
 
                         <div className="flex justify-end">
                           <Button
-                            onClick={() =>
-                              selectedFiles[0] &&
-                              void compressVideo(selectedFiles[0])
-                            }
+                            onClick={() => void compressVideo()}
                             disabled={
                               isProcessing || selectedFiles.length === 0
                             }
@@ -1316,10 +1342,7 @@ export function VideoTools() {
 
                         <div className="flex justify-end">
                           <Button
-                            onClick={() =>
-                              selectedFiles[0] &&
-                              void trimVideo(selectedFiles[0])
-                            }
+                            onClick={() => void trimVideo()}
                             disabled={
                               isProcessing || selectedFiles.length === 0
                             }
@@ -1374,10 +1397,7 @@ export function VideoTools() {
 
                         <div className="flex justify-end">
                           <Button
-                            onClick={() =>
-                              selectedFiles[0] &&
-                              void extractAudio(selectedFiles[0])
-                            }
+                            onClick={() => void extractAudio()}
                             disabled={
                               isProcessing || selectedFiles.length === 0
                             }

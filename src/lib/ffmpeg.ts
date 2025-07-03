@@ -1,5 +1,4 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile } from '@ffmpeg/util'
 
 export interface VideoStream {
   index: number
@@ -153,9 +152,44 @@ interface FFProbeOutput {
 
 export class FFmpegProcessor {
   private ffmpeg: FFmpeg
+  private inputDir = '/input'
+  private didCreateInputDir = false
+  private inputFileName: string | null = null
+
+  public inputFile: VideoFile | null = null
 
   constructor(ffmpeg: FFmpeg) {
     this.ffmpeg = ffmpeg
+  }
+
+  private async ensureInputDir() {
+    if (this.didCreateInputDir) return
+    await this.ffmpeg.createDir(this.inputDir)
+    this.didCreateInputDir = true
+  }
+
+  async mountInputFile(videoFile: VideoFile) {
+    this.inputFile = videoFile
+    this.inputFileName = this.inputDir + '/' + videoFile.file.name
+    console.log('🎬 FFmpeg: Mounting input file', {
+      inputFileName: this.inputFileName,
+    })
+    await this.ensureInputDir()
+    await this.ffmpeg.mount(
+      //@ts-expect-error - WORKERFS is not a valid FFFSType
+      'WORKERFS',
+      {
+        files: [videoFile.file],
+      },
+      this.inputDir,
+    )
+  }
+
+  async unmountInputFile() {
+    if (!this.inputFileName) return
+    await this.ffmpeg.unmount(this.inputFileName)
+    this.inputFile = null
+    this.inputFileName = null
   }
 
   private getFileExtension(filename: string): string {
@@ -178,18 +212,11 @@ export class FFmpegProcessor {
     }
   }
 
-  async extractMetadata(videoFile: VideoFile): Promise<VideoMetadata> {
+  async extractMetadata(): Promise<VideoMetadata> {
     console.log('🎬 FFmpeg: Starting metadata extraction', {
-      fileName: videoFile.name,
+      fileName: this.inputFileName,
     })
     try {
-      const inputFileName = 'input' + this.getFileExtension(videoFile.name)
-      console.log('🎬 FFmpeg: Writing input file', { inputFileName })
-      await this.ffmpeg.writeFile(
-        inputFileName,
-        await fetchFile(videoFile.file),
-      )
-
       // Use ffprobe to get detailed metadata in JSON format
       console.log('🎬 FFmpeg: Running ffprobe for detailed metadata')
       await this.ffmpeg.ffprobe([
@@ -199,7 +226,7 @@ export class FFmpegProcessor {
         'json',
         '-show_format',
         '-show_streams',
-        inputFileName,
+        this.inputFileName ?? '',
         '-o',
         'metadata.json',
       ])
@@ -212,15 +239,16 @@ export class FFmpegProcessor {
 
       // Extract format information
       const formatInfo: FormatInfo = {
-        filename: probeData.format?.filename ?? videoFile.name,
+        filename:
+          probeData.format?.filename ?? this.inputFile?.name ?? 'Unknown',
         format_name: probeData.format?.format_name ?? 'Unknown',
         format_long_name: probeData.format?.format_long_name ?? 'Unknown',
         duration: probeData.format?.duration
           ? parseFloat(probeData.format.duration)
-          : (videoFile.duration ?? 0),
+          : (this.inputFile?.duration ?? 0),
         size: probeData.format?.size
           ? parseInt(probeData.format.size)
-          : videoFile.size,
+          : (this.inputFile?.size ?? 0),
         bit_rate: probeData.format?.bit_rate
           ? parseInt(probeData.format.bit_rate)
           : 0,
@@ -298,8 +326,9 @@ export class FFmpegProcessor {
         subtitle_streams: subtitleStreams,
         // Legacy fields for backward compatibility
         duration: formatInfo.duration,
-        width: videoStreams[0]?.width ?? videoFile.dimensions?.width ?? 0,
-        height: videoStreams[0]?.height ?? videoFile.dimensions?.height ?? 0,
+        width: videoStreams[0]?.width ?? this.inputFile?.dimensions?.width ?? 0,
+        height:
+          videoStreams[0]?.height ?? this.inputFile?.dimensions?.height ?? 0,
         bitrate: formatInfo.bit_rate
           ? `${Math.round(formatInfo.bit_rate / 1000)} kbps`
           : 'Unknown',
@@ -310,7 +339,6 @@ export class FFmpegProcessor {
       // Clean up files
       try {
         console.log('🎬 FFmpeg: Cleaning up temporary files')
-        await this.ffmpeg.deleteFile(inputFileName)
         await this.ffmpeg.deleteFile('metadata.json')
       } catch {
         // Ignore cleanup errors
@@ -326,20 +354,21 @@ export class FFmpegProcessor {
       // Fallback to basic metadata
       const fallbackMetadata: VideoMetadata = {
         format: {
-          filename: videoFile.name,
-          format_name: videoFile.type.split('/')[1]?.toUpperCase() ?? 'Unknown',
+          filename: this.inputFile?.name ?? 'Unknown',
+          format_name:
+            this.inputFile?.type.split('/')[1]?.toUpperCase() ?? 'Unknown',
           format_long_name: 'Unknown',
-          duration: videoFile.duration ?? 0,
-          size: videoFile.size,
+          duration: this.inputFile?.duration ?? 0,
+          size: this.inputFile?.size ?? 0,
           bit_rate: 0,
           nb_streams: 0,
         },
         video_streams: [],
         audio_streams: [],
         subtitle_streams: [],
-        duration: videoFile.duration ?? 0,
-        width: videoFile.dimensions?.width ?? 0,
-        height: videoFile.dimensions?.height ?? 0,
+        duration: this.inputFile?.duration ?? 0,
+        width: this.inputFile?.dimensions?.width ?? 0,
+        height: this.inputFile?.dimensions?.height ?? 0,
         bitrate: 'Unknown',
         fps: 'Unknown',
         codec: 'Unknown',
@@ -358,23 +387,14 @@ export class FFmpegProcessor {
     return undefined
   }
 
-  async convertVideo(
-    videoFile: VideoFile,
-    options: VideoConvertOptions,
-  ): Promise<Blob> {
+  async convertVideo(options: VideoConvertOptions): Promise<Blob> {
     console.log('🎬 FFmpeg: Starting video conversion', {
-      fileName: videoFile.name,
+      fileName: this.inputFileName,
       options,
     })
-
-    const inputFileName = 'input' + this.getFileExtension(videoFile.name)
     const outputFileName = `output.${options.targetFormat}`
-
-    console.log('🎬 FFmpeg: Writing input file', { inputFileName })
-    await this.ffmpeg.writeFile(inputFileName, await fetchFile(videoFile.file))
-
     // Build FFmpeg command based on format
-    const command = ['-i', inputFileName]
+    const command = ['-i', this.inputFileName ?? '']
 
     if (options.targetFormat === 'mp4') {
       command.push(
@@ -401,6 +421,7 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Video conversion completed successfully')
+    await this.ffmpeg.deleteFile(outputFileName)
 
     return this.createBlobFromFFmpegOutput(
       data,
@@ -408,24 +429,17 @@ export class FFmpegProcessor {
     )
   }
 
-  async compressVideo(
-    videoFile: VideoFile,
-    options: VideoCompressOptions,
-  ): Promise<Blob> {
+  async compressVideo(options: VideoCompressOptions): Promise<Blob> {
     console.log('🎬 FFmpeg: Starting video compression', {
-      fileName: videoFile.name,
+      fileName: this.inputFileName,
       options,
     })
 
-    const inputFileName = 'input' + this.getFileExtension(videoFile.name)
-    const outputFileName = `compressed.${this.getFileExtension(videoFile.name)}`
-
-    console.log('🎬 FFmpeg: Writing input file', { inputFileName })
-    await this.ffmpeg.writeFile(inputFileName, await fetchFile(videoFile.file))
+    const outputFileName = `compressed.${this.getFileExtension(this.inputFileName ?? '')}`
 
     const command = [
       '-i',
-      inputFileName,
+      this.inputFileName ?? '',
       '-c:v',
       'libx264',
       '-crf',
@@ -445,25 +459,25 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Video compression completed successfully')
+    await this.ffmpeg.deleteFile(outputFileName)
 
-    return this.createBlobFromFFmpegOutput(data, videoFile.type)
+    return this.createBlobFromFFmpegOutput(
+      data,
+      this.inputFile?.type ?? 'video/mp4',
+    )
   }
 
-  async trimVideo(videoFile: VideoFile, options: TrimOptions): Promise<Blob> {
+  async trimVideo(options: TrimOptions): Promise<Blob> {
     console.log('🎬 FFmpeg: Starting video trimming', {
-      fileName: videoFile.name,
+      fileName: this.inputFileName,
       options,
     })
 
-    const inputFileName = 'input' + this.getFileExtension(videoFile.name)
-    const outputFileName = `trimmed.${this.getFileExtension(videoFile.name)}`
-
-    console.log('🎬 FFmpeg: Writing input file', { inputFileName })
-    await this.ffmpeg.writeFile(inputFileName, await fetchFile(videoFile.file))
+    const outputFileName = `trimmed.${this.getFileExtension(this.inputFileName ?? '')}`
 
     const command = [
       '-i',
-      inputFileName,
+      this.inputFileName ?? '',
       '-ss',
       options.startTime,
       '-to',
@@ -479,30 +493,27 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Video trimming completed successfully')
+    await this.ffmpeg.deleteFile(outputFileName)
 
-    return this.createBlobFromFFmpegOutput(data, videoFile.type)
+    return this.createBlobFromFFmpegOutput(
+      data,
+      this.inputFile?.type ?? 'video/mp4',
+    )
   }
 
-  async extractAudio(
-    videoFile: VideoFile,
-    options: AudioExtractOptions,
-  ): Promise<Blob> {
+  async extractAudio(options: AudioExtractOptions): Promise<Blob> {
     console.log('🎬 FFmpeg: Starting audio extraction', {
-      fileName: videoFile.name,
+      fileName: this.inputFileName,
       options,
     })
 
-    const inputFileName = 'input' + this.getFileExtension(videoFile.name)
     const outputFileName = `audio.${options.audioFormat}`
-
-    console.log('🎬 FFmpeg: Writing input file', { inputFileName })
-    await this.ffmpeg.writeFile(inputFileName, await fetchFile(videoFile.file))
 
     let command: string[]
     if (options.audioFormat === 'mp3') {
       command = [
         '-i',
-        inputFileName,
+        this.inputFileName ?? '',
         '-vn',
         '-acodec',
         'libmp3lame',
@@ -513,7 +524,7 @@ export class FFmpegProcessor {
     } else if (options.audioFormat === 'wav') {
       command = [
         '-i',
-        inputFileName,
+        this.inputFileName ?? '',
         '-vn',
         '-acodec',
         'pcm_s16le',
@@ -522,7 +533,7 @@ export class FFmpegProcessor {
     } else if (options.audioFormat === 'aac') {
       command = [
         '-i',
-        inputFileName,
+        this.inputFileName ?? '',
         '-vn',
         '-acodec',
         'aac',
@@ -540,6 +551,7 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
     console.log('🎬 FFmpeg: Audio extraction completed successfully')
+    await this.ffmpeg.deleteFile(outputFileName)
 
     return this.createBlobFromFFmpegOutput(data, `audio/${options.audioFormat}`)
   }
