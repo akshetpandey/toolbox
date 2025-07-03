@@ -71,6 +71,9 @@ importers:
       '@tanstack/react-router-with-query':
         specifier: ^1.124.0
         version: 1.124.0(@tanstack/react-query@5.81.5(react@19.1.0))(@tanstack/react-router@1.124.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@tanstack/router-core@1.124.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@uswriting/exiftool':
+        specifier: ^1.0.4
+        version: 1.0.4
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1844,6 +1847,9 @@ packages:
   '@typescript-eslint/visitor-keys@8.35.1':
     resolution: {integrity: sha512-VRwixir4zBWCSTP/ljEo091lbpypz57PoeAQ9imjG+vbeof9LplljsL1mos4ccG6H9IjfrVGM359RozUnuFhpw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@uswriting/exiftool@1.0.4':
+    resolution: {integrity: sha512-oNDWXpxGGaEUiiMZyTzAE4DJbUhjFi/vO18bo0xEHZaROZMVshdcd1VN22xaLVgyF8oKVWJCWgjBie5D5HHGgQ==}
 
   '@vitejs/plugin-react@4.6.0':
     resolution: {integrity: sha512-5Kgff+m8e2PB+9j51eGHEpn5kUzRKH2Ry0qGoe8ItJg7pqnkPrYPkDQZGgGmTa0EGarHrkjLvOdU3b1fzI8otQ==}
@@ -5237,6 +5243,8 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.35.1
       eslint-visitor-keys: 4.2.1
+
+  '@uswriting/exiftool@1.0.4': {}
 
   '@vitejs/plugin-react@4.6.0(vite@7.0.0(@types/node@24.0.10)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.43.1)(tsx@4.20.3))':
     dependencies:

@@ -21,6 +21,7 @@ import {
   createObjectURL,
   revokeObjectURL,
 } from '@/lib/imagemagick'
+import { parseMetadata } from '@uswriting/exiftool'
 
 import {
   Upload,
@@ -33,12 +34,16 @@ import {
   Zap,
 } from 'lucide-react'
 
+// Type for EXIF metadata
+type ExifMetadata = Record<string, string | number | boolean | null>
+
 export function ImageTools() {
   const { isInitialized, isInitializing, error, init } = useInitImageMagick()
   const search = useSearch({ from: '/images' })
   const navigate = useNavigate()
   const [selectedFiles, setSelectedFiles] = useState<ImageFile[]>([])
   const [metadata, setMetadata] = useState<Record<string, ImageMetadata>>({})
+  const [exifMetadata, setExifMetadata] = useState<ExifMetadata>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -107,6 +112,7 @@ export function ImageTools() {
 
         setSelectedFiles([imageFile])
         setMetadata({})
+        setExifMetadata({})
 
         // Initialize ImageMagick if not already initialized
         if (!isInitialized) {
@@ -115,9 +121,12 @@ export function ImageTools() {
           console.log('🖼️ ImageTools: ImageMagick initialization completed')
         }
 
-        // Automatically extract metadata
+        // Automatically extract both ImageMagick and EXIF metadata
         console.log('🖼️ ImageTools: Starting metadata extraction...')
-        await extractMetadata(imageFile)
+        await Promise.all([
+          extractMetadata(imageFile),
+          extractExifMetadata(imageFile),
+        ])
         console.log('🖼️ ImageTools: File selection completed successfully')
       } else {
         console.warn('🖼️ ImageTools: Invalid file type selected', {
@@ -166,6 +175,32 @@ export function ImageTools() {
       }
       console.log('🖼️ ImageTools: Using fallback metadata', meta)
       setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
+    }
+  }
+
+  // Extract EXIF metadata using @uswriting/exiftool
+  const extractExifMetadata = async (imageFile: ImageFile) => {
+    console.log(
+      '🖼️ ImageTools: Starting EXIF metadata extraction for',
+      imageFile.name,
+    )
+    try {
+      const exifResult = await parseMetadata(imageFile.file, {
+        args: ['-json', '-n'],
+        transform: (data) => JSON.parse(data) as ExifMetadata[],
+      })
+      console.log(
+        '🖼️ ImageTools: EXIF metadata extraction successful',
+        exifResult,
+      )
+
+      // Extract data from the result if successful
+      const exifData = exifResult.success ? exifResult.data[0] : {}
+      setExifMetadata((prev) => ({ ...prev, ...exifData }))
+    } catch (error) {
+      console.error('🖼️ ImageTools: Error extracting EXIF metadata:', error)
+      // Set empty EXIF metadata on error
+      setExifMetadata((prev) => ({ ...prev, ...{} }))
     }
   }
 
@@ -485,6 +520,7 @@ export function ImageTools() {
                             e.stopPropagation()
                             setSelectedFiles([])
                             setMetadata({})
+                            setExifMetadata({})
                           }}
                           className="hover:bg-red-500 hover:text-red-foreground text-xs"
                         >
@@ -589,75 +625,141 @@ export function ImageTools() {
                   </TabsList>
 
                   <TabsContent value="metadata">
-                    <Card className="glass-card border-0">
-                      <CardContent className="p-6">
-                        {selectedFiles.length > 0 &&
-                        metadata[selectedFiles[0].name] ? (
-                          <div className="grid grid-cols-2 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Dimensions:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].width} ×{' '}
-                                {metadata[selectedFiles[0].name].height}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Format:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].format}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Colorspace:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].colorspace}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Bit Depth:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].depth}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Compression:
-                              </span>
-                              <span className="font-medium">
-                                {metadata[selectedFiles[0].name].compression}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Size:
-                              </span>
-                              <span className="font-medium">
-                                {formatFileSize(
-                                  metadata[selectedFiles[0].name].size,
-                                )}
-                              </span>
-                            </div>
+                    <div className="space-y-4">
+                      {/* ImageMagick Metadata Section */}
+                      <Card className="glass-card border-0">
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <Settings className="h-4 w-4 text-primary" />
+                            <h3 className="font-medium text-foreground">
+                              ImageMagick Metadata
+                            </h3>
                           </div>
-                        ) : (
-                          <div className="flex items-center justify-center h-32">
-                            <div className="text-center text-muted-foreground">
-                              <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">
-                                Select an image to view metadata
-                              </p>
+                          {selectedFiles.length > 0 &&
+                          metadata[selectedFiles[0].name] ? (
+                            <div className="grid grid-cols-2 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Dimensions:
+                                </span>
+                                <span className="font-medium">
+                                  {metadata[selectedFiles[0].name].width} ×{' '}
+                                  {metadata[selectedFiles[0].name].height}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Format:
+                                </span>
+                                <span className="font-medium">
+                                  {metadata[selectedFiles[0].name].format}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Colorspace:
+                                </span>
+                                <span className="font-medium">
+                                  {metadata[selectedFiles[0].name].colorspace}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Bit Depth:
+                                </span>
+                                <span className="font-medium">
+                                  {metadata[selectedFiles[0].name].depth}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Compression:
+                                </span>
+                                <span className="font-medium">
+                                  {metadata[selectedFiles[0].name].compression}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Size:
+                                </span>
+                                <span className="font-medium">
+                                  {formatFileSize(
+                                    metadata[selectedFiles[0].name].size,
+                                  )}
+                                </span>
+                              </div>
                             </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-24">
+                              <div className="text-center text-muted-foreground">
+                                <p className="text-sm">
+                                  Select an image to view ImageMagick metadata
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* EXIF Metadata Section */}
+                      <Card className="glass-card border-0">
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <Info className="h-4 w-4 text-primary" />
+                            <h3 className="font-medium text-foreground">
+                              EXIF Metadata
+                            </h3>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                          {selectedFiles.length > 0 && exifMetadata ? (
+                            <div className="space-y-2">
+                              {Object.keys(exifMetadata).length > 0 ? (
+                                <div className="grid grid-cols-1 gap-2 text-sm bg-muted/50 p-4 rounded-lg max-h-64 overflow-y-auto">
+                                  {Object.entries(exifMetadata)
+                                    .filter(
+                                      ([, value]) =>
+                                        value !== null &&
+                                        value !== undefined &&
+                                        value !== '',
+                                    )
+                                    .map(([key, value]) => (
+                                      <div
+                                        key={key}
+                                        className="flex justify-between py-1 border-b border-border/20 last:border-0"
+                                      >
+                                        <span className="text-muted-foreground font-medium truncate pr-2">
+                                          {key}:
+                                        </span>
+                                        <span className="font-medium text-right">
+                                          {typeof value === 'object'
+                                            ? JSON.stringify(value)
+                                            : String(value)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center h-24">
+                                  <div className="text-center text-muted-foreground">
+                                    <p className="text-sm">
+                                      No EXIF metadata found
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-24">
+                              <div className="text-center text-muted-foreground">
+                                <p className="text-sm">
+                                  Select an image to view EXIF metadata
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="resize">
