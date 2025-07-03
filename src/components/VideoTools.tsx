@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -40,6 +41,21 @@ import {
   Volume2,
 } from 'lucide-react'
 
+// Helper function to format time in seconds to human-readable format
+const formatTime = (seconds: number): string => {
+  const hrs = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m ${secs}s`
+  } else if (mins > 0) {
+    return `${mins}m ${secs}s`
+  } else {
+    return `${secs}s`
+  }
+}
+
 export function VideoTools() {
   const {
     ffmpeg,
@@ -55,14 +71,42 @@ export function VideoTools() {
   const [metadata, setMetadata] = useState<Record<string, VideoMetadata>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [progressStartTime, setProgressStartTime] = useState<number | null>(
+    null,
+  )
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<
+    string | null
+  >(null)
+  const [elapsedTime, setElapsedTime] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Set up progress callback
   useEffect(() => {
     setProgressCallback((progressValue) => {
-      setProgress(progressValue)
+      const progressPercent = Math.round(progressValue * 1000) / 10 // Show 1 decimal place
+      setProgress(progressPercent)
+
+      // Calculate time estimates
+      const now = Date.now()
+      if (progressStartTime && progressPercent > 0) {
+        const elapsed = now - progressStartTime
+        const elapsedSeconds = Math.floor(elapsed / 1000)
+        const elapsedStr = formatTime(elapsedSeconds)
+        setElapsedTime(elapsedStr)
+
+        // Estimate remaining time based on progress
+        const estimatedTotalTime = elapsed / (progressPercent / 100)
+        const remainingTime = estimatedTotalTime - elapsed
+        const remainingSeconds = Math.floor(remainingTime / 1000)
+
+        if (remainingSeconds > 0 && progressPercent < 100) {
+          setEstimatedTimeRemaining(formatTime(remainingSeconds))
+        } else {
+          setEstimatedTimeRemaining(null)
+        }
+      }
     })
-  }, [setProgressCallback])
+  }, [setProgressCallback, progressStartTime])
 
   // Create FFmpeg processor instance - use useMemo to prevent recreation on every render
   const ffmpegProcessorRef = useRef<FFmpegProcessor | null>(null)
@@ -96,10 +140,11 @@ export function VideoTools() {
   const [targetFormat, setTargetFormat] = useState('mp4')
   const [videoCodec, setVideoCodec] = useState('libx264')
   const [audioCodec, setAudioCodec] = useState('aac')
+  const [fastConvert, setFastConvert] = useState(false)
 
   // Compress settings
-  const [crf, setCrf] = useState(23)
-  const [preset, setPreset] = useState('medium')
+  const [crf, setCrf] = useState(28)
+  const [preset, setPreset] = useState('ultrafast')
 
   // Trim settings
   const [startTime, setStartTime] = useState('00:00:00')
@@ -265,6 +310,9 @@ export function VideoTools() {
 
     setIsProcessing(true)
     setProgress(0)
+    setProgressStartTime(Date.now())
+    setEstimatedTimeRemaining(null)
+    setElapsedTime(null)
 
     try {
       const options: VideoConvertOptions = {
@@ -272,6 +320,7 @@ export function VideoTools() {
         videoCodec,
         audioCodec,
         preset,
+        fastConvert,
       }
 
       console.log('🎬 VideoTools: Calling FFmpeg convert with options', options)
@@ -311,6 +360,9 @@ export function VideoTools() {
 
     setIsProcessing(true)
     setProgress(0)
+    setProgressStartTime(Date.now())
+    setEstimatedTimeRemaining(null)
+    setElapsedTime(null)
 
     try {
       const options: VideoCompressOptions = {
@@ -366,6 +418,9 @@ export function VideoTools() {
 
     setIsProcessing(true)
     setProgress(0)
+    setProgressStartTime(Date.now())
+    setEstimatedTimeRemaining(null)
+    setElapsedTime(null)
 
     try {
       const options: TrimOptions = {
@@ -411,6 +466,9 @@ export function VideoTools() {
 
     setIsProcessing(true)
     setProgress(0)
+    setProgressStartTime(Date.now())
+    setEstimatedTimeRemaining(null)
+    setElapsedTime(null)
 
     try {
       const options: AudioExtractOptions = {
@@ -1077,102 +1135,122 @@ export function VideoTools() {
                   <TabsContent value="convert">
                     <Card className="glass-card border-0">
                       <CardContent className="p-6 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="format"
-                              className="text-sm font-medium"
-                            >
-                              Target Format
-                            </Label>
-                            <Select
-                              value={targetFormat}
-                              onValueChange={setTargetFormat}
-                            >
-                              <SelectTrigger className="border-border/50">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="mp4">MP4</SelectItem>
-                                <SelectItem value="webm">WebM</SelectItem>
-                                <SelectItem value="avi">AVI</SelectItem>
-                                <SelectItem value="mov">MOV</SelectItem>
-                              </SelectContent>
-                            </Select>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor="format"
+                                className="text-sm font-medium"
+                              >
+                                Target Format
+                              </Label>
+                              <Select
+                                value={targetFormat}
+                                onValueChange={setTargetFormat}
+                              >
+                                <SelectTrigger className="border-border/50">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="mp4">MP4</SelectItem>
+                                  <SelectItem value="webm">WebM</SelectItem>
+                                  <SelectItem value="avi">AVI</SelectItem>
+                                  <SelectItem value="mov">MOV</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor="videoCodec"
+                                className="text-sm font-medium"
+                              >
+                                Video Codec
+                              </Label>
+                              <Select
+                                value={videoCodec}
+                                onValueChange={setVideoCodec}
+                              >
+                                <SelectTrigger className="border-border/50">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="libx264">H.264</SelectItem>
+                                  <SelectItem value="libx265">H.265</SelectItem>
+                                  <SelectItem value="libvpx-vp9">
+                                    VP9
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor="audioCodec"
+                                className="text-sm font-medium"
+                              >
+                                Audio Codec
+                              </Label>
+                              <Select
+                                value={audioCodec}
+                                onValueChange={setAudioCodec}
+                              >
+                                <SelectTrigger className="border-border/50">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="aac">AAC</SelectItem>
+                                  <SelectItem value="mp3">MP3</SelectItem>
+                                  <SelectItem value="libopus">Opus</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor="preset"
+                                className="text-sm font-medium"
+                              >
+                                Preset
+                              </Label>
+                              <Select value={preset} onValueChange={setPreset}>
+                                <SelectTrigger className="border-border/50">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="ultrafast">
+                                    Ultrafast
+                                  </SelectItem>
+                                  <SelectItem value="superfast">
+                                    Superfast
+                                  </SelectItem>
+                                  <SelectItem value="veryfast">
+                                    Veryfast
+                                  </SelectItem>
+                                  <SelectItem value="faster">Faster</SelectItem>
+                                  <SelectItem value="fast">Fast</SelectItem>
+                                  <SelectItem value="medium">Medium</SelectItem>
+                                  <SelectItem value="slow">Slow</SelectItem>
+                                  <SelectItem value="slower">Slower</SelectItem>
+                                  <SelectItem value="veryslow">
+                                    Veryslow
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className="space-y-2">
+
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="fast-convert"
+                              checked={fastConvert}
+                              onCheckedChange={(checked) =>
+                                setFastConvert(checked === true)
+                              }
+                            />
                             <Label
-                              htmlFor="videoCodec"
+                              htmlFor="fast-convert"
                               className="text-sm font-medium"
                             >
-                              Video Codec
+                              Fast Convert (stream copy - no re-encoding)
                             </Label>
-                            <Select
-                              value={videoCodec}
-                              onValueChange={setVideoCodec}
-                            >
-                              <SelectTrigger className="border-border/50">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="libx264">H.264</SelectItem>
-                                <SelectItem value="libx265">H.265</SelectItem>
-                                <SelectItem value="libvpx-vp9">VP9</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="audioCodec"
-                              className="text-sm font-medium"
-                            >
-                              Audio Codec
-                            </Label>
-                            <Select
-                              value={audioCodec}
-                              onValueChange={setAudioCodec}
-                            >
-                              <SelectTrigger className="border-border/50">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="aac">AAC</SelectItem>
-                                <SelectItem value="mp3">MP3</SelectItem>
-                                <SelectItem value="libopus">Opus</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="preset"
-                              className="text-sm font-medium"
-                            >
-                              Preset
-                            </Label>
-                            <Select value={preset} onValueChange={setPreset}>
-                              <SelectTrigger className="border-border/50">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="ultrafast">
-                                  Ultrafast
-                                </SelectItem>
-                                <SelectItem value="superfast">
-                                  Superfast
-                                </SelectItem>
-                                <SelectItem value="veryfast">
-                                  Veryfast
-                                </SelectItem>
-                                <SelectItem value="faster">Faster</SelectItem>
-                                <SelectItem value="fast">Fast</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="slow">Slow</SelectItem>
-                                <SelectItem value="slower">Slower</SelectItem>
-                                <SelectItem value="veryslow">
-                                  Veryslow
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
                           </div>
                         </div>
 
@@ -1180,9 +1258,21 @@ export function VideoTools() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
-                              <span>{progress}%</span>
+                              <span>{progress.toFixed(1)}%</span>
                             </div>
                             <Progress value={progress} className="w-full h-2" />
+                            {(elapsedTime ?? estimatedTimeRemaining) && (
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>
+                                  {elapsedTime ? `Elapsed: ${elapsedTime}` : ''}
+                                </span>
+                                <span>
+                                  {estimatedTimeRemaining
+                                    ? `Remaining: ${estimatedTimeRemaining}`
+                                    : ''}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1268,9 +1358,21 @@ export function VideoTools() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
-                              <span>{progress}%</span>
+                              <span>{progress.toFixed(1)}%</span>
                             </div>
                             <Progress value={progress} className="w-full h-2" />
+                            {(elapsedTime ?? estimatedTimeRemaining) && (
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>
+                                  {elapsedTime ? `Elapsed: ${elapsedTime}` : ''}
+                                </span>
+                                <span>
+                                  {estimatedTimeRemaining
+                                    ? `Remaining: ${estimatedTimeRemaining}`
+                                    : ''}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1334,9 +1436,21 @@ export function VideoTools() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
-                              <span>{progress}%</span>
+                              <span>{progress.toFixed(1)}%</span>
                             </div>
                             <Progress value={progress} className="w-full h-2" />
+                            {(elapsedTime ?? estimatedTimeRemaining) && (
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>
+                                  {elapsedTime ? `Elapsed: ${elapsedTime}` : ''}
+                                </span>
+                                <span>
+                                  {estimatedTimeRemaining
+                                    ? `Remaining: ${estimatedTimeRemaining}`
+                                    : ''}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1389,9 +1503,21 @@ export function VideoTools() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
-                              <span>{progress}%</span>
+                              <span>{progress.toFixed(1)}%</span>
                             </div>
                             <Progress value={progress} className="w-full h-2" />
+                            {(elapsedTime ?? estimatedTimeRemaining) && (
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>
+                                  {elapsedTime ? `Elapsed: ${elapsedTime}` : ''}
+                                </span>
+                                <span>
+                                  {estimatedTimeRemaining
+                                    ? `Remaining: ${estimatedTimeRemaining}`
+                                    : ''}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
 

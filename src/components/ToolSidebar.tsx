@@ -1,7 +1,16 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
-import { Image, Video, Zap, Shield, Home, FileText, Hammer } from 'lucide-react'
+import {
+  Image,
+  Video,
+  Zap,
+  Shield,
+  Home,
+  FileText,
+  Hammer,
+  Construction,
+} from 'lucide-react'
 
 const toolCategories = [
   {
@@ -201,21 +210,41 @@ export function ToolSidebar() {
                           'Compress PDF': 'compress',
                         }
                         const tab = toolMap[tool]
+                        const underConstructionTools = [
+                          'PDF Split',
+                          'Compress PDF',
+                          'Convert to PDF',
+                        ]
+                        const isUnderConstruction =
+                          underConstructionTools.includes(tool)
+
                         if (tab) {
                           return (
-                            <Link
-                              key={tool}
-                              to={category.route}
-                              search={{ tab }}
-                              className="w-full"
-                            >
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
-                              >
-                                {tool}
-                              </Button>
-                            </Link>
+                            <div key={tool} className="w-full">
+                              {isUnderConstruction ? (
+                                <Button
+                                  variant="ghost"
+                                  className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200 cursor-not-allowed opacity-60"
+                                  disabled
+                                >
+                                  <Construction className="w-3 h-3 mr-2" />
+                                  {tool}
+                                </Button>
+                              ) : (
+                                <Link
+                                  to={category.route}
+                                  search={{ tab }}
+                                  className="w-full"
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                                  >
+                                    {tool}
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
                           )
                         }
                       }

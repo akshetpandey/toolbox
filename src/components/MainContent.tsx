@@ -1,45 +1,15 @@
-import { Link } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
-  Image,
-  Video,
-  FileText,
   Github,
   Zap,
   Shield,
   Globe,
-  ArrowRight,
   Heart,
   Hammer,
+  Bug,
+  MessageCircle,
 } from 'lucide-react'
-
-const toolCategories = [
-  {
-    name: 'Image Tools',
-    description: 'Transform and optimize images',
-    icon: Image,
-    route: '/images',
-    color: 'text-blue-500',
-    gradient: 'from-blue-500/10 to-blue-600/5',
-  },
-  {
-    name: 'Video Tools',
-    description: 'Process and convert videos',
-    icon: Video,
-    route: '/videos',
-    color: 'text-purple-500',
-    gradient: 'from-purple-500/10 to-purple-600/5',
-  },
-  {
-    name: 'Document Tools',
-    description: 'Manipulate PDF documents',
-    icon: FileText,
-    route: '/documents',
-    color: 'text-green-500',
-    gradient: 'from-green-500/10 to-green-600/5',
-  },
-]
 
 const features = [
   {
@@ -83,7 +53,7 @@ export function MainContent() {
               browser with professional-grade tools powered by WebAssembly.
             </p>
 
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center gap-4">
               <Button
                 asChild
                 variant="outline"
@@ -99,45 +69,38 @@ export function MainContent() {
                   View on GitHub
                 </a>
               </Button>
-            </div>
-          </div>
 
-          {/* Tool Categories */}
-          <div className="mb-16">
-            <div className="grid md:grid-cols-3 gap-4">
-              {toolCategories.map((category) => (
-                <Link
-                  key={category.name}
-                  to={category.route}
-                  search={{ tab: undefined }}
-                  className="group"
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="rounded-xl"
+              >
+                <a
+                  href="https://github.com/akshetpandey/toolbox/issues"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  <Card className="glass-card border-0 hover:shadow-lg transition-all duration-300 group-hover:scale-[1.02]">
-                    <CardContent className="p-4">
-                      <div
-                        className={`w-10 h-10 bg-gradient-to-br ${category.gradient} rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
-                      >
-                        <category.icon
-                          className={`h-5 w-5 ${category.color}`}
-                        />
-                      </div>
+                  <Bug className="w-4 h-4 mr-2" />
+                  Report Issue
+                </a>
+              </Button>
 
-                      <h3 className="text-lg font-medium text-foreground mb-1 group-hover:text-primary transition-colors">
-                        {category.name}
-                      </h3>
-
-                      <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                        {category.description}
-                      </p>
-
-                      <div className="flex items-center text-sm text-primary group-hover:gap-2 transition-all">
-                        <span>Open</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="rounded-xl"
+              >
+                <a
+                  href="https://github.com/akshetpandey/toolbox/discussions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Request Tool
+                </a>
+              </Button>
             </div>
           </div>
 
@@ -177,23 +140,6 @@ export function MainContent() {
             </div>
 
             <div className="flex items-center justify-center gap-6 text-sm">
-              <a
-                href="https://github.com/akshetpandey/toolbox"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                <Github className="w-4 h-4" />
-                GitHub
-              </a>
-              <a
-                href="https://github.com/akshetpandey/toolbox/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Report Issues
-              </a>
               <a
                 href="https://github.com/akshetpandey/toolbox/blob/main/LICENSE"
                 target="_blank"

@@ -90,8 +90,7 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
           console.log('FFmpeg progress:', event)
           // Use the actual progress value from FFmpeg (0-1 float)
           if (progressCallback && event.progress !== undefined) {
-            const progressPercentage = Math.round(event.progress * 100)
-            progressCallback(progressPercentage)
+            progressCallback(event.progress)
           }
         })
 

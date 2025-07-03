@@ -85,6 +85,7 @@ export interface VideoConvertOptions {
   videoCodec: string
   audioCodec: string
   preset: string
+  fastConvert?: boolean // Use stream copy when possible
 }
 
 export interface VideoCompressOptions {
@@ -396,7 +397,18 @@ export class FFmpegProcessor {
     // Build FFmpeg command based on format
     const command = ['-i', this.inputFileName ?? '']
 
-    if (options.targetFormat === 'mp4') {
+    // Check if we can use fast convert (stream copy)
+    if (options.fastConvert) {
+      console.log('🎬 FFmpeg: Using fast convert (stream copy)')
+      command.push('-c', 'copy')
+    } else {
+      // Add memory-efficient encoding options
+      command.push('-movflags', '+faststart') // Optimize for streaming
+      command.push('-threads', '4') // Use a small no. of thread to avoid memory issues
+      command.push('-max_muxing_queue_size', '1024') // Limit muxing queue
+    }
+
+    if (!options.fastConvert && options.targetFormat === 'mp4') {
       command.push(
         '-c:v',
         options.videoCodec,
@@ -405,18 +417,54 @@ export class FFmpegProcessor {
         '-preset',
         options.preset,
       )
-    } else if (options.targetFormat === 'webm') {
+      // Add quality constraints to prevent memory issues
+      if (options.videoCodec === 'libx264') {
+        command.push('-crf', '23') // Reasonable quality
+        command.push('-maxrate', '2M') // Max bitrate
+        command.push('-bufsize', '4M') // Buffer size
+      }
+    } else if (!options.fastConvert && options.targetFormat === 'webm') {
       command.push('-c:v', 'libvpx-vp9', '-c:a', 'libopus')
-    } else if (options.targetFormat === 'avi') {
+      command.push('-crf', '30') // Lower quality for WebM
+      command.push('-b:v', '1M') // Target bitrate
+    } else if (!options.fastConvert && options.targetFormat === 'avi') {
       command.push('-c:v', 'libx264', '-c:a', 'mp3')
-    } else if (options.targetFormat === 'mov') {
+      command.push('-crf', '23')
+      command.push('-maxrate', '2M')
+      command.push('-bufsize', '4M')
+    } else if (!options.fastConvert && options.targetFormat === 'mov') {
       command.push('-c:v', 'libx264', '-c:a', 'aac')
+      command.push('-crf', '23')
+      command.push('-maxrate', '2M')
+      command.push('-bufsize', '4M')
     }
 
     command.push(outputFileName)
 
     console.log('🎬 FFmpeg: Executing conversion command', { command })
-    await this.ffmpeg.exec(command)
+
+    // Set up progress monitoring
+    const startTime = Date.now()
+    const timeoutMs = 300000 // 5 minutes timeout
+
+    try {
+      const execPromise = this.ffmpeg.exec(command)
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Video conversion timed out after 5 minutes'))
+        }, timeoutMs)
+      })
+
+      await Promise.race([execPromise, timeoutPromise])
+
+      const processingTime = Date.now() - startTime
+      console.log(`🎬 FFmpeg: Conversion completed in ${processingTime}ms`)
+    } catch (error) {
+      console.error('🎬 FFmpeg: Conversion failed', error)
+      throw error
+    }
 
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
@@ -450,11 +498,45 @@ export class FFmpegProcessor {
       'aac',
       '-b:a',
       '128k',
+      // Add memory-efficient encoding options
+      '-movflags',
+      '+faststart',
+      '-threads',
+      '4', // Use a small no. of thread to avoid memory issues
+      '-max_muxing_queue_size',
+      '1024',
+      // Add quality constraints to prevent memory issues
+      '-maxrate',
+      '2M',
+      '-bufsize',
+      '4M',
       outputFileName,
     ]
 
     console.log('🎬 FFmpeg: Executing compression command', { command })
-    await this.ffmpeg.exec(command)
+
+    // Set up progress monitoring
+    const startTime = Date.now()
+    const timeoutMs = 300000 // 5 minutes timeout
+
+    try {
+      const execPromise = this.ffmpeg.exec(command)
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Video compression timed out after 5 minutes'))
+        }, timeoutMs)
+      })
+
+      await Promise.race([execPromise, timeoutPromise])
+
+      const processingTime = Date.now() - startTime
+      console.log(`🎬 FFmpeg: Compression completed in ${processingTime}ms`)
+    } catch (error) {
+      console.error('🎬 FFmpeg: Compression failed', error)
+      throw error
+    }
 
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
