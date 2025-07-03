@@ -1,55 +1,48 @@
-import { Button } from '@/components/ui/button'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
-  const handleToggle = () => {
-    if (theme === 'light') {
-      setTheme('dark')
-    } else if (theme === 'dark') {
-      setTheme('system')
-    } else {
-      setTheme('light')
-    }
-  }
-
-  const getIcon = () => {
-    switch (theme) {
-      case 'light':
-        return <Sun className="h-4 w-4" />
-      case 'dark':
-        return <Moon className="h-4 w-4" />
-      case 'system':
-        return <Monitor className="h-4 w-4" />
-      default:
-        return <Sun className="h-4 w-4" />
-    }
-  }
-
-  const getLabel = () => {
-    switch (theme) {
-      case 'light':
-        return 'Light mode'
-      case 'dark':
-        return 'Dark mode'
-      case 'system':
-        return 'System mode'
-      default:
-        return 'Light mode'
-    }
-  }
+  const themeOptions = [
+    { value: 'light', icon: Sun, label: 'Light mode' },
+    { value: 'dark', icon: Moon, label: 'Dark mode' },
+    { value: 'system', icon: Monitor, label: 'System mode' }
+  ] as const
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={handleToggle}
-      className="h-8 w-8 rounded-lg hover:bg-accent/50 transition-colors"
-      title={getLabel()}
-    >
-      {getIcon()}
-    </Button>
+    <div className="relative flex items-center bg-muted/30 rounded-lg p-1 h-8">
+      {/* Background slider */}
+      <div 
+        className="absolute inset-y-1 bg-background rounded-md shadow-sm transition-all duration-200 ease-in-out"
+        style={{
+          width: '33.333%',
+          left: theme === 'light' ? '4px' : theme === 'dark' ? '33.333%' : '66.666%'
+        }}
+      />
+      
+      {/* Theme options */}
+      {themeOptions.map((option) => {
+        const Icon = option.icon
+        const isActive = theme === option.value
+        
+        return (
+          <button
+            key={option.value}
+            onClick={() => setTheme(option.value)}
+            className={`
+              relative z-10 flex items-center justify-center w-8 h-6 rounded-md transition-all duration-200 ease-in-out
+              ${isActive 
+                ? 'text-foreground' 
+                : 'text-muted-foreground hover:text-foreground'
+              }
+            `}
+            title={option.label}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </button>
+        )
+      })}
+    </div>
   )
 } 
