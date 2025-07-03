@@ -45,6 +45,7 @@ export function ImageTools() {
   const [metadata, setMetadata] = useState<Record<string, ImageMetadata>>({})
   const [exifMetadata, setExifMetadata] = useState<ExifMetadata>({})
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isExtractingExif, setIsExtractingExif] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -113,6 +114,7 @@ export function ImageTools() {
         setSelectedFiles([imageFile])
         setMetadata({})
         setExifMetadata({})
+        setIsExtractingExif(false)
 
         // Initialize ImageMagick if not already initialized
         if (!isInitialized) {
@@ -184,6 +186,7 @@ export function ImageTools() {
       '🖼️ ImageTools: Starting EXIF metadata extraction for',
       imageFile.name,
     )
+    setIsExtractingExif(true)
     try {
       const exifResult = await parseMetadata(imageFile.file, {
         args: ['-json', '-n'],
@@ -201,6 +204,8 @@ export function ImageTools() {
       console.error('🖼️ ImageTools: Error extracting EXIF metadata:', error)
       // Set empty EXIF metadata on error
       setExifMetadata((prev) => ({ ...prev, ...{} }))
+    } finally {
+      setIsExtractingExif(false)
     }
   }
 
@@ -521,6 +526,7 @@ export function ImageTools() {
                             setSelectedFiles([])
                             setMetadata({})
                             setExifMetadata({})
+                            setIsExtractingExif(false)
                           }}
                           className="hover:bg-red-500 hover:text-red-foreground text-xs"
                         >
@@ -632,7 +638,7 @@ export function ImageTools() {
                           <div className="flex items-center gap-2 mb-4">
                             <Settings className="h-4 w-4 text-primary" />
                             <h3 className="font-medium text-foreground">
-                              ImageMagick Metadata
+                              Metadata
                             </h3>
                           </div>
                           {selectedFiles.length > 0 &&
@@ -710,8 +716,20 @@ export function ImageTools() {
                             <h3 className="font-medium text-foreground">
                               EXIF Metadata
                             </h3>
+                            {isExtractingExif && (
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            )}
                           </div>
-                          {selectedFiles.length > 0 && exifMetadata ? (
+                          {isExtractingExif ? (
+                            <div className="flex items-center justify-center h-24">
+                              <div className="text-center text-muted-foreground">
+                                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
+                                <p className="text-sm">
+                                  Extracting EXIF metadata...
+                                </p>
+                              </div>
+                            </div>
+                          ) : selectedFiles.length > 0 && exifMetadata ? (
                             <div className="space-y-2">
                               {Object.keys(exifMetadata).length > 0 ? (
                                 <div className="grid grid-cols-1 gap-2 text-sm bg-muted/50 p-4 rounded-lg max-h-64 overflow-y-auto">
