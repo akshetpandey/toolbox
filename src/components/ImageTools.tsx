@@ -21,7 +21,7 @@ import {
   createObjectURL,
   revokeObjectURL,
 } from '@/lib/imagemagick'
-import { parseMetadata } from '@uswriting/exiftool'
+import { extractExifMetadata, type ExifMetadata } from '@/lib/metadata'
 
 import {
   Upload,
@@ -33,9 +33,6 @@ import {
   Settings,
   Zap,
 } from 'lucide-react'
-
-// Type for EXIF metadata
-type ExifMetadata = Record<string, string | number | boolean | null>
 
 export function ImageTools() {
   const { isInitialized, isInitializing, error, init } = useInitImageMagick()
@@ -127,7 +124,7 @@ export function ImageTools() {
         console.log('🖼️ ImageTools: Starting metadata extraction...')
         await Promise.all([
           extractMetadata(imageFile),
-          extractExifMetadata(imageFile),
+          extractImageExifMetadata(imageFile),
         ])
         console.log('🖼️ ImageTools: File selection completed successfully')
       } else {
@@ -180,32 +177,17 @@ export function ImageTools() {
     }
   }
 
-  // Extract EXIF metadata using @uswriting/exiftool
-  const extractExifMetadata = async (imageFile: ImageFile) => {
-    console.log(
-      '🖼️ ImageTools: Starting EXIF metadata extraction for',
-      imageFile.name,
-    )
-    setIsExtractingExif(true)
+  // Extract EXIF metadata using shared metadata library
+  const extractImageExifMetadata = async (imageFile: ImageFile) => {
     try {
-      const exifResult = await parseMetadata(imageFile.file, {
-        args: ['-json', '-n'],
-        transform: (data) => JSON.parse(data) as ExifMetadata[],
-      })
-      console.log(
-        '🖼️ ImageTools: EXIF metadata extraction successful',
-        exifResult,
+      const exifData = await extractExifMetadata(
+        imageFile.file,
+        setIsExtractingExif,
       )
-
-      // Extract data from the result if successful
-      const exifData = exifResult.success ? exifResult.data[0] : {}
       setExifMetadata((prev) => ({ ...prev, ...exifData }))
     } catch (error) {
       console.error('🖼️ ImageTools: Error extracting EXIF metadata:', error)
-      // Set empty EXIF metadata on error
       setExifMetadata((prev) => ({ ...prev, ...{} }))
-    } finally {
-      setIsExtractingExif(false)
     }
   }
 

@@ -11,6 +11,7 @@ import {
   FileText,
   Hammer,
   Construction,
+  Settings,
 } from 'lucide-react'
 
 const toolCategories = [
@@ -48,6 +49,14 @@ const toolCategories = [
     tools: ['PDF Merge', 'PDF Split', 'Compress PDF', 'Convert to PDF'],
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
+  },
+  {
+    name: 'Utilities',
+    icon: Settings,
+    route: '/utilities',
+    tools: ['File Hash', 'File Metadata', 'EXIF Metadata'],
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500/10',
   },
   // {
   //   name: 'Archives',
@@ -247,6 +256,33 @@ export function ToolSidebar() {
                                 </Link>
                               )}
                             </div>
+                          )
+                        }
+                      }
+
+                      // Create tool-specific links for utilities tools
+                      if (category.name === 'Utilities' && category.route) {
+                        const toolMap: Record<string, string> = {
+                          'File Hash': 'hash',
+                          'File Metadata': 'metadata',
+                          'EXIF Metadata': 'metadata',
+                        }
+                        const tab = toolMap[tool]
+                        if (tab) {
+                          return (
+                            <Link
+                              key={tool}
+                              to={category.route}
+                              search={{ tab }}
+                              className="w-full"
+                            >
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                              >
+                                {tool}
+                              </Button>
+                            </Link>
                           )
                         }
                       }

@@ -38,13 +38,15 @@
     "@uswriting/exiftool": "^1.0.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "hash-wasm": "^4.12.0",
     "lucide-react": "^0.525.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "wasmagic": "^1.0.3"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.8.0",

@@ -33,9 +33,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Determine the actual theme to apply
     let resolvedTheme: 'light' | 'dark' = 'light'
-    
+
     if (theme === 'system') {
-      resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
     } else {
       resolvedTheme = theme
     }
@@ -54,12 +56,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    
+
     const handleChange = () => {
       if (theme === 'system') {
         const resolvedTheme = mediaQuery.matches ? 'dark' : 'light'
         setActualTheme(resolvedTheme)
-        
+
         const root = document.documentElement
         root.classList.remove('light', 'dark')
         root.classList.add(resolvedTheme)
@@ -76,9 +78,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme,
   }
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
-  )
-} 
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+}
