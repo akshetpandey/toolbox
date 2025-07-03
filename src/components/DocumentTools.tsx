@@ -267,7 +267,7 @@ export function DocumentTools() {
       <div className="flex flex-col h-full bg-background">
         {/* Header */}
         <div className="glass border-b border-border/50">
-          <div className="container mx-auto px-8 py-4">
+          <div className="container mx-auto p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg flex items-center justify-center">
