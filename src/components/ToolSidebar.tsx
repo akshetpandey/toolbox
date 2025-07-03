@@ -1,6 +1,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import {
   Image,
   Video,
@@ -73,13 +74,14 @@ export function ToolSidebar() {
   return (
     <div className="w-80 glass border-r border-border/50 h-screen flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border/50 flex items-center shrink-0">
+      <div className="p-6 border-b border-border/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center">
             <Hammer className="w-4 h-4 text-primary-foreground" />
           </div>
           <h2 className="text-heading text-foreground">Toolbox</h2>
         </div>
+        <ThemeToggle />
       </div>
 
       {/* Content */}
