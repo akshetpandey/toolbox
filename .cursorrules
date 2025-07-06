@@ -11,6 +11,8 @@ Shadcn for UI components and Tailwindcss for CSS
 
 The purpose of the app is to provide non tech savvy users a simple browser based offline available tool to complete various tasks that a software expert could do with a CLI and various open source software. We will primarily focus on things that can be achieved with imagemagick and ffmpeg. The tool should provide a easy to use, sleek and well though out UI/UX experience.
 
+The developer will always have a dev server running locally to test changes, so you don't need to run a dev server but carefully look at linter output to make sure everything is correct.
+
 # shadcn instructions
 
 Use the latest version of Shadcn to install new components, like this command to add a button component:

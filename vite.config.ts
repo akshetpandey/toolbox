@@ -10,7 +10,7 @@ export default defineConfig({
     sourcemap: true, // Source map generation must be turned on
   },
   optimizeDeps: {
-    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util', '7z-wasm'],
   },
   plugins: [
     // this is the plugin that enables path aliases
