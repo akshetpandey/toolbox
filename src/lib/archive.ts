@@ -18,7 +18,7 @@ export interface ExtractedFile {
 export type CompressionFormat = '7z' | 'zip' | 'tar' | 'gzip'
 
 export class ArchiveProcessor {
-  private sevenZip: SevenZipModule|null = null
+  private sevenZip: SevenZipModule | null = null
   private isInitialized = false
 
   async init() {
@@ -34,7 +34,7 @@ export class ArchiveProcessor {
     files: ArchiveFile[],
     format: CompressionFormat = '7z',
     archiveName = 'archive',
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<Uint8Array> {
     if (!this.isInitialized) {
       throw new Error('ArchiveProcessor not initialized')
@@ -42,7 +42,7 @@ export class ArchiveProcessor {
     if (!this.sevenZip) {
       throw new Error('SevenZip module not initialized')
     }
-    
+
     console.log(`🗜️ ArchiveProcessor: Starting compression to ${format}`, {
       fileCount: files.length,
       archiveName,
@@ -56,7 +56,7 @@ export class ArchiveProcessor {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         const fileData = new Uint8Array(await file.file.arrayBuffer())
-        
+
         // Create directory structure if needed
         const parts = file.name.split('/')
         if (parts.length > 1) {
@@ -73,7 +73,7 @@ export class ArchiveProcessor {
         }
 
         this.sevenZip.FS.writeFile(file.name, fileData)
-        
+
         if (onProgress) {
           onProgress(Math.round(((i + 1) / files.length) * 50)) // 50% for writing files
         }
@@ -83,15 +83,18 @@ export class ArchiveProcessor {
       if (format === 'gzip') {
         // For gzip, create a tar archive first, then compress it
         const tarName = `${archiveName}.tar`
-        const tarArgs = ['a', '-ttar', tarName, ...files.map(f => f.name)]
-        console.log('🗜️ ArchiveProcessor: Creating TAR archive first for gzip', tarArgs)
+        const tarArgs = ['a', '-ttar', tarName, ...files.map((f) => f.name)]
+        console.log(
+          '🗜️ ArchiveProcessor: Creating TAR archive first for gzip',
+          tarArgs,
+        )
         this.sevenZip.callMain(tarArgs)
-        
+
         // Now compress the tar file with gzip
         const gzipArgs = ['a', '-tgzip', fullArchiveName, tarName]
         console.log('🗜️ ArchiveProcessor: Compressing TAR with gzip', gzipArgs)
         this.sevenZip.callMain(gzipArgs)
-        
+
         // Clean up the intermediate tar file
         try {
           this.sevenZip.FS.unlink(tarName)
@@ -99,9 +102,16 @@ export class ArchiveProcessor {
           // File might not exist
         }
       } else {
-        const compressionArgs = this.getCompressionArgs(format, fullArchiveName, files)
-        console.log('🗜️ ArchiveProcessor: Running compression command', compressionArgs)
-        
+        const compressionArgs = this.getCompressionArgs(
+          format,
+          fullArchiveName,
+          files,
+        )
+        console.log(
+          '🗜️ ArchiveProcessor: Running compression command',
+          compressionArgs,
+        )
+
         this.sevenZip.callMain(compressionArgs)
       }
 
@@ -111,9 +121,9 @@ export class ArchiveProcessor {
 
       // Read the created archive
       const archiveData = this.sevenZip.FS.readFile(fullArchiveName)
-      
+
       // Clean up input files
-      files.forEach(file => {
+      files.forEach((file) => {
         if (!this.sevenZip) {
           return
         }
@@ -146,7 +156,7 @@ export class ArchiveProcessor {
   decompress(
     archiveData: Uint8Array,
     archiveName: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): ExtractedFile[] {
     if (!this.isInitialized) {
       throw new Error('ArchiveProcessor not initialized')
@@ -180,7 +190,10 @@ export class ArchiveProcessor {
       try {
         this.sevenZip.callMain(['l', archiveName])
       } catch (error) {
-        console.error('🗜️ ArchiveProcessor: Failed to list archive contents:', error)
+        console.error(
+          '🗜️ ArchiveProcessor: Failed to list archive contents:',
+          error,
+        )
         throw new Error('Invalid or corrupted archive file')
       }
 
@@ -215,24 +228,28 @@ export class ArchiveProcessor {
         if (!this.sevenZip) {
           return
         }
-        
+
         let entries: string[] = []
         try {
           entries = this.sevenZip.FS.readdir(path)
         } catch (error) {
-          console.warn('🗜️ ArchiveProcessor: Failed to read directory:', path, error)
+          console.warn(
+            '🗜️ ArchiveProcessor: Failed to read directory:',
+            path,
+            error,
+          )
           return
         }
-        
+
         for (const entry of entries) {
           if (entry === '.' || entry === '..') continue
-          
+
           const fullPath = `${path}/${entry}`
           const displayPath = relativePath ? `${relativePath}/${entry}` : entry
-          
+
           try {
             const stat = this.sevenZip.FS.stat(fullPath)
-            
+
             if (this.sevenZip.FS.isDir(stat.mode)) {
               extractedFiles.push({
                 name: displayPath,
@@ -251,7 +268,11 @@ export class ArchiveProcessor {
               })
             }
           } catch (error) {
-            console.warn('🗜️ ArchiveProcessor: Failed to process file:', fullPath, error)
+            console.warn(
+              '🗜️ ArchiveProcessor: Failed to process file:',
+              fullPath,
+              error,
+            )
             // Continue processing other files
           }
         }
@@ -273,12 +294,12 @@ export class ArchiveProcessor {
       // Clean up extraction directory and its contents
       const cleanupDirectory = (dirPath: string) => {
         if (!this.sevenZip) return
-        
+
         try {
           const entries = this.sevenZip.FS.readdir(dirPath)
           for (const entry of entries) {
             if (entry === '.' || entry === '..') continue
-            
+
             const fullPath = `${dirPath}/${entry}`
             try {
               const stat = this.sevenZip.FS.stat(fullPath)
@@ -311,25 +332,25 @@ export class ArchiveProcessor {
       return extractedFiles
     } catch (error) {
       console.error('🗜️ ArchiveProcessor: Decompression failed:', error)
-      
+
       // Clean up in case of error
       try {
         this.sevenZip?.FS.unlink(archiveName)
       } catch {
         // Cleanup errors are not critical
       }
-      
+
       // Also clean up extraction directory if it exists
       try {
         const extractionDir = 'extracted_files'
         const cleanupDirectory = (dirPath: string) => {
           if (!this.sevenZip) return
-          
+
           try {
             const entries = this.sevenZip.FS.readdir(dirPath)
             for (const entry of entries) {
               if (entry === '.' || entry === '..') continue
-              
+
               const fullPath = `${dirPath}/${entry}`
               try {
                 const stat = this.sevenZip.FS.stat(fullPath)
@@ -347,30 +368,39 @@ export class ArchiveProcessor {
             // Directory might not exist
           }
         }
-        
+
         cleanupDirectory(extractionDir)
         this.sevenZip.FS.rmdir(extractionDir)
       } catch {
         // Cleanup errors are not critical
       }
-      
+
       throw error
     }
   }
 
   private getExtension(format: CompressionFormat): string {
     switch (format) {
-      case '7z': return '7z'
-      case 'zip': return 'zip'
-      case 'tar': return 'tar'
-      case 'gzip': return 'tar.gz'
-      default: return '7z'
+      case '7z':
+        return '7z'
+      case 'zip':
+        return 'zip'
+      case 'tar':
+        return 'tar'
+      case 'gzip':
+        return 'tar.gz'
+      default:
+        return '7z'
     }
   }
 
-  private getCompressionArgs(format: CompressionFormat, archiveName: string, files: ArchiveFile[]): string[] {
-    const fileNames = files.map(f => f.name)
-    
+  private getCompressionArgs(
+    format: CompressionFormat,
+    archiveName: string,
+    files: ArchiveFile[],
+  ): string[] {
+    const fileNames = files.map((f) => f.name)
+
     switch (format) {
       case '7z':
         return ['a', '-t7z', archiveName, ...fileNames]
@@ -397,7 +427,11 @@ export function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-export function downloadFile(data: Uint8Array, filename: string, mimeType = 'application/octet-stream') {
+export function downloadFile(
+  data: Uint8Array,
+  filename: string,
+  mimeType = 'application/octet-stream',
+) {
   const blob = new Blob([data], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

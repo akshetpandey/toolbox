@@ -48,9 +48,9 @@ export function MainContent() {
             </div>
 
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              A powerful web application for transforming your
-              files. Process images, videos, and documents entirely in your
-              browser with professional-grade tools powered by WebAssembly.
+              A powerful web application for transforming your files. Process
+              images, videos, and documents entirely in your browser with
+              professional-grade tools powered by WebAssembly.
             </p>
 
             <div className="flex items-center justify-center gap-4">

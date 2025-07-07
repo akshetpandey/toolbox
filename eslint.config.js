@@ -1,3 +1,4 @@
+import globals from 'globals'
 import eslint from '@eslint/js'
 import pluginReact from 'eslint-plugin-react'
 import pluginRouter from '@tanstack/eslint-plugin-router'
@@ -12,20 +13,16 @@ export default tseslint.config(
   tseslint.configs.stylisticTypeChecked,
   pluginReact.configs.flat['jsx-runtime'],
   {
-    rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-    },
-  },
-  {
     languageOptions: {
       parserOptions: {
         projectService: {
           allowDefaultProject: ['*.js'],
         },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         tsconfigRootDir: import.meta.dirname,
-        ecmaFeatures: {
-          jsx: true,
-        },
+      },
+      globals: {
+        ...globals.browser,
       },
     },
   },

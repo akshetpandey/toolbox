@@ -13,6 +13,7 @@ import {
   Construction,
   Settings,
   Archive,
+  Building,
 } from 'lucide-react'
 
 const toolCategories = [
@@ -52,13 +53,18 @@ const toolCategories = [
     bgColor: 'bg-green-500/10',
   },
   {
+    name: 'Office Documents',
+    icon: Building,
+    route: '/office-documents',
+    tools: ['Document to PDF'],
+    color: 'text-indigo-500',
+    bgColor: 'bg-indigo-500/10',
+  },
+  {
     name: 'Archives',
     icon: Archive,
     route: '/archives',
-    tools: [
-      'Compress Files',
-      'Extract Archive',
-    ],
+    tools: ['Compress Files', 'Extract Archive'],
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
   },
@@ -303,6 +309,27 @@ export function ToolSidebar() {
                             </Link>
                           )
                         }
+                      }
+
+                      // Create tool-specific links for office tools
+                      if (
+                        category.name === 'Office Documents' &&
+                        category.route
+                      ) {
+                        return (
+                          <Link
+                            key={tool}
+                            to={category.route}
+                            className="w-full"
+                          >
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                            >
+                              {tool}
+                            </Button>
+                          </Link>
+                        )
                       }
 
                       return (

@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select'
 import {
   ArchiveProcessor,
@@ -41,7 +41,8 @@ export function ArchiveTools() {
   const [selectedFiles, setSelectedFiles] = useState<ArchiveFile[]>([])
   const [extractedFiles, setExtractedFiles] = useState<ExtractedFile[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [compressionFormat, setCompressionFormat] = useState<CompressionFormat>('zip')
+  const [compressionFormat, setCompressionFormat] =
+    useState<CompressionFormat>('zip')
   const [archiveName, setArchiveName] = useState('archive')
   const [uploadedArchive, setUploadedArchive] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -68,9 +69,14 @@ export function ArchiveTools() {
       try {
         await archiveProcessor.init()
         setIsInitialized(true)
-        console.log('🗜️ ArchiveTools: Archive processor initialized successfully')
+        console.log(
+          '🗜️ ArchiveTools: Archive processor initialized successfully',
+        )
       } catch (error) {
-        console.error('🗜️ ArchiveTools: Failed to initialize archive processor:', error)
+        console.error(
+          '🗜️ ArchiveTools: Failed to initialize archive processor:',
+          error,
+        )
       } finally {
         setIsInitializing(false)
       }
@@ -78,66 +84,77 @@ export function ArchiveTools() {
   }, [isInitialized, isInitializing, archiveProcessor])
 
   // Handle file selection for compression
-  const handleFileSelect = useCallback(async (files: FileList) => {
-    console.log('🗜️ ArchiveTools: Files selected for compression', { fileCount: files.length })
-    
-    const archiveFiles: ArchiveFile[] = []
-    
-    for (const file of files) {
-      let preview: string | undefined
-      
-      if (file.type.startsWith('image/')) {
-        preview = URL.createObjectURL(file)
-      }
-      
-      archiveFiles.push({
-        file,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        preview,
+  const handleFileSelect = useCallback(
+    async (files: FileList) => {
+      console.log('🗜️ ArchiveTools: Files selected for compression', {
+        fileCount: files.length,
       })
-    }
-    
-    // Append new files to existing selected files instead of replacing
-    setSelectedFiles(prevFiles => [...prevFiles, ...archiveFiles])
-    
-    // Initialize processor if not already initialized
-    if (!isInitialized) {
-      await initializeProcessor()
-    }
-  }, [isInitialized, initializeProcessor])
+
+      const archiveFiles: ArchiveFile[] = []
+
+      for (const file of files) {
+        let preview: string | undefined
+
+        if (file.type.startsWith('image/')) {
+          preview = URL.createObjectURL(file)
+        }
+
+        archiveFiles.push({
+          file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          preview,
+        })
+      }
+
+      // Append new files to existing selected files instead of replacing
+      setSelectedFiles((prevFiles) => [...prevFiles, ...archiveFiles])
+
+      // Initialize processor if not already initialized
+      if (!isInitialized) {
+        await initializeProcessor()
+      }
+    },
+    [isInitialized, initializeProcessor],
+  )
 
   // Handle archive upload for decompression
-  const handleArchiveUpload = useCallback(async (files: FileList) => {
-    const file = files[0]
-    if (!file) return
-    
-    console.log('🗜️ ArchiveTools: Archive uploaded for decompression', { 
-      name: file.name, 
-      size: file.size 
-    })
-    
-    setUploadedArchive(file)
-    setExtractedFiles([])
-    
-    // Initialize processor if not already initialized
-    if (!isInitialized) {
-      await initializeProcessor()
-    }
-  }, [isInitialized, initializeProcessor])
+  const handleArchiveUpload = useCallback(
+    async (files: FileList) => {
+      const file = files[0]
+      if (!file) return
+
+      console.log('🗜️ ArchiveTools: Archive uploaded for decompression', {
+        name: file.name,
+        size: file.size,
+      })
+
+      setUploadedArchive(file)
+      setExtractedFiles([])
+
+      // Initialize processor if not already initialized
+      if (!isInitialized) {
+        await initializeProcessor()
+      }
+    },
+    [isInitialized, initializeProcessor],
+  )
 
   // Handle drag and drop
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-    if (e.dataTransfer.files) {
-      if (activeTab === 'compress') {
-        await handleFileSelect(e.dataTransfer.files)
-      } else {
-        await handleArchiveUpload(e.dataTransfer.files)
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer.files) {
+        if (activeTab === 'compress') {
+          await handleFileSelect(e.dataTransfer.files)
+        } else {
+          await handleArchiveUpload(e.dataTransfer.files)
+        }
       }
-    }
-  }, [activeTab, handleFileSelect, handleArchiveUpload])
+    },
+    [activeTab, handleFileSelect, handleArchiveUpload],
+  )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -145,33 +162,34 @@ export function ArchiveTools() {
 
   // Remove file from compression list
   const removeFile = useCallback((index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
   // Compress files
   const compressFiles = useCallback(async () => {
     if (selectedFiles.length === 0 || !isInitialized) return
-    
+
     setIsProcessing(true)
-    
+
     try {
       console.log('🗜️ ArchiveTools: Starting compression', {
         fileCount: selectedFiles.length,
         format: compressionFormat,
         archiveName,
       })
-      
+
       const compressedData = await archiveProcessor.compress(
         selectedFiles,
         compressionFormat,
-        archiveName
+        archiveName,
       )
-      
-      const extension = compressionFormat === 'gzip' ? 'tar.gz' : compressionFormat
+
+      const extension =
+        compressionFormat === 'gzip' ? 'tar.gz' : compressionFormat
       const filename = `${archiveName}.${extension}`
-      
+
       downloadFile(compressedData, filename, 'application/octet-stream')
-      
+
       console.log('🗜️ ArchiveTools: Compression completed successfully')
     } catch (error) {
       console.error('🗜️ ArchiveTools: Compression failed:', error)
@@ -179,28 +197,34 @@ export function ArchiveTools() {
     } finally {
       setIsProcessing(false)
     }
-  }, [selectedFiles, isInitialized, compressionFormat, archiveName, archiveProcessor])
+  }, [
+    selectedFiles,
+    isInitialized,
+    compressionFormat,
+    archiveName,
+    archiveProcessor,
+  ])
 
   // Decompress archive
   const decompressArchive = useCallback(async () => {
     if (!uploadedArchive || !isInitialized) return
-    
+
     setIsProcessing(true)
-    
+
     try {
       console.log('🗜️ ArchiveTools: Starting decompression', {
         archiveName: uploadedArchive.name,
         size: uploadedArchive.size,
       })
-      
+
       const archiveData = new Uint8Array(await uploadedArchive.arrayBuffer())
       const extractedFiles = archiveProcessor.decompress(
         archiveData,
-        uploadedArchive.name
+        uploadedArchive.name,
       )
-      
+
       setExtractedFiles(extractedFiles)
-      
+
       console.log('🗜️ ArchiveTools: Decompression completed successfully', {
         extractedCount: extractedFiles.length,
       })
@@ -215,34 +239,36 @@ export function ArchiveTools() {
   // Download individual file
   const downloadExtractedFile = useCallback((file: ExtractedFile) => {
     if (file.isDirectory) return
-    
-    const mimeType = file.name.endsWith('.txt') ? 'text/plain' : 'application/octet-stream'
+
+    const mimeType = file.name.endsWith('.txt')
+      ? 'text/plain'
+      : 'application/octet-stream'
     downloadFile(file.data, file.name, mimeType)
   }, [])
 
   // Download all extracted files as ZIP
   const downloadAllFiles = useCallback(async () => {
     if (extractedFiles.length === 0 || !isInitialized) return
-    
+
     setIsProcessing(true)
-    
+
     try {
-      const nonDirectoryFiles = extractedFiles.filter(f => !f.isDirectory)
-      const archiveFiles: ArchiveFile[] = nonDirectoryFiles.map(f => ({
+      const nonDirectoryFiles = extractedFiles.filter((f) => !f.isDirectory)
+      const archiveFiles: ArchiveFile[] = nonDirectoryFiles.map((f) => ({
         file: new File([f.data], f.name, { type: 'application/octet-stream' }),
         name: f.name,
         size: f.size,
         type: 'application/octet-stream',
       }))
-      
+
       const compressedData = await archiveProcessor.compress(
         archiveFiles,
         'zip',
-        'extracted_files'
+        'extracted_files',
       )
-      
+
       downloadFile(compressedData, 'extracted_files.zip', 'application/zip')
-      
+
       console.log('🗜️ ArchiveTools: All files downloaded successfully')
     } catch (error) {
       console.error('🗜️ ArchiveTools: Failed to download all files:', error)
@@ -297,7 +323,11 @@ export function ArchiveTools() {
                           <p className="text-sm text-muted-foreground mb-4">
                             Select multiple files to create an archive
                           </p>
-                          <Button type="button" variant="outline" className="gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="gap-2"
+                          >
                             <Plus className="h-4 w-4" />
                             Choose Files
                           </Button>
@@ -331,7 +361,7 @@ export function ArchiveTools() {
                                 Clear
                               </Button>
                             </div>
-                            
+
                             <div className="mt-3 pt-3 border-t border-border/50">
                               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                                 <Upload className="w-3 h-3" />
@@ -339,15 +369,22 @@ export function ArchiveTools() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="flex-1 overflow-auto">
                             <div className="space-y-2">
                               {selectedFiles.map((file, index) => (
-                                <div key={index} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
+                                >
                                   <FileIcon className="h-4 w-4 text-muted-foreground" />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-                                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                    <p className="text-sm font-medium text-foreground truncate">
+                                      {file.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatFileSize(file.size)}
+                                    </p>
                                   </div>
                                   <Button
                                     type="button"
@@ -383,7 +420,11 @@ export function ArchiveTools() {
                           <p className="text-sm text-muted-foreground mb-4">
                             Supports 7Z, ZIP, TAR, GZIP formats
                           </p>
-                          <Button type="button" variant="outline" className="gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="gap-2"
+                          >
                             <Upload className="h-4 w-4" />
                             Choose Archive
                           </Button>
@@ -418,17 +459,21 @@ export function ArchiveTools() {
                                 Clear
                               </Button>
                             </div>
-                            
+
                             <div className="space-y-2">
                               <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
                                 <FileArchive className="h-8 w-8 text-primary" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground truncate">{uploadedArchive.name}</p>
-                                  <p className="text-xs text-muted-foreground">{formatFileSize(uploadedArchive.size)}</p>
+                                  <p className="text-sm font-medium text-foreground truncate">
+                                    {uploadedArchive.name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatFileSize(uploadedArchive.size)}
+                                  </p>
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="mt-3 pt-3 border-t border-border/50">
                               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                                 <Upload className="w-3 h-3" />
@@ -436,12 +481,11 @@ export function ArchiveTools() {
                               </div>
                             </div>
                           </div>
-
                         </div>
                       )}
                     </div>
                   )}
-                  
+
                   {/* Hidden file inputs */}
                   <input
                     ref={fileInputRef}
@@ -450,17 +494,19 @@ export function ArchiveTools() {
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files) {
-                        void handleFileSelect(e.target.files);
+                        void handleFileSelect(e.target.files)
                       }
                     }}
                   />
-                  
+
                   <input
                     ref={archiveInputRef}
                     type="file"
                     accept=".7z,.zip,.tar,.gz,.tar.gz,.rar"
                     className="hidden"
-                    onChange={(e) => e.target.files && void handleArchiveUpload(e.target.files)}
+                    onChange={(e) =>
+                      e.target.files && void handleArchiveUpload(e.target.files)
+                    }
                   />
                 </CardContent>
               </Card>
@@ -508,8 +554,17 @@ export function ArchiveTools() {
                               />
                             </div>
                             <div className="flex-1">
-                              <Label htmlFor="compression-format">Compression Format</Label>
-                              <Select value={compressionFormat} onValueChange={(value) => setCompressionFormat(value as CompressionFormat)}>
+                              <Label htmlFor="compression-format">
+                                Compression Format
+                              </Label>
+                              <Select
+                                value={compressionFormat}
+                                onValueChange={(value) =>
+                                  setCompressionFormat(
+                                    value as CompressionFormat,
+                                  )
+                                }
+                              >
                                 <SelectTrigger className="mt-1">
                                   <SelectValue placeholder="Select format" />
                                 </SelectTrigger>
@@ -526,8 +581,14 @@ export function ArchiveTools() {
                           {/* Compress Button */}
                           <div className="flex justify-center">
                             <Button
-                              onClick={() => {void compressFiles()}}
-                              disabled={selectedFiles.length === 0 || isProcessing || !isInitialized}
+                              onClick={() => {
+                                void compressFiles()
+                              }}
+                              disabled={
+                                selectedFiles.length === 0 ||
+                                isProcessing ||
+                                !isInitialized
+                              }
                               className="gap-2"
                             >
                               {isProcessing ? (
@@ -535,7 +596,9 @@ export function ArchiveTools() {
                               ) : (
                                 <Package className="h-4 w-4" />
                               )}
-                              {isProcessing ? 'Compressing...' : 'Compress Files'}
+                              {isProcessing
+                                ? 'Compressing...'
+                                : 'Compress Files'}
                             </Button>
                           </div>
                         </div>
@@ -551,8 +614,14 @@ export function ArchiveTools() {
                           {/* Extract Button */}
                           <div className="flex justify-center">
                             <Button
-                              onClick={() => {void decompressArchive()}}
-                              disabled={!uploadedArchive || isProcessing || !isInitialized}
+                              onClick={() => {
+                                void decompressArchive()
+                              }}
+                              disabled={
+                                !uploadedArchive ||
+                                isProcessing ||
+                                !isInitialized
+                              }
                               className="gap-2"
                             >
                               {isProcessing ? (
@@ -568,7 +637,9 @@ export function ArchiveTools() {
                           {extractedFiles.length > 0 && (
                             <div className="flex justify-center">
                               <Button
-                                onClick={() => {void downloadAllFiles()}}
+                                onClick={() => {
+                                  void downloadAllFiles()
+                                }}
                                 disabled={isProcessing}
                                 variant="outline"
                                 className="gap-2"
@@ -589,24 +660,45 @@ export function ArchiveTools() {
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
                               <h3 className="text-lg font-semibold text-foreground">
-                                Extracted Files ({extractedFiles.filter(f => !f.isDirectory).length} files, {extractedFiles.filter(f => f.isDirectory).length} folders)
+                                Extracted Files (
+                                {
+                                  extractedFiles.filter((f) => !f.isDirectory)
+                                    .length
+                                }{' '}
+                                files,{' '}
+                                {
+                                  extractedFiles.filter((f) => f.isDirectory)
+                                    .length
+                                }{' '}
+                                folders)
                               </h3>
                               <div className="text-sm text-muted-foreground">
-                                Total size: {formatFileSize(extractedFiles.reduce((sum, f) => sum + f.size, 0))}
+                                Total size:{' '}
+                                {formatFileSize(
+                                  extractedFiles.reduce(
+                                    (sum, f) => sum + f.size,
+                                    0,
+                                  ),
+                                )}
                               </div>
                             </div>
-                            
+
                             <div className="max-h-96 overflow-auto border rounded-lg">
                               <div className="space-y-1 p-2">
                                 {extractedFiles.map((file, index) => (
-                                  <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                                  <div
+                                    key={index}
+                                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                                  >
                                     {file.isDirectory ? (
                                       <Folder className="h-5 w-5 text-blue-500 flex-shrink-0" />
                                     ) : (
                                       <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                                     )}
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                                      <p className="text-sm font-medium text-foreground truncate">
+                                        {file.name}
+                                      </p>
                                       {!file.isDirectory && (
                                         <p className="text-xs text-muted-foreground">
                                           {formatFileSize(file.size)}
@@ -618,7 +710,9 @@ export function ArchiveTools() {
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => downloadExtractedFile(file)}
+                                        onClick={() =>
+                                          downloadExtractedFile(file)
+                                        }
                                         className="gap-2 flex-shrink-0"
                                       >
                                         <Download className="h-4 w-4" />
@@ -642,4 +736,4 @@ export function ArchiveTools() {
       </div>
     </div>
   )
-} 
+}

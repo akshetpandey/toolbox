@@ -104,6 +104,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.11
         version: 4.1.11
+      wasm-pandoc:
+        specifier: ^0.8.0
+        version: 0.8.0
       wasmagic:
         specifier: ^1.0.3
         version: 1.0.3
@@ -333,6 +336,9 @@ packages:
   '@babel/types@7.28.0':
     resolution: {integrity: sha512-jYnje+JyZG5YThjHiF28oT4SIZLnYOcSBb6+SDaFIyzDVSkXQmQQYclJ2R+YxcdmK0AX6x1E5OQNtuh3jHDrUg==}
     engines: {node: '>=6.9.0'}
+
+  '@bjorn3/browser_wasi_shim@0.4.2':
+    resolution: {integrity: sha512-/iHkCVUG3VbcbmEHn5iIUpIrh7a7WPiwZ3sHy4HZKZzBdSadwdddYDZAII2zBvQYV0Lfi8naZngPCN7WPHI/hA==}
 
   '@cloudflare/kv-asset-handler@0.4.0':
     resolution: {integrity: sha512-+tv3z+SPp+gqTIcImN9o0hqE9xyfQjI1XD9pL6NuKjua9B1y7mNYv0S9cP+QEbA4ppVgGZEmKOvHX5G5Ei1CVA==}
@@ -3579,6 +3585,9 @@ packages:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
 
+  wasm-pandoc@0.8.0:
+    resolution: {integrity: sha512-vpUEQH3ezOoGOuxGWbDLombfksrsBDTyV7aadQ2N/zVY9gtmDIS69xBEk3tRil9Qj2INQ7Xc11CZEqChLI5h8A==}
+
   wasmagic@1.0.3:
     resolution: {integrity: sha512-jSqpaRwklJYVSR35k2OuMy988B/FdYKMz975lQyphzIQO/15EKr3fZI8963HsH7aqcMtaFHu/8bSCTQXJ+gqlg==}
     engines: {node: '>=16.4.0'}
@@ -3930,6 +3939,8 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
+
+  '@bjorn3/browser_wasi_shim@0.4.2': {}
 
   '@cloudflare/kv-asset-handler@0.4.0':
     dependencies:
@@ -7243,6 +7254,10 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
+
+  wasm-pandoc@0.8.0:
+    dependencies:
+      '@bjorn3/browser_wasi_shim': 0.4.2
 
   wasmagic@1.0.3: {}
 

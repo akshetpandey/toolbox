@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as UtilitiesRouteImport } from './routes/utilities'
+import { Route as OfficeDocumentsRouteImport } from './routes/office-documents'
 import { Route as ImagesRouteImport } from './routes/images'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as ArchivesRouteImport } from './routes/archives'
@@ -24,6 +25,11 @@ const VideosRoute = VideosRouteImport.update({
 const UtilitiesRoute = UtilitiesRouteImport.update({
   id: '/utilities',
   path: '/utilities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfficeDocumentsRoute = OfficeDocumentsRouteImport.update({
+  id: '/office-documents',
+  path: '/office-documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImagesRoute = ImagesRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/archives': typeof ArchivesRoute
   '/documents': typeof DocumentsRoute
   '/images': typeof ImagesRoute
+  '/office-documents': typeof OfficeDocumentsRoute
   '/utilities': typeof UtilitiesRoute
   '/videos': typeof VideosRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/archives': typeof ArchivesRoute
   '/documents': typeof DocumentsRoute
   '/images': typeof ImagesRoute
+  '/office-documents': typeof OfficeDocumentsRoute
   '/utilities': typeof UtilitiesRoute
   '/videos': typeof VideosRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/archives': typeof ArchivesRoute
   '/documents': typeof DocumentsRoute
   '/images': typeof ImagesRoute
+  '/office-documents': typeof OfficeDocumentsRoute
   '/utilities': typeof UtilitiesRoute
   '/videos': typeof VideosRoute
 }
@@ -79,16 +88,25 @@ export interface FileRouteTypes {
     | '/archives'
     | '/documents'
     | '/images'
+    | '/office-documents'
     | '/utilities'
     | '/videos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/archives' | '/documents' | '/images' | '/utilities' | '/videos'
+  to:
+    | '/'
+    | '/archives'
+    | '/documents'
+    | '/images'
+    | '/office-documents'
+    | '/utilities'
+    | '/videos'
   id:
     | '__root__'
     | '/'
     | '/archives'
     | '/documents'
     | '/images'
+    | '/office-documents'
     | '/utilities'
     | '/videos'
   fileRoutesById: FileRoutesById
@@ -98,6 +116,7 @@ export interface RootRouteChildren {
   ArchivesRoute: typeof ArchivesRoute
   DocumentsRoute: typeof DocumentsRoute
   ImagesRoute: typeof ImagesRoute
+  OfficeDocumentsRoute: typeof OfficeDocumentsRoute
   UtilitiesRoute: typeof UtilitiesRoute
   VideosRoute: typeof VideosRoute
 }
@@ -116,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/utilities'
       fullPath: '/utilities'
       preLoaderRoute: typeof UtilitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/office-documents': {
+      id: '/office-documents'
+      path: '/office-documents'
+      fullPath: '/office-documents'
+      preLoaderRoute: typeof OfficeDocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/images': {
@@ -154,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArchivesRoute: ArchivesRoute,
   DocumentsRoute: DocumentsRoute,
   ImagesRoute: ImagesRoute,
+  OfficeDocumentsRoute: OfficeDocumentsRoute,
   UtilitiesRoute: UtilitiesRoute,
   VideosRoute: VideosRoute,
 }
