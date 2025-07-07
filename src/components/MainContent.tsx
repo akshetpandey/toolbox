@@ -22,13 +22,13 @@ const features = [
     icon: Zap,
     title: 'Powered by WASM',
     description:
-      'Leverages WebAssembly for near-native performance using FFmpeg and ImageMagick',
+      'Leverages WebAssembly for the fastest possible performance on a browser',
   },
   {
     icon: Shield,
-    title: 'Privacy First',
+    title: 'Built on Open Source',
     description:
-      'No uploads, no tracking, no data collection - completely offline capable',
+      'Powered by the best OSS projects: FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, and libmagic',
   },
 ]
 
@@ -48,7 +48,7 @@ export function MainContent() {
             </div>
 
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              A powerful, privacy-focused web application for transforming your
+              A powerful web application for transforming your
               files. Process images, videos, and documents entirely in your
               browser with professional-grade tools powered by WebAssembly.
             </p>
