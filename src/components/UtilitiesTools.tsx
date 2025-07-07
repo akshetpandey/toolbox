@@ -29,6 +29,8 @@ import {
   X,
 } from 'lucide-react'
 
+import { Footer } from '@/components/Footer'
+
 // Type for uploaded file
 interface UploadedFile {
   file: File
@@ -622,6 +624,8 @@ export function UtilitiesTools() {
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   )
 }

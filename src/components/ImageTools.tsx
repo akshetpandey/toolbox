@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Footer } from '@/components/Footer'
 import { useInitImageMagick } from '@/hooks/useInitImageMagick'
 import {
   ImageMagickProcessor,
@@ -1007,6 +1008,7 @@ export function ImageTools() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

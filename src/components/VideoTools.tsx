@@ -28,6 +28,7 @@ import {
   formatDuration,
   downloadFile,
 } from '@/lib/ffmpeg'
+import { Footer } from '@/components/Footer'
 
 import {
   Upload,
@@ -1546,6 +1547,7 @@ export function VideoTools() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

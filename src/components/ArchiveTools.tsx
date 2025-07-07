@@ -32,6 +32,7 @@ import {
   Plus,
   Package,
 } from 'lucide-react'
+import { Footer } from '@/components/Footer'
 
 export function ArchiveTools() {
   const search = useSearch({ from: '/archives' })
@@ -734,6 +735,9 @@ export function ArchiveTools() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

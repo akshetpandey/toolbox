@@ -1,11 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Footer } from '@/components/Footer'
 import {
   Github,
   Zap,
   Shield,
   Globe,
-  Heart,
   Hammer,
   Bug,
   MessageCircle,
@@ -28,7 +28,7 @@ const features = [
     icon: Shield,
     title: 'Built on Open Source',
     description:
-      'Powered by the best OSS projects: FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, and libmagic',
+      'Powered by top open source software: FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, libmagic, Pandoc, and more',
   },
 ]
 
@@ -48,9 +48,9 @@ export function MainContent() {
             </div>
 
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              A powerful web application for transforming your files. Process
-              images, videos, and documents entirely in your browser with
-              professional-grade tools powered by WebAssembly.
+              A powerful web application for transforming your files.
+              <br />
+              Process images, videos, and documents entirely in your browser.
             </p>
 
             <div className="flex items-center justify-center gap-4">
@@ -132,24 +132,7 @@ export function MainContent() {
           </div>
 
           {/* Footer */}
-          <div className="text-center border-t border-border/50 pt-8">
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
-              <span>Made with</span>
-              <Heart className="w-4 h-4 text-red-500 fill-current" />
-              <span>for the open source community</span>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 text-sm">
-              <a
-                href="https://github.com/akshetpandey/toolbox/blob/main/LICENSE"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                MIT License
-              </a>
-            </div>
-          </div>
+          <Footer />
         </div>
       </div>
     </div>

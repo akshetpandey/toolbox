@@ -3,8 +3,8 @@ import { useSearch, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
 import { Badge } from '@/components/ui/badge'
+import { Footer } from '@/components/Footer'
 import {
   DndContext,
   DragOverlay,
@@ -29,7 +29,6 @@ import {
   Download,
   Trash2,
   File,
-  Settings,
   Split,
   Minimize,
   GripVertical,
@@ -111,8 +110,8 @@ function SortableFileItem({
   )
 }
 
-export function DocumentTools() {
-  const search = useSearch({ from: '/documents' })
+export function PDFTools() {
+  const search = useSearch({ from: '/pdfs' })
   const navigate = useNavigate()
   const [selectedFiles, setSelectedFiles] = useState<PDFFile[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
@@ -133,13 +132,13 @@ export function DocumentTools() {
   // Handle tab changes
   const handleTabChange = async (value: string) => {
     await navigate({
-      to: '/documents',
+      to: '/pdfs',
       search: { tab: value },
     })
   }
 
   const handleFileSelect = useCallback((files: FileList) => {
-    console.log('📄 DocumentTools: File selection started', {
+    console.log('📄 PDFTools: File selection started', {
       fileCount: files.length,
     })
 
@@ -147,7 +146,7 @@ export function DocumentTools() {
 
     for (const file of Array.from(files)) {
       if (isPDFFile(file)) {
-        console.log('📄 DocumentTools: Processing PDF file', {
+        console.log('📄 PDFTools: Processing PDF file', {
           name: file.name,
           size: file.size,
           type: file.type,
@@ -156,7 +155,7 @@ export function DocumentTools() {
         const pdfFile = createPDFFile(file)
         pdfFiles.push(pdfFile)
       } else {
-        console.warn('📄 DocumentTools: Invalid file type selected', {
+        console.warn('📄 PDFTools: Invalid file type selected', {
           name: file.name,
           type: file.type,
         })
@@ -165,7 +164,7 @@ export function DocumentTools() {
 
     if (pdfFiles.length > 0) {
       setSelectedFiles((prev) => [...prev, ...pdfFiles])
-      console.log('📄 DocumentTools: File selection completed successfully')
+      console.log('📄 PDFTools: File selection completed successfully')
     } else {
       alert('Please select valid PDF files')
     }
@@ -220,7 +219,7 @@ export function DocumentTools() {
       return
     }
 
-    console.log('📄 DocumentTools: Starting PDF merge operation', {
+    console.log('📄 PDFTools: Starting PDF merge operation', {
       fileCount: selectedFiles.length,
       fileNames: selectedFiles.map((f) => f.name),
     })
@@ -232,20 +231,20 @@ export function DocumentTools() {
         files: selectedFiles,
         onFileProcessed: (fileIndex, fileName, pageCount) => {
           console.log(
-            `📄 DocumentTools: Processed ${fileName} - ${pageCount} pages added (${fileIndex + 1}/${selectedFiles.length})`,
+            `📄 PDFTools: Processed ${fileName} - ${pageCount} pages added (${fileIndex + 1}/${selectedFiles.length})`,
           )
         },
       })
 
       if (result.success && result.blob) {
         downloadBlob(result.blob, 'merged-document.pdf')
-        console.log('📄 DocumentTools: PDF merge completed successfully')
+        console.log('📄 PDFTools: PDF merge completed successfully')
         setIsProcessing(false)
       } else {
         throw new Error(result.error ?? 'Unknown error occurred')
       }
     } catch (error) {
-      console.error('📄 DocumentTools: Error merging PDFs:', error)
+      console.error('📄 PDFTools: Error merging PDFs:', error)
       alert(
         `Error merging PDFs: ${error instanceof Error ? error.message : 'Please try again.'}`,
       )
@@ -274,9 +273,7 @@ export function DocumentTools() {
                   <FileText className="h-4 w-4 text-green-500" />
                 </div>
                 <div>
-                  <h1 className="text-heading text-foreground">
-                    Document Tools
-                  </h1>
+                  <h1 className="text-heading text-foreground">PDF Tools</h1>
                 </div>
               </div>
             </div>
@@ -401,7 +398,7 @@ export function DocumentTools() {
                     onValueChange={(value) => void handleTabChange(value)}
                     className="space-y-4"
                   >
-                    <TabsList className="flat-card border-0 grid w-full grid-cols-4 h-10">
+                    <TabsList className="flat-card border-0 grid w-full grid-cols-3 h-10">
                       <TabsTrigger
                         value="merge"
                         className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
@@ -422,13 +419,6 @@ export function DocumentTools() {
                       >
                         <Minimize className="w-4 h-4 mr-2" />
                         Compress
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="convert"
-                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Convert
                       </TabsTrigger>
                     </TabsList>
 
@@ -543,7 +533,7 @@ export function DocumentTools() {
                             </h3>
                             <p className="text-muted-foreground">
                               Coming soon! This tool will allow you to split PDF
-                              files into separate documents.
+                              files into separate PDFs.
                             </p>
                           </div>
                         </CardContent>
@@ -566,29 +556,15 @@ export function DocumentTools() {
                         </CardContent>
                       </Card>
                     </TabsContent>
-
-                    <TabsContent value="convert">
-                      <Card className="glass-card border-0">
-                        <CardContent className="p-6">
-                          <div className="text-center py-12">
-                            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-foreground mb-2">
-                              Convert Tool
-                            </h3>
-                            <p className="text-muted-foreground">
-                              Coming soon! This tool will allow you to convert
-                              documents to PDF format.
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
                   </Tabs>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <Footer />
       </div>
 
       {/* Drag Overlay */}

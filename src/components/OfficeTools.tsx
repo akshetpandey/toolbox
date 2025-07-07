@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Footer } from '@/components/Footer'
 import {
   Upload,
   FileText,
@@ -10,6 +11,7 @@ import {
   FileSpreadsheet,
   Loader2,
   CheckCircle,
+  Building,
 } from 'lucide-react'
 import {
   convertOfficeToPDF,
@@ -132,16 +134,12 @@ export function OfficeTools() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 rounded-lg flex items-center justify-center">
-                <FileText className="h-4 w-4 text-indigo-500" />
+                <Building className="h-4 w-4 text-indigo-500" />
               </div>
               <div>
                 <h1 className="text-heading text-foreground">
                   Office Documents
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  Convert Word, PowerPoint, and Excel files to PDF via print
-                  dialog
-                </p>
               </div>
             </div>
           </div>
@@ -332,6 +330,8 @@ export function OfficeTools() {
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   )
 }

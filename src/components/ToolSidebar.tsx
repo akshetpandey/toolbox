@@ -1,13 +1,11 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useRef, useEffect } from 'react'
 import {
   Image,
   Video,
-  Zap,
-  Shield,
-  Home,
   FileText,
   Hammer,
   Construction,
@@ -45,10 +43,10 @@ const toolCategories = [
     bgColor: 'bg-purple-500/10',
   },
   {
-    name: 'Documents',
+    name: 'PDF Tools',
     icon: FileText,
-    route: '/documents',
-    tools: ['PDF Merge', 'PDF Split', 'Compress PDF', 'Convert to PDF'],
+    route: '/pdfs',
+    tools: ['Merge', 'Split', 'Compress'],
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
   },
@@ -79,16 +77,39 @@ const toolCategories = [
 ]
 
 export function ToolSidebar() {
+  const location = useLocation()
+  const activeToolRef = useRef<HTMLDivElement>(null)
+
+  // Function to determine if a tool is currently active
+  const isToolActive = (categoryRoute: string, toolTab?: string) => {
+    if (location.pathname !== categoryRoute) return false
+    if (!toolTab) return !location.search?.tab
+    return location.search?.tab === toolTab
+  }
+
+  // Scroll to active tool when location changes
+  useEffect(() => {
+    if (activeToolRef.current) {
+      activeToolRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }
+  }, [location.pathname, location.search])
+
   return (
     <div className="w-80 glass border-r border-border/50 h-screen flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border/50 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
+        <Link
+          to="/"
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center">
             <Hammer className="w-4 h-4 text-primary-foreground" />
           </div>
           <h2 className="text-heading text-foreground">Toolbox</h2>
-        </div>
+        </Link>
         <ThemeToggle />
       </div>
 
@@ -96,22 +117,6 @@ export function ToolSidebar() {
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-6 space-y-6">
-            {/* Home section */}
-            <div className="mb-6">
-              <Link to="/">
-                <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors group">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Home className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                      Home
-                    </h3>
-                  </div>
-                </div>
-              </Link>
-            </div>
-
             {/* Tool categories */}
             <div className="space-y-2">
               {toolCategories.map((category) => (
@@ -119,7 +124,14 @@ export function ToolSidebar() {
                   {/* Category header */}
                   {category.route ? (
                     <Link to={category.route} className="w-full">
-                      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer">
+                      <div
+                        className={`flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer ${
+                          location.pathname === category.route &&
+                          !location.search?.tab
+                            ? 'bg-accent/70 border border-primary/20'
+                            : ''
+                        }`}
+                      >
                         <div
                           className={`w-10 h-10 ${category.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}
                         >
@@ -164,20 +176,29 @@ export function ToolSidebar() {
                         }
                         const tab = toolMap[tool]
                         if (tab) {
+                          const isActive = isToolActive(category.route, tab)
                           return (
-                            <Link
+                            <div
                               key={tool}
-                              to={category.route}
-                              search={{ tab }}
-                              className="w-full"
+                              ref={isActive ? activeToolRef : null}
                             >
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                              <Link
+                                to={category.route}
+                                search={{ tab }}
+                                className="w-full"
                               >
-                                {tool}
-                              </Button>
-                            </Link>
+                                <Button
+                                  variant="ghost"
+                                  className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
+                                    isActive
+                                      ? 'bg-primary/10 text-primary border border-primary/20'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                  }`}
+                                >
+                                  {tool}
+                                </Button>
+                              </Link>
+                            </div>
                           )
                         }
                       }
@@ -193,44 +214,53 @@ export function ToolSidebar() {
                         }
                         const tab = toolMap[tool]
                         if (tab) {
+                          const isActive = isToolActive(category.route, tab)
                           return (
-                            <Link
+                            <div
                               key={tool}
-                              to={category.route}
-                              search={{ tab }}
-                              className="w-full"
+                              ref={isActive ? activeToolRef : null}
                             >
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                              <Link
+                                to={category.route}
+                                search={{ tab }}
+                                className="w-full"
                               >
-                                {tool}
-                              </Button>
-                            </Link>
+                                <Button
+                                  variant="ghost"
+                                  className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
+                                    isActive
+                                      ? 'bg-primary/10 text-primary border border-primary/20'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                  }`}
+                                >
+                                  {tool}
+                                </Button>
+                              </Link>
+                            </div>
                           )
                         }
                       }
 
-                      // Create tool-specific links for document tools
-                      if (category.name === 'Documents' && category.route) {
+                      // Create tool-specific links for PDF tools
+                      if (category.name === 'PDF Tools' && category.route) {
                         const toolMap: Record<string, string> = {
-                          'PDF Merge': 'merge',
-                          'PDF Split': 'split',
-                          'Convert to PDF': 'convert',
-                          'Compress PDF': 'compress',
+                          Merge: 'merge',
+                          Split: 'split',
+                          Compress: 'compress',
                         }
                         const tab = toolMap[tool]
-                        const underConstructionTools = [
-                          'PDF Split',
-                          'Compress PDF',
-                          'Convert to PDF',
-                        ]
+                        const underConstructionTools = ['Split', 'Compress']
                         const isUnderConstruction =
                           underConstructionTools.includes(tool)
 
                         if (tab) {
+                          const isActive = isToolActive(category.route, tab)
                           return (
-                            <div key={tool} className="w-full">
+                            <div
+                              key={tool}
+                              className="w-full"
+                              ref={isActive ? activeToolRef : null}
+                            >
                               {isUnderConstruction ? (
                                 <Button
                                   variant="ghost"
@@ -248,7 +278,11 @@ export function ToolSidebar() {
                                 >
                                   <Button
                                     variant="ghost"
-                                    className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                                    className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
+                                      isActive
+                                        ? 'bg-primary/10 text-primary border border-primary/20'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                    }`}
                                   >
                                     {tool}
                                   </Button>
@@ -267,20 +301,29 @@ export function ToolSidebar() {
                         }
                         const tab = toolMap[tool]
                         if (tab) {
+                          const isActive = isToolActive(category.route, tab)
                           return (
-                            <Link
+                            <div
                               key={tool}
-                              to={category.route}
-                              search={{ tab }}
-                              className="w-full"
+                              ref={isActive ? activeToolRef : null}
                             >
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                              <Link
+                                to={category.route}
+                                search={{ tab }}
+                                className="w-full"
                               >
-                                {tool}
-                              </Button>
-                            </Link>
+                                <Button
+                                  variant="ghost"
+                                  className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
+                                    isActive
+                                      ? 'bg-primary/10 text-primary border border-primary/20'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                  }`}
+                                >
+                                  {tool}
+                                </Button>
+                              </Link>
+                            </div>
                           )
                         }
                       }
@@ -293,20 +336,29 @@ export function ToolSidebar() {
                         }
                         const tab = toolMap[tool]
                         if (tab) {
+                          const isActive = isToolActive(category.route, tab)
                           return (
-                            <Link
+                            <div
                               key={tool}
-                              to={category.route}
-                              search={{ tab }}
-                              className="w-full"
+                              ref={isActive ? activeToolRef : null}
                             >
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
+                              <Link
+                                to={category.route}
+                                search={{ tab }}
+                                className="w-full"
                               >
-                                {tool}
-                              </Button>
-                            </Link>
+                                <Button
+                                  variant="ghost"
+                                  className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
+                                    isActive
+                                      ? 'bg-primary/10 text-primary border border-primary/20'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                  }`}
+                                >
+                                  {tool}
+                                </Button>
+                              </Link>
+                            </div>
                           )
                         }
                       }
@@ -316,19 +368,22 @@ export function ToolSidebar() {
                         category.name === 'Office Documents' &&
                         category.route
                       ) {
+                        const isActive = isToolActive(category.route)
                         return (
-                          <Link
-                            key={tool}
-                            to={category.route}
-                            className="w-full"
-                          >
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200"
-                            >
-                              {tool}
-                            </Button>
-                          </Link>
+                          <div key={tool} ref={isActive ? activeToolRef : null}>
+                            <Link to={category.route} className="w-full">
+                              <Button
+                                variant="ghost"
+                                className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
+                                  isActive
+                                    ? 'bg-primary/10 text-primary border border-primary/20'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                }`}
+                              >
+                                {tool}
+                              </Button>
+                            </Link>
+                          </div>
                         )
                       }
 
@@ -345,18 +400,6 @@ export function ToolSidebar() {
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* Footer */}
-            <div className="pt-4 border-t border-border/50">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Zap className="w-3 h-3" />
-                <span>Powered by WebAssembly</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                <Shield className="w-3 h-3" />
-                <span>100% Client-side</span>
-              </div>
             </div>
           </div>
         </ScrollArea>
