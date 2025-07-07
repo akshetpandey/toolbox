@@ -1,4 +1,4 @@
-import { pandoc } from 'wasm-pandoc'
+import { pandoc } from './pandoc-cdn'
 
 interface PandocResult {
   out: Blob | string

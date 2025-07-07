@@ -11,6 +11,9 @@ importers:
       7z-wasm:
         specifier: ^1.2.0
         version: 1.2.0
+      '@bjorn3/browser_wasi_shim':
+        specifier: ^0.4.2
+        version: 0.4.2
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
