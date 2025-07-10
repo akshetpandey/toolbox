@@ -39,7 +39,7 @@ export function MainContent() {
       <div className="flex-1 overflow-auto">
         <div className="container mx-auto px-8 py-12">
           {/* Hero Section */}
-          <div className="text-center max-w-4xl mx-auto mb-16 animate-fade-in">
+          <div className="text-center max-w-4xl mx-auto mb-16">
             <div className="flex items-center justify-center gap-2 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center">
                 <Hammer className="w-6 h-6 text-primary" />

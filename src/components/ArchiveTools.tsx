@@ -372,7 +372,7 @@ export function ArchiveTools() {
                           </div>
 
                           <div className="flex-1 overflow-auto">
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               {selectedFiles.map((file, index) => (
                                 <div
                                   key={index}
@@ -461,7 +461,7 @@ export function ArchiveTools() {
                               </Button>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
                                 <FileArchive className="h-8 w-8 text-primary" />
                                 <div className="flex-1 min-w-0">
@@ -519,7 +519,7 @@ export function ArchiveTools() {
                 <Tabs
                   value={activeTab}
                   onValueChange={(value: string) => void handleTabChange(value)}
-                  className="space-y-4"
+                  className="flex flex-col gap-4"
                 >
                   <TabsList className="flat-card border-0 grid w-full grid-cols-2 h-10">
                     <TabsTrigger
@@ -539,10 +539,10 @@ export function ArchiveTools() {
                   </TabsList>
 
                   {/* Compress Tab */}
-                  <TabsContent value="compress" className="space-y-4">
+                  <TabsContent value="compress" className="flex flex-col gap-4">
                     <Card className="glass-card border-0">
                       <CardContent className="p-6">
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-4">
                           <div className="flex items-center gap-4">
                             <div className="flex-1">
                               <Label htmlFor="archive-name">Archive Name</Label>
@@ -608,10 +608,13 @@ export function ArchiveTools() {
                   </TabsContent>
 
                   {/* Decompress Tab */}
-                  <TabsContent value="decompress" className="space-y-4">
+                  <TabsContent
+                    value="decompress"
+                    className="flex flex-col gap-4"
+                  >
                     <Card className="glass-card border-0">
                       <CardContent className="p-6">
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-4">
                           {/* Extract Button */}
                           <div className="flex justify-center">
                             <Button
@@ -658,7 +661,7 @@ export function ArchiveTools() {
                     {extractedFiles.length > 0 && (
                       <Card className="glass-card border-0">
                         <CardContent className="p-6">
-                          <div className="space-y-4">
+                          <div className="flex flex-col gap-4">
                             <div className="flex items-center justify-between">
                               <h3 className="text-lg font-semibold text-foreground">
                                 Extracted Files (
@@ -685,7 +688,7 @@ export function ArchiveTools() {
                             </div>
 
                             <div className="max-h-96 overflow-auto border rounded-lg">
-                              <div className="space-y-1 p-2">
+                              <div className="flex flex-col gap-1 p-2">
                                 {extractedFiles.map((file, index) => (
                                   <div
                                     key={index}

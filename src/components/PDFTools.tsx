@@ -351,7 +351,7 @@ export function PDFTools() {
                           </div>
                         )}
 
-                        <div className="space-y-2 flex-1 overflow-auto">
+                        <div className="flex flex-col gap-2 flex-1 overflow-auto">
                           <SortableContext
                             items={selectedFiles}
                             strategy={verticalListSortingStrategy}
@@ -396,7 +396,7 @@ export function PDFTools() {
                   <Tabs
                     value={activeTab}
                     onValueChange={(value) => void handleTabChange(value)}
-                    className="space-y-4"
+                    className="flex flex-col gap-4"
                   >
                     <TabsList className="flat-card border-0 grid w-full grid-cols-3 h-10">
                       <TabsTrigger
@@ -426,7 +426,7 @@ export function PDFTools() {
                       <Card className="glass-card border-0">
                         <CardContent className="p-6">
                           {selectedFiles.length >= 2 ? (
-                            <div className="space-y-4">
+                            <div className="flex flex-col gap-4">
                               <div className="flex items-center gap-3">
                                 <Merge className="h-5 w-5 text-muted-foreground" />
                                 <div>
@@ -448,7 +448,7 @@ export function PDFTools() {
                                     Merge Order
                                   </span>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2">
                                   {selectedFiles.map((file, index) => (
                                     <div
                                       key={`preview-${index}`}
@@ -492,7 +492,7 @@ export function PDFTools() {
                               <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                                 <div className="flex items-start gap-3">
                                   <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-                                  <div className="space-y-2">
+                                  <div className="flex flex-col gap-2">
                                     <h4 className="font-semibold text-foreground">
                                       About PDF Merge
                                     </h4>

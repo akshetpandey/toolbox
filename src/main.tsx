@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/react'
+// import * as Sentry from '@sentry/react'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
@@ -24,14 +24,15 @@ declare module '@tanstack/react-router' {
   }
 }
 
-Sentry.init({
-  dsn: 'https://38d29462f035766236e6351eab93e25d@o4509596293726208.ingest.us.sentry.io/4509596298575872',
-  integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
-  // Setting a sample rate is required for sending performance data.
-  // We recommend adjusting this value in production, or using tracesSampler
-  // for finer control.
-  tracesSampleRate: 1.0,
-})
+// Sentry.init({
+//   dsn: 'https://38d29462f035766236e6351eab93e25d@o4509596293726208.ingest.us.sentry.io/4509596298575872',
+//   sendDefaultPii: false,
+//   integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+//   // Setting a sample rate is required for sending performance data.
+//   // We recommend adjusting this value in production, or using tracesSampler
+//   // for finer control.
+//   tracesSampleRate: 1.0,
+// })
 
 // Render the app
 const rootElement = document.getElementById('root')!

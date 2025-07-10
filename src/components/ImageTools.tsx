@@ -517,9 +517,9 @@ export function ImageTools() {
                         </Button>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         {selectedFiles.map((file) => (
-                          <div key={file.name} className="space-y-2">
+                          <div key={file.name} className="flex flex-col gap-2">
                             <div className="relative">
                               <img
                                 src={file.preview}
@@ -535,7 +535,7 @@ export function ImageTools() {
                                 }}
                               />
                             </div>
-                            <div className="space-y-1">
+                            <div className="flex flex-col gap-1">
                               <p className="font-medium text-foreground truncate text-sm">
                                 {file.name}
                               </p>
@@ -580,7 +580,7 @@ export function ImageTools() {
                 <Tabs
                   value={activeTab}
                   onValueChange={(value) => void handleTabChange(value)}
-                  className="space-y-4"
+                  className="flex flex-col gap-4"
                 >
                   <TabsList className="flat-card border-0 grid w-full grid-cols-4 h-10">
                     <TabsTrigger
@@ -614,7 +614,7 @@ export function ImageTools() {
                   </TabsList>
 
                   <TabsContent value="metadata">
-                    <div className="space-y-4">
+                    <div className="flex flex-col gap-4">
                       {/* ImageMagick Metadata Section */}
                       <Card className="glass-card border-0">
                         <CardContent className="p-6">
@@ -713,7 +713,7 @@ export function ImageTools() {
                               </div>
                             </div>
                           ) : selectedFiles.length > 0 && exifMetadata ? (
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               {Object.keys(exifMetadata).length > 0 ? (
                                 <div className="grid grid-cols-1 gap-2 text-sm bg-muted/50 p-4 rounded-lg max-h-64 overflow-y-auto">
                                   {Object.entries(exifMetadata)
@@ -765,9 +765,9 @@ export function ImageTools() {
 
                   <TabsContent value="resize">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
+                      <CardContent className="p-6 flex flex-col gap-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <Label
                               htmlFor="width"
                               className="text-sm font-medium"
@@ -785,7 +785,7 @@ export function ImageTools() {
                               className="border-border/50"
                             />
                           </div>
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <Label
                               htmlFor="height"
                               className="text-sm font-medium"
@@ -822,7 +822,7 @@ export function ImageTools() {
                         </div>
 
                         {progress > 0 && (
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
                               <span>{progress}%</span>
@@ -854,12 +854,12 @@ export function ImageTools() {
 
                   <TabsContent value="convert">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
-                        <div className="space-y-3">
+                      <CardContent className="p-6 flex flex-col gap-4">
+                        <div className="flex flex-col gap-3">
                           <Label className="text-sm font-medium">
                             Target Format
                           </Label>
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex items-center space-x-2">
                               <input
                                 type="radio"
@@ -921,7 +921,7 @@ export function ImageTools() {
                         </div>
 
                         {progress > 0 && (
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Converting...</span>
                               <span>{progress}%</span>
@@ -950,8 +950,8 @@ export function ImageTools() {
 
                   <TabsContent value="compress">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
-                        <div className="space-y-3">
+                      <CardContent className="p-6 flex flex-col gap-4">
+                        <div className="flex flex-col gap-3">
                           <Label
                             htmlFor="quality"
                             className="text-sm font-medium"
@@ -976,7 +976,7 @@ export function ImageTools() {
                         </div>
 
                         {progress > 0 && (
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Compressing...</span>
                               <span>{progress}%</span>

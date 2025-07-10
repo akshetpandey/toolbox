@@ -622,9 +622,9 @@ export function VideoTools() {
                         </Button>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         {selectedFiles.map((file) => (
-                          <div key={file.name} className="space-y-2">
+                          <div key={file.name} className="flex flex-col gap-2">
                             <div className="relative">
                               <video
                                 src={file.preview}
@@ -640,7 +640,7 @@ export function VideoTools() {
                                 controls
                               />
                             </div>
-                            <div className="space-y-1">
+                            <div className="flex flex-col gap-1">
                               <p className="font-medium text-foreground truncate text-sm">
                                 {file.name}
                               </p>
@@ -690,7 +690,7 @@ export function VideoTools() {
                 <Tabs
                   value={activeTab}
                   onValueChange={(value) => void handleTabChange(value)}
-                  className="space-y-4"
+                  className="flex flex-col gap-4"
                 >
                   <TabsList className="flat-card border-0 grid w-full grid-cols-5 h-10">
                     <TabsTrigger
@@ -735,14 +735,14 @@ export function VideoTools() {
                       <CardContent className="p-6">
                         {selectedFiles.length > 0 &&
                         metadata[selectedFiles[0].name] ? (
-                          <div className="space-y-6">
+                          <div className="flex flex-col gap-6">
                             {/* Format Information */}
                             <div>
                               <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                                 <Info className="h-5 w-5 text-blue-500" />
                                 Format Information
                               </h3>
-                              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                              <div className="bg-muted/50 p-4 rounded-lg flex flex-col gap-2">
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                   <div className="flex justify-between">
                                     <span className="text-muted-foreground">
@@ -817,7 +817,7 @@ export function VideoTools() {
                                   }
                                   )
                                 </h3>
-                                <div className="space-y-3">
+                                <div className="flex flex-col gap-3">
                                   {metadata[
                                     selectedFiles[0].name
                                   ].video_streams.map((stream) => (
@@ -935,7 +935,7 @@ export function VideoTools() {
                                   }
                                   )
                                 </h3>
-                                <div className="space-y-3">
+                                <div className="flex flex-col gap-3">
                                   {metadata[
                                     selectedFiles[0].name
                                   ].audio_streams.map((stream) => (
@@ -1046,7 +1046,7 @@ export function VideoTools() {
                                   }
                                   )
                                 </h3>
-                                <div className="space-y-3">
+                                <div className="flex flex-col gap-3">
                                   {metadata[
                                     selectedFiles[0].name
                                   ].subtitle_streams.map((stream) => (
@@ -1135,10 +1135,10 @@ export function VideoTools() {
 
                   <TabsContent value="convert">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
-                        <div className="space-y-4">
+                      <CardContent className="p-6 flex flex-col gap-4">
+                        <div className="flex flex-col gap-4">
                           <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               <Label
                                 htmlFor="format"
                                 className="text-sm font-medium"
@@ -1160,7 +1160,7 @@ export function VideoTools() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               <Label
                                 htmlFor="videoCodec"
                                 className="text-sm font-medium"
@@ -1183,7 +1183,7 @@ export function VideoTools() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               <Label
                                 htmlFor="audioCodec"
                                 className="text-sm font-medium"
@@ -1204,7 +1204,7 @@ export function VideoTools() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               <Label
                                 htmlFor="preset"
                                 className="text-sm font-medium"
@@ -1256,7 +1256,7 @@ export function VideoTools() {
                         </div>
 
                         {progress > 0 && (
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
                               <span>{progress.toFixed(1)}%</span>
@@ -1299,9 +1299,9 @@ export function VideoTools() {
 
                   <TabsContent value="compress">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
+                      <CardContent className="p-6 flex flex-col gap-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <Label
                               htmlFor="crf"
                               className="text-sm font-medium"
@@ -1321,7 +1321,7 @@ export function VideoTools() {
                               Lower = higher quality, larger file
                             </p>
                           </div>
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <Label
                               htmlFor="preset"
                               className="text-sm font-medium"
@@ -1356,7 +1356,7 @@ export function VideoTools() {
                         </div>
 
                         {progress > 0 && (
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
                               <span>{progress.toFixed(1)}%</span>
@@ -1399,9 +1399,9 @@ export function VideoTools() {
 
                   <TabsContent value="trim">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
+                      <CardContent className="p-6 flex flex-col gap-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <Label
                               htmlFor="startTime"
                               className="text-sm font-medium"
@@ -1416,7 +1416,7 @@ export function VideoTools() {
                               className="border-border/50"
                             />
                           </div>
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <Label
                               htmlFor="endTime"
                               className="text-sm font-medium"
@@ -1434,7 +1434,7 @@ export function VideoTools() {
                         </div>
 
                         {progress > 0 && (
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
                               <span>{progress.toFixed(1)}%</span>
@@ -1477,8 +1477,8 @@ export function VideoTools() {
 
                   <TabsContent value="audio">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
-                        <div className="space-y-2">
+                      <CardContent className="p-6 flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
                           <Label
                             htmlFor="audioFormat"
                             className="text-sm font-medium"
@@ -1501,7 +1501,7 @@ export function VideoTools() {
                         </div>
 
                         {progress > 0 && (
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
                               <span>{progress.toFixed(1)}%</span>

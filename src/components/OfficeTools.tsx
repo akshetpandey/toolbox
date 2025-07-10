@@ -193,7 +193,7 @@ export function OfficeTools() {
                     </div>
                   ) : (
                     // Display uploaded file
-                    <div className="space-y-4">
+                    <div className="flex flex-col gap-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
@@ -262,7 +262,7 @@ export function OfficeTools() {
               <div className="animate-fade-in">
                 <Card className="glass-card border-0">
                   <CardContent className="p-6">
-                    <div className="space-y-6">
+                    <div className="flex flex-col gap-6">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-5 h-5 text-green-500" />
                         <h3 className="font-semibold text-foreground">
@@ -302,7 +302,7 @@ export function OfficeTools() {
 
                       {/* Conversion Status */}
                       {(isConverting || conversionStatus) && (
-                        <div className="space-y-3">
+                        <div className="flex flex-col gap-3">
                           <div className="flex items-center gap-2">
                             {isConverting && (
                               <Loader2 className="w-4 h-4 animate-spin" />

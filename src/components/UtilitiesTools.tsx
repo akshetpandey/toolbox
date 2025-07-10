@@ -299,8 +299,8 @@ export function UtilitiesTools() {
                         </Button>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="space-y-1">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1">
                           <p className="font-medium text-foreground truncate text-sm">
                             {selectedFile.name}
                           </p>
@@ -338,7 +338,7 @@ export function UtilitiesTools() {
                 <Tabs
                   value={activeTab}
                   onValueChange={(value) => void handleTabChange(value)}
-                  className="space-y-4"
+                  className="flex flex-col gap-4"
                 >
                   <TabsList className="flat-card border-0 grid w-full grid-cols-2 h-10">
                     <TabsTrigger
@@ -359,7 +359,7 @@ export function UtilitiesTools() {
 
                   <TabsContent value="hash">
                     <Card className="glass-card border-0">
-                      <CardContent className="p-6 space-y-4">
+                      <CardContent className="p-6 flex flex-col gap-4">
                         <div className="flex items-center gap-2 mb-4">
                           <Shield className="h-4 w-4 text-primary" />
                           <h3 className="font-medium text-foreground">
@@ -368,9 +368,9 @@ export function UtilitiesTools() {
                         </div>
 
                         {selectedFile && (
-                          <div className="space-y-4">
+                          <div className="flex flex-col gap-4">
                             {/* Expected Hash Input */}
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                               <Label
                                 htmlFor="expected-hash"
                                 className="text-sm font-medium"
@@ -414,7 +414,7 @@ export function UtilitiesTools() {
 
                             {/* Hash Progress */}
                             {hashProgress > 0 && hashProgress < 100 && (
-                              <div className="space-y-2">
+                              <div className="flex flex-col gap-2">
                                 <div className="flex justify-between text-sm">
                                   <span>Generating hashes...</span>
                                   <span>{hashProgress}%</span>
@@ -428,7 +428,7 @@ export function UtilitiesTools() {
 
                             {/* Hash Results */}
                             {fileHashes && (
-                              <div className="space-y-3">
+                              <div className="flex flex-col gap-3">
                                 <div className="grid grid-cols-1 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
                                   <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground font-medium">
@@ -486,7 +486,7 @@ export function UtilitiesTools() {
                   </TabsContent>
 
                   <TabsContent value="metadata">
-                    <div className="space-y-4">
+                    <div className="flex flex-col gap-4">
                       {/* File Metadata Section */}
                       <Card className="glass-card border-0">
                         <CardContent className="p-6">
@@ -498,7 +498,7 @@ export function UtilitiesTools() {
                           </div>
 
                           {selectedFile && (
-                            <div className="space-y-4">
+                            <div className="flex flex-col gap-4">
                               {/* Loading state */}
                               {isProcessing && !fileMetadata && (
                                 <div className="flex items-center justify-center h-32">
