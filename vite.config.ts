@@ -7,10 +7,43 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig({
   build: {
+    target: ['chrome130', 'safari18', 'firefox102'],
     sourcemap: true, // Source map generation must be turned on
+    rollupOptions: {
+      output: {
+        manualChunks: function (id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('7z-wasm')) {
+              return '7z'
+            } else if (id.includes('@imagemagick')) {
+              return 'imagemagick'
+            } else if (id.includes('pdf-lib')) {
+              return 'pdf-lib'
+            } else if (id.includes('exiftool')) {
+              return 'exiftool'
+            } else if (id.includes('wasm-pandoc')) {
+              return 'wasm-pandoc'
+            } else if (id.includes('wasmagic')) {
+              return 'wasmagic'
+            } else if (id.includes('hash-wasm')) {
+              return 'hash-wasm'
+            } else if (id.includes('@bjorn3')) {
+              return 'wasi-shim'
+            } else if (id.includes('ffmpeg')) {
+              return 'ffmpeg'
+            } else if (id.includes('@dnd-kit')) {
+              return 'dnd-kit'
+            }
+            return 'vendor'
+          } else {
+            return 'app'
+          }
+        },
+      },
+    },
   },
   optimizeDeps: {
-    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util', '7z-wasm'],
+    exclude: ['@ffmpeg/core-mt', '@ffmpeg/ffmpeg', '@ffmpeg/util', '7z-wasm'],
   },
   plugins: [
     // this is the plugin that enables path aliases

@@ -7,13 +7,15 @@
     "vite.config.js"
   ],
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ESNext",
     "jsx": "react-jsx",
     "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
 
     /* Bundler mode */
+    "alwaysStrict": true,
+    "isolatedModules": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
