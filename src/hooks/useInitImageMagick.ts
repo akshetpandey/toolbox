@@ -59,8 +59,9 @@ export function useInitImageMagick(): UseInitImageMagickReturn {
     setState((prev) => ({ ...prev, isInitializing: true, error: null }))
 
     const { initializeImageMagick } = await import('@imagemagick/magick-wasm')
-    const wasmLocation = await import(
-      '@imagemagick/magick-wasm/magick.wasm?url'
+    const wasmLocation = new URL(
+      '@imagemagick/magick-wasm/magick.wasm',
+      import.meta.url,
     )
     initializationPromise = initializeImageMagick(wasmLocation)
 
