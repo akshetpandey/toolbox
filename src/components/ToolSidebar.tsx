@@ -147,17 +147,16 @@ export function ToolSidebar() {
               {toolCategories.map((category) => (
                 <div key={category.name} className="flex flex-col">
                   {/* Category header */}
-                  <Link to={category.route} className="w-full">
+                  <Link 
+                    to={category.route} 
+                    search={{ tab: Object.values(category.toolMap)[0] }}
+                    className="w-full"
+                  >
                     <div
                       className={`flex items-center gap-3 p-3 rounded-lg transition-colors group cursor-pointer ${
                         isProcessing
                           ? 'opacity-50 cursor-not-allowed'
                           : 'hover:bg-accent/50'
-                      } ${
-                        location.pathname === category.route &&
-                        !location.search?.tab
-                          ? 'bg-accent/70 border border-primary/20'
-                          : ''
                       }`}
                       onClick={(e) => {
                         if (isProcessing) {
