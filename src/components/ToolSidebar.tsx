@@ -35,6 +35,7 @@ const toolCategories: ToolCategory[] = [
       'Resize Image': 'resize',
       'Convert Format': 'convert',
       'Compress Image': 'compress',
+      'Redact Image': 'redact',
     },
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
@@ -147,8 +148,8 @@ export function ToolSidebar() {
               {toolCategories.map((category) => (
                 <div key={category.name} className="flex flex-col">
                   {/* Category header */}
-                  <Link 
-                    to={category.route} 
+                  <Link
+                    to={category.route}
                     search={{ tab: Object.values(category.toolMap)[0] }}
                     className="w-full"
                   >

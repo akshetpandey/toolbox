@@ -23,7 +23,6 @@ import {
 } from '@/lib/imagemagick'
 import { extractExifMetadata, type ExifMetadata } from '@/lib/metadata'
 import { useProcessing } from '@/contexts/ProcessingContext'
-
 import {
   Upload,
   Image as ImageIcon,
@@ -33,7 +32,9 @@ import {
   Loader2,
   Settings,
   Zap,
+  Eye,
 } from 'lucide-react'
+import { RedactionTool } from '@/components/RedactionTool'
 
 export function ImageTools() {
   const { isInitialized, isInitializing, error, init } = useInitImageMagick()
@@ -587,7 +588,7 @@ export function ImageTools() {
                   onValueChange={(value) => void handleTabChange(value)}
                   className="flex flex-col gap-4"
                 >
-                  <TabsList className="flat-card border-0 grid w-full grid-cols-4 h-10">
+                  <TabsList className="flat-card border-0 grid w-full grid-cols-5 h-10">
                     <TabsTrigger
                       value="metadata"
                       disabled={isProcessing}
@@ -619,6 +620,14 @@ export function ImageTools() {
                     >
                       <Zap className="w-4 h-4 mr-2" />
                       Compress
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="redact"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Redact
                     </TabsTrigger>
                   </TabsList>
 
@@ -1010,6 +1019,10 @@ export function ImageTools() {
                         </div>
                       </CardContent>
                     </Card>
+                  </TabsContent>
+
+                  <TabsContent value="redact">
+                    <RedactionTool selectedFile={selectedFiles[0] || null} />
                   </TabsContent>
                 </Tabs>
               </div>
