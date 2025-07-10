@@ -26,7 +26,6 @@ import {
   type AudioExtractOptions,
 } from '@/lib/ffmpeg'
 import { formatFileSize, formatDuration, downloadFile } from '@/lib/shared'
-import { Footer } from '@/components/Footer'
 import { useProcessing } from '@/contexts/ProcessingContext'
 
 import {
@@ -41,6 +40,10 @@ import {
   Volume2,
   AlertTriangle,
   X,
+  Monitor,
+  Globe,
+  Play,
+  Archive,
 } from 'lucide-react'
 
 // Helper function to format time in seconds to human-readable format
@@ -56,6 +59,214 @@ const formatTime = (seconds: number): string => {
   } else {
     return `${secs}s`
   }
+}
+
+// Format and codec compatibility definitions
+const formatOptions = [
+  {
+    value: 'mp4',
+    icon: Play,
+    label: 'MP4',
+    description: 'Universal compatibility',
+  },
+  { value: 'webm', icon: Globe, label: 'WebM', description: 'Web optimized' },
+  {
+    value: 'mkv',
+    icon: Archive,
+    label: 'MKV',
+    description: 'Flexible container',
+  },
+  { value: 'avi', icon: Monitor, label: 'AVI', description: 'Legacy format' },
+  // { value: 'mov', icon: Smartphone, label: 'MOV', description: 'Apple QuickTime' },
+] as const
+
+const videoCodecOptions = [
+  { value: 'libx264', label: 'H.264', description: 'Best compatibility' },
+  { value: 'libx265', label: 'H.265', description: 'Higher compression' },
+  { value: 'libvpx-vp9', label: 'VP9', description: 'Web standard' },
+] as const
+
+const audioCodecOptions = [
+  { value: 'aac', label: 'AAC', description: 'High quality' },
+  { value: 'mp3', label: 'MP3', description: 'Universal' },
+  { value: 'libopus', label: 'Opus', description: 'Low latency' },
+] as const
+
+// Compatibility matrix
+const compatibilityMatrix: Record<
+  string,
+  { video: string[]; audio: string[] }
+> = {
+  mp4: {
+    video: ['libx264', 'libx265'],
+    audio: ['aac', 'mp3'],
+  },
+  webm: {
+    video: ['libvpx-vp9'],
+    audio: ['libopus'],
+  },
+  mkv: {
+    video: ['libx264', 'libx265', 'libvpx-vp9'],
+    audio: ['aac', 'mp3', 'libopus'],
+  },
+  avi: {
+    video: ['libx264', 'libx265'],
+    audio: ['aac', 'mp3'],
+  },
+  mov: {
+    video: ['libx264', 'libx265'],
+    audio: ['aac', 'mp3'],
+  },
+}
+
+// Radio Group Components
+interface RadioGroupProps<T extends string> {
+  options: readonly {
+    value: T
+    icon?: React.ComponentType<{ className?: string }>
+    label: string
+    description: string
+  }[]
+  value: T
+  onChange: (value: T) => void
+  disabled?: boolean
+  disabledOptions?: T[]
+}
+
+function FormatRadioGroup<T extends string>({
+  options,
+  value,
+  onChange,
+  disabled = false,
+  disabledOptions = [],
+}: RadioGroupProps<T>) {
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((option) => {
+          const Icon = option.icon
+          const isActive = value === option.value
+          const isDisabled = disabled || disabledOptions.includes(option.value)
+
+          return (
+            <button
+              key={option.value}
+              onClick={() => !isDisabled && onChange(option.value)}
+              disabled={isDisabled}
+              className={`
+                relative p-3 rounded-lg border-2 transition-all duration-200 text-left
+                ${
+                  isActive
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                    : 'border-border/50 hover:border-border'
+                }
+                ${
+                  isDisabled
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:bg-muted/30'
+                }
+              `}
+            >
+              <div className="flex items-center gap-3">
+                {Icon && (
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div
+                    className={`font-medium text-sm ${isActive ? 'text-primary' : 'text-foreground'}`}
+                  >
+                    {option.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {option.description}
+                  </div>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CodecRadioGroup<T extends string>({
+  options,
+  value,
+  onChange,
+  disabled = false,
+  disabledOptions = [],
+}: RadioGroupProps<T>) {
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2">
+        {options.map((option) => {
+          const isActive = value === option.value
+          const isDisabled = disabled || disabledOptions.includes(option.value)
+
+          return (
+            <button
+              key={option.value}
+              onClick={() => !isDisabled && onChange(option.value)}
+              disabled={isDisabled}
+              className={`
+                relative p-3 rounded-lg border-2 transition-all duration-200 text-left
+                ${
+                  isActive
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                    : 'border-border/50 hover:border-border'
+                }
+                ${
+                  isDisabled
+                    ? 'opacity-50 cursor-not-allowed bg-muted/20'
+                    : 'cursor-pointer hover:bg-muted/30'
+                }
+              `}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div
+                    className={`font-medium text-sm ${isActive && !isDisabled ? 'text-primary' : isDisabled ? 'text-muted-foreground' : 'text-foreground'}`}
+                  >
+                    {option.label}
+                    {isDisabled && (
+                      <span className="ml-2 text-xs">(Not supported)</span>
+                    )}
+                  </div>
+                  <div
+                    className={`text-xs ${isDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
+                  >
+                    {option.description}
+                  </div>
+                </div>
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    isActive && !isDisabled
+                      ? 'border-primary bg-primary'
+                      : isDisabled
+                        ? 'border-muted-foreground/30 bg-muted/30'
+                        : 'border-border/50'
+                  }`}
+                >
+                  {isActive && !isDisabled && (
+                    <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                  )}
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function VideoTools() {
@@ -171,6 +382,46 @@ export function VideoTools() {
       to: '/videos',
       search: { tab: value },
     })
+  }
+
+  // Compatibility checking
+  const getCompatibleCodecs = (
+    format: string,
+    type: 'video' | 'audio',
+  ): string[] => {
+    return compatibilityMatrix[format]?.[type] ?? []
+  }
+
+  const isCodecCompatible = (
+    format: string,
+    codec: string,
+    type: 'video' | 'audio',
+  ): boolean => {
+    const compatibleCodecs = getCompatibleCodecs(format, type)
+    return compatibleCodecs.includes(codec)
+  }
+
+  // Handle format change and auto-select compatible codecs
+  const handleFormatChange = (newFormat: string) => {
+    setTargetFormat(newFormat)
+
+    // Auto-select compatible codecs if current ones are not compatible
+    const compatibleVideoCodecs = getCompatibleCodecs(newFormat, 'video')
+    const compatibleAudioCodecs = getCompatibleCodecs(newFormat, 'audio')
+
+    if (
+      !isCodecCompatible(newFormat, videoCodec, 'video') &&
+      compatibleVideoCodecs.length > 0
+    ) {
+      setVideoCodec(compatibleVideoCodecs[0])
+    }
+
+    if (
+      !isCodecCompatible(newFormat, audioCodec, 'audio') &&
+      compatibleAudioCodecs.length > 0
+    ) {
+      setAudioCodec(compatibleAudioCodecs[0])
+    }
   }
 
   // Convert settings
@@ -451,7 +702,6 @@ export function VideoTools() {
       setProgress(100)
       console.log('🎬 VideoTools: Compression successful - file downloaded')
     } catch (error) {
-      console.log({ error })
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('🎬 VideoTools: Compression cancelled by user')
       } else {
@@ -1264,80 +1514,76 @@ export function VideoTools() {
                           </div>
                         )}
 
-                        <div className="flex flex-col gap-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col gap-2">
-                              <Label
-                                htmlFor="format"
-                                className="text-sm font-medium"
-                              >
-                                Target Format
-                              </Label>
-                              <Select
-                                value={targetFormat}
-                                onValueChange={setTargetFormat}
-                              >
-                                <SelectTrigger className="border-border/50">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="mp4">MP4</SelectItem>
-                                  <SelectItem value="webm">WebM</SelectItem>
-                                  <SelectItem value="avi">AVI</SelectItem>
-                                  <SelectItem value="mov">MOV</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <Label
-                                htmlFor="videoCodec"
-                                className="text-sm font-medium"
-                              >
+                        <div className="flex flex-col gap-6">
+                          {/* Format Selection */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium">
+                              Target Format
+                            </Label>
+                            <FormatRadioGroup
+                              options={formatOptions}
+                              value={targetFormat}
+                              onChange={handleFormatChange}
+                              disabled={isProcessing}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Video Codec Selection */}
+                            <div className="space-y-3">
+                              <Label className="text-sm font-medium">
                                 Video Codec
                               </Label>
-                              <Select
+                              <CodecRadioGroup
+                                options={videoCodecOptions}
                                 value={videoCodec}
-                                onValueChange={setVideoCodec}
-                              >
-                                <SelectTrigger className="border-border/50">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="libx264">H.264</SelectItem>
-                                  <SelectItem value="libx265">H.265</SelectItem>
-                                  <SelectItem value="libvpx-vp9">
-                                    VP9
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
+                                onChange={setVideoCodec}
+                                disabled={isProcessing}
+                                disabledOptions={videoCodecOptions
+                                  .filter(
+                                    (codec) =>
+                                      !isCodecCompatible(
+                                        targetFormat,
+                                        codec.value,
+                                        'video',
+                                      ),
+                                  )
+                                  .map((codec) => codec.value)}
+                              />
                             </div>
-                            <div className="flex flex-col gap-2">
-                              <Label
-                                htmlFor="audioCodec"
-                                className="text-sm font-medium"
-                              >
+
+                            {/* Audio Codec Selection */}
+                            <div className="space-y-3">
+                              <Label className="text-sm font-medium">
                                 Audio Codec
                               </Label>
-                              <Select
+                              <CodecRadioGroup
+                                options={audioCodecOptions}
                                 value={audioCodec}
-                                onValueChange={setAudioCodec}
-                              >
-                                <SelectTrigger className="border-border/50">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="aac">AAC</SelectItem>
-                                  <SelectItem value="mp3">MP3</SelectItem>
-                                  <SelectItem value="libopus">Opus</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                onChange={setAudioCodec}
+                                disabled={isProcessing}
+                                disabledOptions={audioCodecOptions
+                                  .filter(
+                                    (codec) =>
+                                      !isCodecCompatible(
+                                        targetFormat,
+                                        codec.value,
+                                        'audio',
+                                      ),
+                                  )
+                                  .map((codec) => codec.value)}
+                              />
                             </div>
-                            <div className="flex flex-col gap-2">
+                          </div>
+
+                          {/* Preset Selection */}
+                          <div className="space-y-3 w-full flex flex-row justify-between">
+                            <div className="flex items-center space-x-2">
                               <Label
                                 htmlFor="preset"
                                 className="text-sm font-medium"
                               >
-                                Preset
+                                Encoding Preset
                               </Label>
                               <Select value={preset} onValueChange={setPreset}>
                                 <SelectTrigger className="border-border/50">
@@ -1345,41 +1591,47 @@ export function VideoTools() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="ultrafast">
-                                    Ultrafast
+                                    Ultrafast - Fastest encoding, largest file
                                   </SelectItem>
                                   <SelectItem value="superfast">
-                                    Superfast
+                                    Superfast - Very fast encoding
                                   </SelectItem>
                                   <SelectItem value="veryfast">
-                                    Veryfast
+                                    Veryfast - Fast encoding
                                   </SelectItem>
                                   <SelectItem value="faster">Faster</SelectItem>
                                   <SelectItem value="fast">Fast</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="slow">Slow</SelectItem>
-                                  <SelectItem value="slower">Slower</SelectItem>
+                                  <SelectItem value="medium">
+                                    Medium - Balanced (recommended)
+                                  </SelectItem>
+                                  <SelectItem value="slow">
+                                    Slow - Better compression
+                                  </SelectItem>
+                                  <SelectItem value="slower">
+                                    Slower - Much better compression
+                                  </SelectItem>
                                   <SelectItem value="veryslow">
-                                    Veryslow
+                                    Veryslow - Best compression, smallest file
                                   </SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
-                          </div>
 
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="fast-convert"
-                              checked={fastConvert}
-                              onCheckedChange={(checked) =>
-                                setFastConvert(checked === true)
-                              }
-                            />
-                            <Label
-                              htmlFor="fast-convert"
-                              className="text-sm font-medium"
-                            >
-                              Fast Convert (stream copy - no re-encoding)
-                            </Label>
+                            <div className="flex items-center vertical-center space-x-2">
+                              <Checkbox
+                                id="fast-convert"
+                                checked={fastConvert}
+                                onCheckedChange={(checked) =>
+                                  setFastConvert(checked === true)
+                                }
+                              />
+                              <Label
+                                htmlFor="fast-convert"
+                                className="text-sm font-medium"
+                              >
+                                Fast Convert (stream copy - no re-encoding)
+                              </Label>
+                            </div>
                           </div>
                         </div>
 
@@ -1766,7 +2018,6 @@ export function VideoTools() {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   )
 }
