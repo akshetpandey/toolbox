@@ -32,7 +32,6 @@ import {
   Plus,
   Package,
 } from 'lucide-react'
-import { Footer } from '@/components/Footer'
 import { useProcessing } from '@/contexts/ProcessingContext'
 
 export function ArchiveTools() {
@@ -746,9 +745,6 @@ export function ArchiveTools() {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
   )
 }

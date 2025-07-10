@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Footer } from '@/components/Footer'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   DndContext,
@@ -565,9 +564,6 @@ export function PDFTools() {
             </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <Footer />
       </div>
 
       {/* Drag Overlay */}

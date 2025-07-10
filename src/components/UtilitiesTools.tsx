@@ -16,7 +16,6 @@ import {
   type FileMetadata,
   type FileHashes,
 } from '@/lib/metadata'
-
 import {
   Upload,
   Hash,
@@ -28,8 +27,6 @@ import {
   Check,
   X,
 } from 'lucide-react'
-
-import { Footer } from '@/components/Footer'
 import { useProcessing } from '@/contexts/ProcessingContext'
 
 // Type for uploaded file
@@ -632,8 +629,6 @@ export function UtilitiesTools() {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   )
 }

@@ -130,11 +130,9 @@ export function MainContent() {
               ))}
             </div>
           </div>
-
-          {/* Footer */}
-          <Footer />
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

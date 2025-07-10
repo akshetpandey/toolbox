@@ -2,7 +2,6 @@ import { useState, useCallback, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Footer } from '@/components/Footer'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   Upload,
@@ -336,8 +335,6 @@ export function OfficeTools() {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   )
 }
