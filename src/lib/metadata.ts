@@ -1,6 +1,53 @@
-import { parseMetadata } from '@uswriting/exiftool'
-import { WASMagic } from 'wasmagic'
-import { md5, sha1, sha256 } from 'hash-wasm'
+import type { parseMetadata } from '@uswriting/exiftool'
+import type { WASMagic } from 'wasmagic'
+import type { md5 } from 'hash-wasm'
+import type { sha1 } from 'hash-wasm'
+import type { sha256 } from 'hash-wasm'
+
+let _parseMetadata: typeof parseMetadata | null = null
+let _WASMagic: typeof WASMagic | null = null
+let _md5: typeof md5 | null = null
+let _sha1: typeof sha1 | null = null
+let _sha256: typeof sha256 | null = null
+
+// Lazy load EXIF tool
+async function loadExifTool(): Promise<typeof parseMetadata> {
+  if (!_parseMetadata) {
+    console.log('📋 Metadata: Loading exiftool library...')
+    const exifModule = await import('@uswriting/exiftool')
+    _parseMetadata = exifModule.parseMetadata
+    console.log('📋 Metadata: exiftool library loaded successfully')
+  }
+  return _parseMetadata
+}
+
+// Lazy load WASMagic
+async function loadWASMagic(): Promise<typeof WASMagic> {
+  if (!_WASMagic) {
+    console.log('📋 Metadata: Loading wasmagic library...')
+    const wasmagicModule = await import('wasmagic')
+    _WASMagic = wasmagicModule.WASMagic
+    console.log('📋 Metadata: wasmagic library loaded successfully')
+  }
+  return _WASMagic
+}
+
+// Lazy load hash-wasm
+async function loadHashWasm(): Promise<{
+  md5: typeof md5
+  sha1: typeof sha1
+  sha256: typeof sha256
+}> {
+  if (!_md5 || !_sha1 || !_sha256) {
+    console.log('📋 Metadata: Loading hash-wasm library...')
+    const hashModule = await import('hash-wasm')
+    _md5 = hashModule.md5
+    _sha1 = hashModule.sha1
+    _sha256 = hashModule.sha256
+    console.log('📋 Metadata: hash-wasm library loaded successfully')
+  }
+  return { md5: _md5, sha1: _sha1, sha256: _sha256 }
+}
 
 // Interface for EXIF metadata
 export type ExifMetadata = Record<string, string | number | boolean | null>
@@ -22,19 +69,21 @@ export interface FileHashes {
 }
 
 // Initialize wasmagic instance
-let magicInstance: unknown = null
+let _magicInstance: WASMagic | null = null
 
-const initMagic = async () => {
-  if (magicInstance) return magicInstance
+const initMagic = async (): Promise<WASMagic> => {
+  if (_magicInstance) return _magicInstance
 
   console.log('📋 Metadata: Initializing WASMagic instance')
 
   try {
+    const WASMagicClass = await loadWASMagic()
+
     // WASMagic.create() will automatically look for the WASM file
     // in the same directory as the JS file, or we can provide a custom locateFile function
-    magicInstance = await WASMagic.create()
+    _magicInstance = await WASMagicClass.create()
     console.log('📋 Metadata: WASMagic instance created successfully')
-    return magicInstance
+    return _magicInstance
   } catch (error) {
     console.error('📋 Metadata: Failed to initialize WASMagic:', error)
     throw error
@@ -50,6 +99,8 @@ export const extractExifMetadata = async (
   onProgress?.(true)
 
   try {
+    const parseMetadata = await loadExifTool()
+
     const exifResult = await parseMetadata(file, {
       args: ['-json', '-n'],
       transform: (data) => JSON.parse(data) as ExifMetadata[],
@@ -79,10 +130,7 @@ export const extractFileMetadata = async (
   })
 
   try {
-    const magic = (await initMagic()) as {
-      getMime: (bytes: Uint8Array) => string | null
-      detect: (bytes: Uint8Array) => string | null
-    }
+    const magic = await initMagic()
 
     // Read the first 8KB of the file for magic byte detection
     const buffer = await file.slice(0, 8192).arrayBuffer()
@@ -145,6 +193,8 @@ export const calculateFileHashes = async (
   console.log('📋 Metadata: Starting hash calculation for', file.name)
 
   try {
+    const { md5, sha1, sha256 } = await loadHashWasm()
+
     const buffer = await file.arrayBuffer()
     const data = new Uint8Array(buffer)
 

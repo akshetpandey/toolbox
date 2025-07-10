@@ -1,4 +1,17 @@
-import { ImageMagick, MagickFormat } from '@imagemagick/magick-wasm'
+import { MagickFormat, type ImageMagick } from '@imagemagick/magick-wasm'
+
+// Dynamic imports for ImageMagick
+let imageMagickClass: typeof ImageMagick | null = null
+
+async function initImageMagick() {
+  if (!imageMagickClass) {
+    console.log('🖼️ ImageMagick: Loading ImageMagick library...')
+    const { ImageMagick } = await import('@imagemagick/magick-wasm')
+    imageMagickClass = ImageMagick
+    console.log('🖼️ ImageMagick: Library loaded successfully')
+  }
+  return imageMagickClass
+}
 
 export interface ImageMetadata {
   width: number
@@ -71,6 +84,8 @@ export class ImageMagickProcessor {
       fileName: imageFile.name,
     })
     try {
+      const ImageMagick = await initImageMagick()
+
       const arrayBuffer = await imageFile.file.arrayBuffer()
       const uint8Array = new Uint8Array(arrayBuffer)
       console.log('🖼️ ImageMagick: File loaded into memory', {
@@ -120,6 +135,8 @@ export class ImageMagickProcessor {
       fileName: imageFile.name,
       options,
     })
+
+    const ImageMagick = await initImageMagick()
 
     const arrayBuffer = await imageFile.file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
@@ -200,6 +217,8 @@ export class ImageMagickProcessor {
       options,
     })
 
+    const ImageMagick = await initImageMagick()
+
     const arrayBuffer = await imageFile.file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
     console.log('🖼️ ImageMagick: File loaded into memory', {
@@ -237,6 +256,8 @@ export class ImageMagickProcessor {
       fileName: imageFile.name,
       options,
     })
+
+    const ImageMagick = await initImageMagick()
 
     const arrayBuffer = await imageFile.file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)

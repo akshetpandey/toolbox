@@ -1,4 +1,16 @@
-import { PDFDocument } from 'pdf-lib'
+import type { PDFDocument } from 'pdf-lib'
+
+let _PDFDocument: typeof PDFDocument | null = null
+
+async function loadPDFLib() {
+  if (!_PDFDocument) {
+    console.log('📄 PDF: Loading pdf-lib library...')
+    const pdfLibModule = await import('pdf-lib')
+    _PDFDocument = pdfLibModule.PDFDocument
+    console.log('📄 PDF: pdf-lib library loaded successfully')
+  }
+  return _PDFDocument
+}
 
 export interface PDFFile {
   id: string
@@ -39,7 +51,8 @@ export async function mergePDFs(
   }
 
   try {
-    // Create a new PDF document
+    const PDFDocument = await loadPDFLib()
+
     const mergedPdf = await PDFDocument.create()
 
     // Process each PDF file
@@ -80,20 +93,6 @@ export async function mergePDFs(
           : 'Unknown error occurred during PDF merge',
     }
   }
-}
-
-/**
- * Downloads a blob as a file
- */
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
 }
 
 /**

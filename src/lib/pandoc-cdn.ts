@@ -1,17 +1,39 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
+import type {
   ConsoleStdout,
   File,
-  Directory,
   OpenFile,
   PreopenDirectory,
   WASI,
-  Inode,
 } from '@bjorn3/browser_wasi_shim'
+
+let _ConsoleStdout: typeof ConsoleStdout | null = null
+let _File: typeof File | null = null
+let _OpenFile: typeof OpenFile | null = null
+let _PreopenDirectory: typeof PreopenDirectory | null = null
+let _WASI: typeof WASI | null = null
+
+// Lazy load WASI modules
+async function loadWASI() {
+  console.log('🔧 Pandoc: Loading WASI modules...')
+  const wasiModule = await import('@bjorn3/browser_wasi_shim')
+  _ConsoleStdout = wasiModule.ConsoleStdout
+  _File = wasiModule.File
+  _OpenFile = wasiModule.OpenFile
+  _PreopenDirectory = wasiModule.PreopenDirectory
+  _WASI = wasiModule.WASI
+  console.log('🔧 Pandoc: WASI modules loaded successfully')
+  return {
+    ConsoleStdout: _ConsoleStdout,
+    File: _File,
+    OpenFile: _OpenFile,
+    PreopenDirectory: _PreopenDirectory,
+    WASI: _WASI,
+  }
+}
 
 // Use unpkg CDN instead of local import
 const pandocWasmUrl = 'https://unpkg.com/wasm-pandoc@0.8.0/pandoc.wasm'
@@ -44,12 +66,6 @@ async function getPandocWasm(): Promise<ArrayBuffer> {
 
 const args = ['pandoc.wasm', '+RTS', '-H64m', '-RTS']
 const env: string[] = []
-const inFile = new File(new Uint8Array(), {
-  readonly: true,
-})
-const outFile = new File(new Uint8Array(), {
-  readonly: false,
-})
 
 async function toUint8Array(inData: string | Blob): Promise<Uint8Array> {
   let uint8Array
@@ -86,10 +102,7 @@ function convertData(data: Uint8Array): string | Blob {
   return outData
 }
 
-function convertItem(
-  name: string,
-  value: File | Directory | Inode,
-): [string, any] {
+function convertItem(name: string, value: any): [string, any] {
   if ('contents' in value && value.contents) {
     // directory
     return [
@@ -115,6 +128,16 @@ export async function pandoc(
   out: string | Blob
   mediaFiles: Map<string, any>
 }> {
+  const { ConsoleStdout, File, OpenFile, PreopenDirectory, WASI } =
+    await loadWASI()
+
+  const inFile = new File(new Uint8Array(), {
+    readonly: true,
+  })
+  const outFile = new File(new Uint8Array(), {
+    readonly: false,
+  })
+
   const files: [string, File][] = [
     ['in', inFile],
     ['out', outFile],
@@ -200,19 +223,17 @@ export async function pandoc(
   // @ts-expect-error: wasm_main
   instance.exports.wasm_main(args_ptr, args_str.length)
 
-  // Find any generated media files
-  const knownFileNames = ['in', 'out'].concat(
-    resources.map((resource) => resource.filename),
-  )
-  const mediaFiles = new Map(
-    [...rootDir.dir.contents]
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      .filter(([name, _value]) => !knownFileNames.includes(name))
-      .map(([name, value]) => convertItem(name, value)),
-  )
+  const out = convertData(outFile.data)
+
+  const mediaFiles = new Map()
+  for (const [name, value] of rootDir.dir.contents) {
+    if (name === 'in' || name === 'out') continue
+    const [filename, converted] = convertItem(name, value)
+    mediaFiles.set(filename, converted)
+  }
 
   return {
-    out: convertData(outFile.data),
+    out,
     mediaFiles,
   }
 }

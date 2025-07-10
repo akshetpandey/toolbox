@@ -34,14 +34,8 @@ import {
   GripVertical,
   ArrowUpDown,
 } from 'lucide-react'
-import {
-  type PDFFile,
-  mergePDFs,
-  downloadBlob,
-  isPDFFile,
-  createPDFFile,
-} from '@/lib/pdf'
-import { formatFileSize, truncateFilename } from '@/lib/shared'
+import { type PDFFile, mergePDFs, isPDFFile, createPDFFile } from '@/lib/pdf'
+import { formatFileSize, truncateFilename, downloadBlob } from '@/lib/shared'
 
 interface SortableFileItemProps {
   file: PDFFile

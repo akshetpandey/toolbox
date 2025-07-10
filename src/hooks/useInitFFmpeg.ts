@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
-import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { toBlobURL } from '@ffmpeg/util'
+import type { FFmpeg } from '@ffmpeg/ffmpeg'
 
 interface UseInitFFmpegReturn {
   ffmpeg: FFmpeg | null
@@ -15,6 +14,20 @@ let initializationPromise: Promise<void> | null = null
 let ffmpegInstance: FFmpeg | null = null
 let isInitialized = false
 let progressCallback: ((progress: number) => void) | null = null
+
+// Lazy load FFmpeg modules
+async function loadFFmpegModules() {
+  console.log('🎬 FFmpeg: Loading FFmpeg modules...')
+  const [ffmpegModule, utilModule] = await Promise.all([
+    import('@ffmpeg/ffmpeg'),
+    import('@ffmpeg/util'),
+  ])
+  console.log('🎬 FFmpeg: Modules loaded successfully')
+  return {
+    FFmpeg: ffmpegModule.FFmpeg,
+    toBlobURL: utilModule.toBlobURL,
+  }
+}
 
 export function useInitFFmpeg(): UseInitFFmpegReturn {
   const setProgressCallback = useCallback(
@@ -80,6 +93,8 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
 
     initializationPromise = (async () => {
       try {
+        const { FFmpeg, toBlobURL } = await loadFFmpegModules()
+
         ffmpegInstance = new FFmpeg()
 
         // Set up logging

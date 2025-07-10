@@ -1,4 +1,17 @@
-import SevenZip, { type SevenZipModule } from '7z-wasm'
+import type { SevenZipModule } from '7z-wasm'
+
+let _sevenZip: SevenZipModule | null = null
+
+async function loadSevenZip(): Promise<SevenZipModule> {
+  if (_sevenZip) {
+    return _sevenZip
+  }
+  console.log('🗜️ ArchiveProcessor: Loading 7z-wasm library...')
+  const { default: SevenZip } = await import('7z-wasm')
+  _sevenZip = await SevenZip()
+  console.log('🗜️ ArchiveProcessor: 7z-wasm library loaded successfully')
+  return _sevenZip
+}
 
 export interface ArchiveFile {
   file: File
@@ -24,7 +37,7 @@ export class ArchiveProcessor {
   async init() {
     if (!this.isInitialized) {
       console.log('🗜️ ArchiveProcessor: Initializing 7z-wasm...')
-      this.sevenZip = await SevenZip()
+      this.sevenZip = await loadSevenZip()
       this.isInitialized = true
       console.log('🗜️ ArchiveProcessor: 7z-wasm initialized successfully')
     }
