@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import wasmLocation from '@imagemagick/magick-wasm/magick.wasm?url'
 
 interface UseInitImageMagickReturn {
   isInitialized: boolean
@@ -60,6 +59,9 @@ export function useInitImageMagick(): UseInitImageMagickReturn {
     setState((prev) => ({ ...prev, isInitializing: true, error: null }))
 
     const { initializeImageMagick } = await import('@imagemagick/magick-wasm')
+    const wasmLocation = await import(
+      '@imagemagick/magick-wasm/magick.wasm?url'
+    )
     initializationPromise = initializeImageMagick(wasmLocation)
 
     try {

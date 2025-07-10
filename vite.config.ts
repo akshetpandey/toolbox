@@ -31,8 +31,6 @@ export default defineConfig({
               return 'wasi-shim'
             } else if (id.includes('ffmpeg')) {
               return 'ffmpeg'
-            } else if (id.includes('@dnd-kit')) {
-              return 'dnd-kit'
             }
             return 'vendor'
           } else {
