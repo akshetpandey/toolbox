@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 
 import { Footer } from '@/components/Footer'
+import { useProcessing } from '@/contexts/ProcessingContext'
 
 // Type for uploaded file
 interface UploadedFile {
@@ -42,12 +43,12 @@ interface UploadedFile {
 export function UtilitiesTools() {
   const search = useSearch({ from: '/utilities' })
   const navigate = useNavigate()
+  const { isProcessing, setIsProcessing } = useProcessing()
   const [selectedFile, setSelectedFile] = useState<UploadedFile | null>(null)
   const [fileMetadata, setFileMetadata] = useState<FileMetadata | null>(null)
   const [exifMetadata, setExifMetadata] = useState<ExifMetadata>({})
   const [fileHashes, setFileHashes] = useState<FileHashes | null>(null)
   const [expectedHash, setExpectedHash] = useState('')
-  const [isProcessing, setIsProcessing] = useState(false)
   const [isExtractingExif, setIsExtractingExif] = useState(false)
   const [hashProgress, setHashProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -57,6 +58,11 @@ export function UtilitiesTools() {
 
   // Handle tab changes
   const handleTabChange = async (value: string) => {
+    // Prevent tab changes while processing
+    if (isProcessing) {
+      return
+    }
+
     await navigate({
       to: '/utilities',
       search: { tab: value },
@@ -343,14 +349,16 @@ export function UtilitiesTools() {
                   <TabsList className="flat-card border-0 grid w-full grid-cols-2 h-10">
                     <TabsTrigger
                       value="hash"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Hash className="w-4 h-4 mr-2" />
                       Hash
                     </TabsTrigger>
                     <TabsTrigger
                       value="metadata"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Info className="w-4 h-4 mr-2" />
                       Metadata

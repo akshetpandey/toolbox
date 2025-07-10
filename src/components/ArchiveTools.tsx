@@ -33,15 +33,16 @@ import {
   Package,
 } from 'lucide-react'
 import { Footer } from '@/components/Footer'
+import { useProcessing } from '@/contexts/ProcessingContext'
 
 export function ArchiveTools() {
   const search = useSearch({ from: '/archives' })
   const navigate = useNavigate()
+  const { isProcessing, setIsProcessing } = useProcessing()
   const [isInitialized, setIsInitialized] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<ArchiveFile[]>([])
   const [extractedFiles, setExtractedFiles] = useState<ExtractedFile[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
   const [compressionFormat, setCompressionFormat] =
     useState<CompressionFormat>('zip')
   const [archiveName, setArchiveName] = useState('archive')
@@ -57,6 +58,11 @@ export function ArchiveTools() {
 
   // Handle tab changes
   const handleTabChange = (value: string) => {
+    // Prevent tab changes while processing
+    if (isProcessing) {
+      return
+    }
+
     return navigate({
       to: '/archives',
       search: { tab: value },
@@ -524,14 +530,16 @@ export function ArchiveTools() {
                   <TabsList className="flat-card border-0 grid w-full grid-cols-2 h-10">
                     <TabsTrigger
                       value="compress"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Package className="w-4 h-4 mr-2" />
                       Compress
                     </TabsTrigger>
                     <TabsTrigger
                       value="decompress"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <FileArchive className="w-4 h-4 mr-2" />
                       Decompress

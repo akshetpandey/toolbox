@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Footer } from '@/components/Footer'
+import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   DndContext,
   DragOverlay,
@@ -107,8 +108,8 @@ function SortableFileItem({
 export function PDFTools() {
   const search = useSearch({ from: '/pdfs' })
   const navigate = useNavigate()
+  const { isProcessing, setIsProcessing } = useProcessing()
   const [selectedFiles, setSelectedFiles] = useState<PDFFile[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -125,6 +126,11 @@ export function PDFTools() {
 
   // Handle tab changes
   const handleTabChange = async (value: string) => {
+    // Prevent tab changes while processing
+    if (isProcessing) {
+      return
+    }
+
     await navigate({
       to: '/pdfs',
       search: { tab: value },
@@ -395,21 +401,24 @@ export function PDFTools() {
                     <TabsList className="flat-card border-0 grid w-full grid-cols-3 h-10">
                       <TabsTrigger
                         value="merge"
-                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                        disabled={isProcessing}
+                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Merge className="w-4 h-4 mr-2" />
                         Merge
                       </TabsTrigger>
                       <TabsTrigger
                         value="split"
-                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                        disabled={isProcessing}
+                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Split className="w-4 h-4 mr-2" />
                         Split
                       </TabsTrigger>
                       <TabsTrigger
                         value="compress"
-                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                        disabled={isProcessing}
+                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Minimize className="w-4 h-4 mr-2" />
                         Compress

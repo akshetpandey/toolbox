@@ -29,6 +29,20 @@ async function loadFFmpegModules() {
   }
 }
 
+export async function loadFFmpeg(ffmpeg: FFmpeg) {
+  const { toBlobURL } = await loadFFmpegModules()
+
+  const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.10/dist/esm'
+  await ffmpeg.load({
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    workerURL: await toBlobURL(
+      `${baseURL}/ffmpeg-core.worker.js`,
+      'text/javascript',
+    ),
+  })
+}
+
 export function useInitFFmpeg(): UseInitFFmpegReturn {
   const setProgressCallback = useCallback(
     (callback: (progress: number) => void) => {
@@ -93,7 +107,7 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
 
     initializationPromise = (async () => {
       try {
-        const { FFmpeg, toBlobURL } = await loadFFmpegModules()
+        const { FFmpeg } = await loadFFmpegModules()
 
         ffmpegInstance = new FFmpeg()
 
@@ -109,22 +123,7 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
           }
         })
 
-        const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.10/dist/esm'
-        await ffmpegInstance.load({
-          coreURL: await toBlobURL(
-            `${baseURL}/ffmpeg-core.js`,
-            'text/javascript',
-          ),
-          wasmURL: await toBlobURL(
-            `${baseURL}/ffmpeg-core.wasm`,
-            'application/wasm',
-          ),
-          workerURL: await toBlobURL(
-            `${baseURL}/ffmpeg-core.worker.js`,
-            'text/javascript',
-          ),
-        })
-
+        await loadFFmpeg(ffmpegInstance)
         isInitialized = true
       } catch (err) {
         console.error('Failed to initialize FFmpeg:', err)

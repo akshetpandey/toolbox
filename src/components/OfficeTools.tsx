@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Footer } from '@/components/Footer'
+import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   Upload,
   FileText,
@@ -22,9 +23,9 @@ import {
 import { formatFileSize, truncateFilename } from '@/lib/shared'
 
 export function OfficeTools() {
+  const { isProcessing, setIsProcessing } = useProcessing()
   const [dragActive, setDragActive] = useState(false)
   const [selectedFile, setSelectedFile] = useState<OfficeFile | null>(null)
-  const [isConverting, setIsConverting] = useState(false)
   const [conversionStatus, setConversionStatus] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -33,33 +34,38 @@ export function OfficeTools() {
     setConversionStatus('')
   }
 
-  const handleConvertToPDF = useCallback(async (officeFile: OfficeFile) => {
-    setIsConverting(true)
-    setConversionStatus(`Converting ${officeFile.name}...`)
+  const handleConvertToPDF = useCallback(
+    async (officeFile: OfficeFile) => {
+      setIsProcessing(true)
+      setConversionStatus(`Converting ${officeFile.name}...`)
 
-    try {
-      const result = await convertOfficeToPDF(officeFile.file)
+      try {
+        const result = await convertOfficeToPDF(officeFile.file)
 
-      if (result.success) {
-        setConversionStatus(`✅ ${officeFile.name} - Print dialog opened`)
+        if (result.success) {
+          setConversionStatus(`✅ ${officeFile.name} - Print dialog opened`)
 
-        // Reset file after successful conversion
-        setTimeout(() => {
-          setSelectedFile(null)
-          setConversionStatus('')
-        }, 4000)
-      } else {
-        throw new Error(result.error ?? `Failed to convert ${officeFile.name}`)
+          // Reset file after successful conversion
+          setTimeout(() => {
+            setSelectedFile(null)
+            setConversionStatus('')
+          }, 4000)
+        } else {
+          throw new Error(
+            result.error ?? `Failed to convert ${officeFile.name}`,
+          )
+        }
+      } catch (error) {
+        console.error('Conversion error:', error)
+        setConversionStatus(
+          `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        )
+      } finally {
+        setIsProcessing(false)
       }
-    } catch (error) {
-      console.error('Conversion error:', error)
-      setConversionStatus(
-        `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      )
-    } finally {
-      setIsConverting(false)
-    }
-  }, [])
+    },
+    [setIsProcessing],
+  )
 
   const handleFileSelect = useCallback(
     (files: FileList) => {
@@ -207,7 +213,7 @@ export function OfficeTools() {
                           variant="outline"
                           size="sm"
                           onClick={clearFile}
-                          disabled={isConverting}
+                          disabled={isProcessing}
                           className="hover:bg-red-500 hover:text-red-foreground text-xs"
                         >
                           Clear
@@ -301,10 +307,10 @@ export function OfficeTools() {
                       </div>
 
                       {/* Conversion Status */}
-                      {(isConverting || conversionStatus) && (
+                      {(isProcessing || conversionStatus) && (
                         <div className="flex flex-col gap-3">
                           <div className="flex items-center gap-2">
-                            {isConverting && (
+                            {isProcessing && (
                               <Loader2 className="w-4 h-4 animate-spin" />
                             )}
                             <span className="text-sm font-medium">
@@ -314,7 +320,7 @@ export function OfficeTools() {
                         </div>
                       )}
 
-                      {!selectedFile && !isConverting && (
+                      {!selectedFile && !isProcessing && (
                         <div className="text-center py-8">
                           <p className="text-muted-foreground text-sm">
                             Upload an office document to automatically convert

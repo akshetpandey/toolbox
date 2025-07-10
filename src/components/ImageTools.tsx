@@ -23,6 +23,7 @@ import {
   revokeObjectURL,
 } from '@/lib/imagemagick'
 import { extractExifMetadata, type ExifMetadata } from '@/lib/metadata'
+import { useProcessing } from '@/contexts/ProcessingContext'
 
 import {
   Upload,
@@ -37,12 +38,12 @@ import {
 
 export function ImageTools() {
   const { isInitialized, isInitializing, error, init } = useInitImageMagick()
+  const { isProcessing, setIsProcessing } = useProcessing()
   const search = useSearch({ from: '/images' })
   const navigate = useNavigate()
   const [selectedFiles, setSelectedFiles] = useState<ImageFile[]>([])
   const [metadata, setMetadata] = useState<Record<string, ImageMetadata>>({})
   const [exifMetadata, setExifMetadata] = useState<ExifMetadata>({})
-  const [isProcessing, setIsProcessing] = useState(false)
   const [isExtractingExif, setIsExtractingExif] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -55,6 +56,11 @@ export function ImageTools() {
 
   // Handle tab changes
   const handleTabChange = async (value: string) => {
+    // Prevent tab changes while processing
+    if (isProcessing) {
+      return
+    }
+
     await navigate({
       to: '/images',
       search: { tab: value },
@@ -585,28 +591,32 @@ export function ImageTools() {
                   <TabsList className="flat-card border-0 grid w-full grid-cols-4 h-10">
                     <TabsTrigger
                       value="metadata"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Info className="w-4 h-4 mr-2" />
                       Metadata
                     </TabsTrigger>
                     <TabsTrigger
                       value="resize"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Maximize className="w-4 h-4 mr-2" />
                       Resize
                     </TabsTrigger>
                     <TabsTrigger
                       value="convert"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Settings className="w-4 h-4 mr-2" />
                       Convert
                     </TabsTrigger>
                     <TabsTrigger
                       value="compress"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Zap className="w-4 h-4 mr-2" />
                       Compress

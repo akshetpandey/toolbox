@@ -24,11 +24,10 @@ import {
   type VideoCompressOptions,
   type TrimOptions,
   type AudioExtractOptions,
-  formatFileSize,
-  formatDuration,
-  downloadFile,
 } from '@/lib/ffmpeg'
+import { formatFileSize, formatDuration, downloadFile } from '@/lib/shared'
 import { Footer } from '@/components/Footer'
+import { useProcessing } from '@/contexts/ProcessingContext'
 
 import {
   Upload,
@@ -40,6 +39,8 @@ import {
   Zap,
   Scissors,
   Volume2,
+  AlertTriangle,
+  X,
 } from 'lucide-react'
 
 // Helper function to format time in seconds to human-readable format
@@ -66,11 +67,11 @@ export function VideoTools() {
     init,
     setProgressCallback,
   } = useInitFFmpeg()
+  const { isProcessing, setIsProcessing } = useProcessing()
   const search = useSearch({ from: '/videos' })
   const navigate = useNavigate()
   const [selectedFiles, setSelectedFiles] = useState<VideoFile[]>([])
   const [metadata, setMetadata] = useState<Record<string, VideoMetadata>>({})
-  const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [progressStartTime, setProgressStartTime] = useState<number | null>(
     null,
@@ -79,6 +80,10 @@ export function VideoTools() {
     string | null
   >(null)
   const [elapsedTime, setElapsedTime] = useState<string | null>(null)
+  const [showSlowProcessingWarning, setShowSlowProcessingWarning] =
+    useState(false)
+  const [currentAbortController, setCurrentAbortController] =
+    useState<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Set up progress callback
@@ -100,6 +105,11 @@ export function VideoTools() {
         const remainingTime = estimatedTotalTime - elapsed
         const remainingSeconds = Math.floor(remainingTime / 1000)
 
+        // Show warning if estimated total time exceeds 30 minutes (1800 seconds)
+        if (estimatedTotalTime > 1800000 && !showSlowProcessingWarning) {
+          setShowSlowProcessingWarning(true)
+        }
+
         if (remainingSeconds > 0 && progressPercent < 100) {
           setEstimatedTimeRemaining(formatTime(remainingSeconds))
         } else {
@@ -107,7 +117,28 @@ export function VideoTools() {
         }
       }
     })
-  }, [setProgressCallback, progressStartTime])
+  }, [setProgressCallback, progressStartTime, showSlowProcessingWarning])
+
+  // Prevent navigation away while processing
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isProcessing) {
+        event.preventDefault()
+        event.returnValue =
+          'Video processing is in progress. Are you sure you want to leave? Your progress will be lost.'
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return event.returnValue
+      }
+    }
+
+    if (isProcessing) {
+      window.addEventListener('beforeunload', handleBeforeUnload)
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [isProcessing])
 
   // Create FFmpeg processor instance - use useMemo to prevent recreation on every render
   const ffmpegProcessorRef = useRef<FFmpegProcessor | null>(null)
@@ -131,6 +162,11 @@ export function VideoTools() {
 
   // Handle tab changes
   const handleTabChange = async (value: string) => {
+    // Prevent tab changes while processing
+    if (isProcessing) {
+      return
+    }
+
     await navigate({
       to: '/videos',
       search: { tab: value },
@@ -308,12 +344,15 @@ export function VideoTools() {
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
+    const abortController = new AbortController()
+    setCurrentAbortController(abortController)
 
     setIsProcessing(true)
     setProgress(0)
     setProgressStartTime(Date.now())
     setEstimatedTimeRemaining(null)
     setElapsedTime(null)
+    setShowSlowProcessingWarning(false)
 
     try {
       const options: VideoConvertOptions = {
@@ -322,6 +361,7 @@ export function VideoTools() {
         audioCodec,
         preset,
         fastConvert,
+        signal: abortController.signal,
       }
 
       console.log('🎬 VideoTools: Calling FFmpeg convert with options', options)
@@ -344,10 +384,15 @@ export function VideoTools() {
       setProgress(100)
       console.log('🎬 VideoTools: Conversion successful - file downloaded')
     } catch (error) {
-      console.error('🎬 VideoTools: Error during conversion:', error)
-      alert('Error converting video. Please try again.')
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🎬 VideoTools: Conversion cancelled by user')
+      } else {
+        console.error('🎬 VideoTools: Error during conversion:', error)
+        alert('Error converting video. Please try again.')
+      }
     } finally {
       setIsProcessing(false)
+      setCurrentAbortController(null)
     }
   }
 
@@ -358,17 +403,21 @@ export function VideoTools() {
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
+    const abortController = new AbortController()
+    setCurrentAbortController(abortController)
 
     setIsProcessing(true)
     setProgress(0)
     setProgressStartTime(Date.now())
     setEstimatedTimeRemaining(null)
     setElapsedTime(null)
+    setShowSlowProcessingWarning(false)
 
     try {
       const options: VideoCompressOptions = {
         crf,
         preset,
+        signal: abortController.signal,
       }
 
       console.log(
@@ -402,10 +451,16 @@ export function VideoTools() {
       setProgress(100)
       console.log('🎬 VideoTools: Compression successful - file downloaded')
     } catch (error) {
-      console.error('🎬 VideoTools: Error during compression:', error)
-      alert('Error compressing video. Please try again.')
+      console.log({ error })
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🎬 VideoTools: Compression cancelled by user')
+      } else {
+        console.error('🎬 VideoTools: Error during compression:', error)
+        alert('Error compressing video. Please try again.')
+      }
     } finally {
       setIsProcessing(false)
+      setCurrentAbortController(null)
     }
   }
 
@@ -416,17 +471,21 @@ export function VideoTools() {
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
+    const abortController = new AbortController()
+    setCurrentAbortController(abortController)
 
     setIsProcessing(true)
     setProgress(0)
     setProgressStartTime(Date.now())
     setEstimatedTimeRemaining(null)
     setElapsedTime(null)
+    setShowSlowProcessingWarning(false)
 
     try {
       const options: TrimOptions = {
         startTime,
         endTime,
+        signal: abortController.signal,
       }
 
       console.log('🎬 VideoTools: Calling FFmpeg trim with options', options)
@@ -451,10 +510,15 @@ export function VideoTools() {
       setProgress(100)
       console.log('🎬 VideoTools: Trimming successful - file downloaded')
     } catch (error) {
-      console.error('🎬 VideoTools: Error during trimming:', error)
-      alert('Error trimming video. Please try again.')
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🎬 VideoTools: Trimming cancelled by user')
+      } else {
+        console.error('🎬 VideoTools: Error during trimming:', error)
+        alert('Error trimming video. Please try again.')
+      }
     } finally {
       setIsProcessing(false)
+      setCurrentAbortController(null)
     }
   }
 
@@ -464,16 +528,20 @@ export function VideoTools() {
     })
 
     const ffmpegProcessor = await getFfmpegProcessor()
+    const abortController = new AbortController()
+    setCurrentAbortController(abortController)
 
     setIsProcessing(true)
     setProgress(0)
     setProgressStartTime(Date.now())
     setEstimatedTimeRemaining(null)
     setElapsedTime(null)
+    setShowSlowProcessingWarning(false)
 
     try {
       const options: AudioExtractOptions = {
         audioFormat,
+        signal: abortController.signal,
       }
 
       console.log(
@@ -501,10 +569,22 @@ export function VideoTools() {
         '🎬 VideoTools: Audio extraction successful - file downloaded',
       )
     } catch (error) {
-      console.error('🎬 VideoTools: Error during audio extraction:', error)
-      alert('Error extracting audio. Please try again.')
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🎬 VideoTools: Audio extraction cancelled by user')
+      } else {
+        console.error('🎬 VideoTools: Error during audio extraction:', error)
+        alert('Error extracting audio. Please try again.')
+      }
     } finally {
       setIsProcessing(false)
+      setCurrentAbortController(null)
+    }
+  }
+
+  const cancelProcessing = () => {
+    if (currentAbortController) {
+      console.log('🎬 VideoTools: Cancelling current processing operation')
+      currentAbortController.abort('User cancelled')
     }
   }
 
@@ -695,35 +775,40 @@ export function VideoTools() {
                   <TabsList className="flat-card border-0 grid w-full grid-cols-5 h-10">
                     <TabsTrigger
                       value="metadata"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Info className="w-4 h-4 mr-2" />
                       Metadata
                     </TabsTrigger>
                     <TabsTrigger
                       value="convert"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Settings className="w-4 h-4 mr-2" />
                       Convert
                     </TabsTrigger>
                     <TabsTrigger
                       value="compress"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Zap className="w-4 h-4 mr-2" />
                       Compress
                     </TabsTrigger>
                     <TabsTrigger
                       value="trim"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Scissors className="w-4 h-4 mr-2" />
                       Trim
                     </TabsTrigger>
                     <TabsTrigger
                       value="audio"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm"
+                      disabled={isProcessing}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Volume2 className="w-4 h-4 mr-2" />
                       Audio
@@ -1136,6 +1221,49 @@ export function VideoTools() {
                   <TabsContent value="convert">
                     <Card className="glass-card border-0">
                       <CardContent className="p-6 flex flex-col gap-4">
+                        {/* Slow Processing Warning Banner */}
+                        {showSlowProcessingWarning && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-yellow-800 mb-1">
+                                This will take a while...
+                              </h4>
+                              <p className="text-sm text-yellow-700 mb-3">
+                                Browser-based video processing is slow for large
+                                files. For better performance, consider using{' '}
+                                <strong>HandBrake</strong> - a free, native
+                                video conversion tool.
+                              </p>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    window.open(
+                                      'https://handbrake.fr/',
+                                      '_blank',
+                                    )
+                                  }
+                                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                                >
+                                  Download HandBrake
+                                </Button>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setShowSlowProcessingWarning(false)
+                              }
+                              className="text-yellow-600 hover:text-yellow-800 p-1"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+
                         <div className="flex flex-col gap-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col gap-2">
@@ -1255,7 +1383,7 @@ export function VideoTools() {
                           </div>
                         </div>
 
-                        {progress > 0 && (
+                        {progress > 0 && isProcessing && (
                           <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
@@ -1274,6 +1402,18 @@ export function VideoTools() {
                                 </span>
                               </div>
                             )}
+                            <div className="flex justify-center">
+                              <Button
+                                onClick={cancelProcessing}
+                                variant="outline"
+                                size="sm"
+                                disabled={!currentAbortController}
+                                className="border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel Processing
+                              </Button>
+                            </div>
                           </div>
                         )}
 
@@ -1300,6 +1440,49 @@ export function VideoTools() {
                   <TabsContent value="compress">
                     <Card className="glass-card border-0">
                       <CardContent className="p-6 flex flex-col gap-4">
+                        {/* Slow Processing Warning Banner */}
+                        {showSlowProcessingWarning && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-yellow-800 mb-1">
+                                This will take a while...
+                              </h4>
+                              <p className="text-sm text-yellow-700 mb-3">
+                                Browser-based video processing is slow for large
+                                files. For better performance, consider using{' '}
+                                <strong>HandBrake</strong> - a free, native
+                                video conversion tool.
+                              </p>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    window.open(
+                                      'https://handbrake.fr/',
+                                      '_blank',
+                                    )
+                                  }
+                                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                                >
+                                  Download HandBrake
+                                </Button>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setShowSlowProcessingWarning(false)
+                              }
+                              className="text-yellow-600 hover:text-yellow-800 p-1"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-4">
                           <div className="flex flex-col gap-2">
                             <Label
@@ -1355,7 +1538,7 @@ export function VideoTools() {
                           </div>
                         </div>
 
-                        {progress > 0 && (
+                        {progress > 0 && isProcessing && (
                           <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
@@ -1374,6 +1557,18 @@ export function VideoTools() {
                                 </span>
                               </div>
                             )}
+                            <div className="flex justify-center">
+                              <Button
+                                onClick={cancelProcessing}
+                                variant="outline"
+                                size="sm"
+                                disabled={!currentAbortController}
+                                className="border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel Processing
+                              </Button>
+                            </div>
                           </div>
                         )}
 
@@ -1433,7 +1628,7 @@ export function VideoTools() {
                           </div>
                         </div>
 
-                        {progress > 0 && (
+                        {progress > 0 && isProcessing && (
                           <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
@@ -1452,6 +1647,18 @@ export function VideoTools() {
                                 </span>
                               </div>
                             )}
+                            <div className="flex justify-center">
+                              <Button
+                                onClick={cancelProcessing}
+                                variant="outline"
+                                size="sm"
+                                disabled={!currentAbortController}
+                                className="border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel Processing
+                              </Button>
+                            </div>
                           </div>
                         )}
 
@@ -1500,7 +1707,7 @@ export function VideoTools() {
                           </Select>
                         </div>
 
-                        {progress > 0 && (
+                        {progress > 0 && isProcessing && (
                           <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                               <span>Processing...</span>
@@ -1519,6 +1726,18 @@ export function VideoTools() {
                                 </span>
                               </div>
                             )}
+                            <div className="flex justify-center">
+                              <Button
+                                onClick={cancelProcessing}
+                                variant="outline"
+                                size="sm"
+                                disabled={!currentAbortController}
+                                className="border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel Processing
+                              </Button>
+                            </div>
                           </div>
                         )}
 

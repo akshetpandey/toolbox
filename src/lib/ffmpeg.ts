@@ -1,4 +1,5 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
+import { loadFFmpeg } from '@/hooks/useInitFFmpeg'
 
 export interface VideoStream {
   index: number
@@ -86,20 +87,24 @@ export interface VideoConvertOptions {
   audioCodec: string
   preset: string
   fastConvert?: boolean // Use stream copy when possible
+  signal?: AbortSignal
 }
 
 export interface VideoCompressOptions {
   crf: number
   preset: string
+  signal?: AbortSignal
 }
 
 export interface TrimOptions {
   startTime: string
   endTime: string
+  signal?: AbortSignal
 }
 
 export interface AudioExtractOptions {
   audioFormat: string
+  signal?: AbortSignal
 }
 
 interface FFProbeStream {
@@ -156,11 +161,19 @@ export class FFmpegProcessor {
   private inputDir = '/input'
   private didCreateInputDir = false
   private inputFileName: string | null = null
-
   public inputFile: VideoFile | null = null
 
   constructor(ffmpeg: FFmpeg) {
     this.ffmpeg = ffmpeg
+  }
+
+  private async reloadFFmpeg() {
+    this.ffmpeg.terminate()
+    await loadFFmpeg(this.ffmpeg)
+    this.didCreateInputDir = false
+    if (this.inputFile) {
+      await this.mountInputFile(this.inputFile)
+    }
   }
 
   private async ensureInputDir() {
@@ -443,26 +456,14 @@ export class FFmpegProcessor {
 
     console.log('🎬 FFmpeg: Executing conversion command', { command })
 
-    // Set up progress monitoring
     const startTime = Date.now()
-    const timeoutMs = 300000 // 5 minutes timeout
-
     try {
-      const execPromise = this.ffmpeg.exec(command)
-
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Video conversion timed out after 5 minutes'))
-        }, timeoutMs)
-      })
-
-      await Promise.race([execPromise, timeoutPromise])
-
+      await this.ffmpeg.exec(command, -1, { signal: options.signal })
       const processingTime = Date.now() - startTime
       console.log(`🎬 FFmpeg: Conversion completed in ${processingTime}ms`)
     } catch (error) {
       console.error('🎬 FFmpeg: Conversion failed', error)
+      await this.reloadFFmpeg()
       throw error
     }
 
@@ -515,26 +516,14 @@ export class FFmpegProcessor {
 
     console.log('🎬 FFmpeg: Executing compression command', { command })
 
-    // Set up progress monitoring
     const startTime = Date.now()
-    const timeoutMs = 300000 // 5 minutes timeout
-
     try {
-      const execPromise = this.ffmpeg.exec(command)
-
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Video compression timed out after 5 minutes'))
-        }, timeoutMs)
-      })
-
-      await Promise.race([execPromise, timeoutPromise])
-
+      await this.ffmpeg.exec(command, -1, { signal: options.signal })
       const processingTime = Date.now() - startTime
       console.log(`🎬 FFmpeg: Compression completed in ${processingTime}ms`)
     } catch (error) {
       console.error('🎬 FFmpeg: Compression failed', error)
+      await this.reloadFFmpeg()
       throw error
     }
 
@@ -570,7 +559,13 @@ export class FFmpegProcessor {
     ]
 
     console.log('🎬 FFmpeg: Executing trim command', { command })
-    await this.ffmpeg.exec(command)
+    try {
+      await this.ffmpeg.exec(command, -1, { signal: options.signal })
+    } catch (error) {
+      console.error('🎬 FFmpeg: Trimming failed', error)
+      await this.reloadFFmpeg()
+      throw error
+    }
 
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
@@ -628,7 +623,13 @@ export class FFmpegProcessor {
     }
 
     console.log('🎬 FFmpeg: Executing audio extraction command', { command })
-    await this.ffmpeg.exec(command)
+    try {
+      await this.ffmpeg.exec(command, -1, { signal: options.signal })
+    } catch (error) {
+      console.error('🎬 FFmpeg: Audio extraction failed', error)
+      await this.reloadFFmpeg()
+      throw error
+    }
 
     console.log('🎬 FFmpeg: Reading output file', { outputFileName })
     const data = await this.ffmpeg.readFile(outputFileName)
@@ -638,6 +639,3 @@ export class FFmpegProcessor {
     return this.createBlobFromFFmpegOutput(data, `audio/${options.audioFormat}`)
   }
 }
-
-// Re-export shared utilities
-export { formatFileSize, formatDuration, downloadFile } from './shared'

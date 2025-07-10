@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useRef, useEffect } from 'react'
+import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   Image,
   Video,
@@ -101,6 +102,7 @@ const toolCategories: ToolCategory[] = [
 
 export function ToolSidebar() {
   const location = useLocation()
+  const { isProcessing } = useProcessing()
   const activeToolRef = useRef<HTMLDivElement>(null)
 
   // Function to determine if a tool is currently active
@@ -147,22 +149,37 @@ export function ToolSidebar() {
                   {/* Category header */}
                   <Link to={category.route} className="w-full">
                     <div
-                      className={`flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer ${
+                      className={`flex items-center gap-3 p-3 rounded-lg transition-colors group cursor-pointer ${
+                        isProcessing
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-accent/50'
+                      } ${
                         location.pathname === category.route &&
                         !location.search?.tab
                           ? 'bg-accent/70 border border-primary/20'
                           : ''
                       }`}
+                      onClick={(e) => {
+                        if (isProcessing) {
+                          e.preventDefault()
+                        }
+                      }}
                     >
                       <div
-                        className={`w-10 h-10 ${category.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}
+                        className={`w-10 h-10 ${category.bgColor} rounded-xl flex items-center justify-center ${
+                          isProcessing ? '' : 'group-hover:scale-110'
+                        } transition-transform`}
                       >
                         <category.icon
                           className={`h-5 w-5 ${category.color}`}
                         />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                        <h3
+                          className={`font-semibold text-foreground transition-colors ${
+                            isProcessing ? '' : 'group-hover:text-primary'
+                          }`}
+                        >
                           {category.name}
                         </h3>
                       </div>
@@ -192,13 +209,23 @@ export function ToolSidebar() {
                               to={category.route}
                               search={{ tab }}
                               className="w-full"
+                              onClick={(e) => {
+                                if (isProcessing) {
+                                  e.preventDefault()
+                                }
+                              }}
                             >
                               <Button
                                 variant="ghost"
+                                disabled={isProcessing}
                                 className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
                                   isActive
                                     ? 'bg-primary/10 text-primary border border-primary/20'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                } ${
+                                  isProcessing
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : ''
                                 }`}
                               >
                                 {tool}
