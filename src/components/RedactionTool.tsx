@@ -400,18 +400,35 @@ export function RedactionTool({ selectedFile }: RedactionToolProps) {
             outputCtx.restore()
           }
         } else if (area.mode === 'pixelate') {
-          // For pixelate, apply pixelation effect at full resolution
-          const imageData = outputCtx.getImageData(
-            scaledX,
-            scaledY,
-            scaledWidth,
-            scaledHeight,
-          )
-          const pixelatedData = pixelateImageData(
-            imageData,
-            area.pixelSize ?? 10,
-          )
-          outputCtx.putImageData(pixelatedData, scaledX, scaledY)
+          // For pixelate, apply pixelation at preview scale then scale up
+          // This maintains the exact same visual effect as the preview
+          
+          // Scale it down to preview resolution for pixelation
+          const previewCanvas = document.createElement('canvas')
+          const previewCtx = previewCanvas.getContext('2d')
+          if (previewCtx) {
+            previewCanvas.width = area.width
+            previewCanvas.height = area.height
+            
+            // Draw the full-res area scaled down to preview size
+            previewCtx.drawImage(
+              outputCanvas,
+              scaledX, scaledY, scaledWidth, scaledHeight,
+              0, 0, area.width, area.height
+            )
+            
+            // Apply pixelation at preview scale
+            const previewAreaData = previewCtx.getImageData(0, 0, area.width, area.height)
+            const pixelatedPreviewData = pixelateImageData(previewAreaData, area.pixelSize ?? 10)
+            previewCtx.putImageData(pixelatedPreviewData, 0, 0)
+            
+            // Scale it back up to full resolution
+            outputCtx.drawImage(
+              previewCanvas,
+              0, 0, area.width, area.height,
+              scaledX, scaledY, scaledWidth, scaledHeight
+            )
+          }
         }
       }
 
