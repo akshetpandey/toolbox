@@ -185,7 +185,7 @@ export function ToolSidebar() {
                           {tool.underConstruction ? (
                             <Button
                               variant="ghost"
-                              className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200 cursor-not-allowed opacity-60"
+                              className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg cursor-not-allowed opacity-60"
                               disabled
                             >
                               <Construction className="w-3 h-3 mr-2" />
@@ -204,7 +204,7 @@ export function ToolSidebar() {
                               <Button
                                 variant="ghost"
                                 disabled={isProcessing}
-                                className={`w-full justify-start h-auto p-2 text-sm transition-all duration-200 rounded-lg ${
+                                className={`w-full justify-start h-auto p-2 text-sm rounded-lg ${
                                   isActive
                                     ? 'bg-primary/10 text-primary border border-primary/20'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
