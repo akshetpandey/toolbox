@@ -1,12 +1,8 @@
 import { Outlet, Scripts, createRootRoute, Link } from '@tanstack/react-router'
+import { ToolSidebar } from '@/components/ToolSidebar'
 
 export const Route = createRootRoute({
-  component: () => (
-    <RootDocument>
-      <Outlet />
-      <Scripts />
-    </RootDocument>
-  ),
+  component: RootDocument,
   notFoundComponent: () => {
     return (
       <div>
@@ -17,6 +13,16 @@ export const Route = createRootRoute({
   },
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+function RootDocument() {
+  return (
+    <>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <ToolSidebar />
+        <div className="flex-1 overflow-hidden">
+          <Outlet />
+        </div>
+      </div>
+      <Scripts />
+    </>
+  )
 }

@@ -1,12 +1,12 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-
 import { Loader2, Square, Focus, Grid3x3 } from 'lucide-react'
 import { downloadBlob } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
-import type { ImageFile } from '@/lib/imagemagick'
+import { useImageTools } from '@/contexts/ImageToolsContext'
 
 interface RedactionArea {
   x: number
@@ -19,11 +19,12 @@ interface RedactionArea {
   pixelSize?: number
 }
 
-interface RedactionToolProps {
-  selectedFile: ImageFile | null
-}
+export const Route = createFileRoute('/images/redact')({
+  component: RedactPage,
+})
 
-export function RedactionTool({ selectedFile }: RedactionToolProps) {
+function RedactPage() {
+  const { selectedFile } = useImageTools()
   const { isProcessing, setIsProcessing } = useProcessing()
 
   // Redaction settings
@@ -402,31 +403,51 @@ export function RedactionTool({ selectedFile }: RedactionToolProps) {
         } else if (area.mode === 'pixelate') {
           // For pixelate, apply pixelation at preview scale then scale up
           // This maintains the exact same visual effect as the preview
-          
+
           // Scale it down to preview resolution for pixelation
           const previewCanvas = document.createElement('canvas')
           const previewCtx = previewCanvas.getContext('2d')
           if (previewCtx) {
             previewCanvas.width = area.width
             previewCanvas.height = area.height
-            
+
             // Draw the full-res area scaled down to preview size
             previewCtx.drawImage(
               outputCanvas,
-              scaledX, scaledY, scaledWidth, scaledHeight,
-              0, 0, area.width, area.height
+              scaledX,
+              scaledY,
+              scaledWidth,
+              scaledHeight,
+              0,
+              0,
+              area.width,
+              area.height,
             )
-            
+
             // Apply pixelation at preview scale
-            const previewAreaData = previewCtx.getImageData(0, 0, area.width, area.height)
-            const pixelatedPreviewData = pixelateImageData(previewAreaData, area.pixelSize ?? 10)
+            const previewAreaData = previewCtx.getImageData(
+              0,
+              0,
+              area.width,
+              area.height,
+            )
+            const pixelatedPreviewData = pixelateImageData(
+              previewAreaData,
+              area.pixelSize ?? 10,
+            )
             previewCtx.putImageData(pixelatedPreviewData, 0, 0)
-            
+
             // Scale it back up to full resolution
             outputCtx.drawImage(
               previewCanvas,
-              0, 0, area.width, area.height,
-              scaledX, scaledY, scaledWidth, scaledHeight
+              0,
+              0,
+              area.width,
+              area.height,
+              scaledX,
+              scaledY,
+              scaledWidth,
+              scaledHeight,
             )
           }
         }

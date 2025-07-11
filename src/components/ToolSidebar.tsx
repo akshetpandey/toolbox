@@ -2,7 +2,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   Image,
@@ -15,12 +15,17 @@ import {
   Building,
 } from 'lucide-react'
 
+interface ToolItem {
+  name: string
+  route: string
+  underConstruction?: boolean
+}
+
 interface ToolCategory {
   name: string
   icon: React.ComponentType<{ className?: string }>
   route: string
-  toolMap: Record<string, string>
-  underConstructionTools?: string[]
+  tools: ToolItem[]
   color: string
   bgColor: string
 }
@@ -30,13 +35,13 @@ const toolCategories: ToolCategory[] = [
     name: 'Image',
     icon: Image,
     route: '/images',
-    toolMap: {
-      'Image Metadata': 'metadata',
-      'Resize Image': 'resize',
-      'Convert Format': 'convert',
-      'Compress Image': 'compress',
-      'Redact Image': 'redact',
-    },
+    tools: [
+      { name: 'Image Metadata', route: '/images/metadata' },
+      { name: 'Resize Image', route: '/images/resize' },
+      { name: 'Convert Format', route: '/images/convert' },
+      { name: 'Compress Image', route: '/images/compress' },
+      { name: 'Redact Image', route: '/images/redact' },
+    ],
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
   },
@@ -44,13 +49,13 @@ const toolCategories: ToolCategory[] = [
     name: 'Video',
     icon: Video,
     route: '/videos',
-    toolMap: {
-      'Video Metadata': 'metadata',
-      'Convert Format': 'convert',
-      'Compress Video': 'compress',
-      'Trim Video': 'trim',
-      'Extract Audio': 'audio',
-    },
+    tools: [
+      { name: 'Video Metadata', route: '/videos/metadata' },
+      { name: 'Convert Format', route: '/videos/convert' },
+      { name: 'Compress Video', route: '/videos/compress' },
+      { name: 'Trim Video', route: '/videos/trim' },
+      { name: 'Extract Audio', route: '/videos/extract' },
+    ],
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
   },
@@ -58,12 +63,11 @@ const toolCategories: ToolCategory[] = [
     name: 'PDF',
     icon: FileText,
     route: '/pdfs',
-    toolMap: {
-      Merge: 'merge',
-      Split: 'split',
-      Compress: 'compress',
-    },
-    underConstructionTools: ['Split', 'Compress'],
+    tools: [
+      { name: 'Merge', route: '/pdfs/merge' },
+      { name: 'Split', route: '/pdfs/split', underConstruction: true },
+      { name: 'Compress', route: '/pdfs/compress', underConstruction: true },
+    ],
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
   },
@@ -71,9 +75,7 @@ const toolCategories: ToolCategory[] = [
     name: 'Office Documents',
     icon: Building,
     route: '/office-documents',
-    toolMap: {
-      'Document to PDF': 'convert',
-    },
+    tools: [{ name: 'Document to PDF', route: '/office-documents/convert' }],
     color: 'text-indigo-500',
     bgColor: 'bg-indigo-500/10',
   },
@@ -81,10 +83,10 @@ const toolCategories: ToolCategory[] = [
     name: 'Archives',
     icon: Archive,
     route: '/archives',
-    toolMap: {
-      'Compress Files': 'compress',
-      'Extract Archive': 'decompress',
-    },
+    tools: [
+      { name: 'Compress Files', route: '/archives/compress' },
+      { name: 'Extract Archive', route: '/archives/extract' },
+    ],
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
   },
@@ -92,10 +94,10 @@ const toolCategories: ToolCategory[] = [
     name: 'Utilities',
     icon: Settings,
     route: '/utilities',
-    toolMap: {
-      'File Hash': 'hash',
-      'File Metadata': 'metadata',
-    },
+    tools: [
+      { name: 'File Hash', route: '/utilities/hash' },
+      { name: 'File Metadata', route: '/utilities/metadata' },
+    ],
     color: 'text-orange-500',
     bgColor: 'bg-orange-500/10',
   },
@@ -107,21 +109,9 @@ export function ToolSidebar() {
   const activeToolRef = useRef<HTMLDivElement>(null)
 
   // Function to determine if a tool is currently active
-  const isToolActive = (categoryRoute: string, toolTab?: string) => {
-    if (location.pathname !== categoryRoute) return false
-    if (!toolTab) return !location.search?.tab
-    return location.search?.tab === toolTab
+  const isToolActive = (toolRoute: string) => {
+    return location.pathname === toolRoute
   }
-
-  // Scroll to active tool when location changes
-  useEffect(() => {
-    if (activeToolRef.current) {
-      activeToolRef.current.scrollIntoView({
-        behavior: 'auto',
-        block: 'center',
-      })
-    }
-  }, [location.pathname, location.search])
 
   return (
     <div className="w-80 glass border-r border-border/50 h-screen flex flex-col">
@@ -148,11 +138,7 @@ export function ToolSidebar() {
               {toolCategories.map((category) => (
                 <div key={category.name} className="flex flex-col">
                   {/* Category header */}
-                  <Link
-                    to={category.route}
-                    search={{ tab: Object.values(category.toolMap)[0] }}
-                    className="w-full"
-                  >
+                  <Link to={category.route} className="w-full">
                     <div
                       className={`flex items-center gap-3 p-3 rounded-lg transition-colors group cursor-pointer ${
                         isProcessing
@@ -188,26 +174,26 @@ export function ToolSidebar() {
 
                   {/* Tool list */}
                   <div className="ml-13 flex flex-col gap-1">
-                    {Object.entries(category.toolMap).map(([tool, tab]) => {
-                      const isActive = isToolActive(category.route, tab)
-                      const isUnderConstruction =
-                        category.underConstructionTools?.includes(tool)
+                    {category.tools.map((tool) => {
+                      const isActive = isToolActive(tool.route)
 
                       return (
-                        <div key={tool} ref={isActive ? activeToolRef : null}>
-                          {isUnderConstruction ? (
+                        <div
+                          key={tool.name}
+                          ref={isActive ? activeToolRef : null}
+                        >
+                          {tool.underConstruction ? (
                             <Button
                               variant="ghost"
                               className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-all duration-200 cursor-not-allowed opacity-60"
                               disabled
                             >
                               <Construction className="w-3 h-3 mr-2" />
-                              {tool}
+                              {tool.name}
                             </Button>
                           ) : (
                             <Link
-                              to={category.route}
-                              search={{ tab }}
+                              to={tool.route}
                               className="w-full"
                               onClick={(e) => {
                                 if (isProcessing) {
@@ -225,10 +211,10 @@ export function ToolSidebar() {
                                 } ${
                                   isProcessing
                                     ? 'opacity-50 cursor-not-allowed'
-                                    : ''
+                                    : 'cursor-pointer'
                                 }`}
                               >
-                                {tool}
+                                {tool.name}
                               </Button>
                             </Link>
                           )}

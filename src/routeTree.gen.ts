@@ -16,6 +16,30 @@ import { Route as OfficeDocumentsRouteImport } from './routes/office-documents'
 import { Route as ImagesRouteImport } from './routes/images'
 import { Route as ArchivesRouteImport } from './routes/archives'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VideosIndexRouteImport } from './routes/videos.index'
+import { Route as UtilitiesIndexRouteImport } from './routes/utilities.index'
+import { Route as PdfsIndexRouteImport } from './routes/pdfs.index'
+import { Route as OfficeDocumentsIndexRouteImport } from './routes/office-documents.index'
+import { Route as ImagesIndexRouteImport } from './routes/images.index'
+import { Route as ArchivesIndexRouteImport } from './routes/archives.index'
+import { Route as VideosTrimRouteImport } from './routes/videos.trim'
+import { Route as VideosMetadataRouteImport } from './routes/videos.metadata'
+import { Route as VideosExtractRouteImport } from './routes/videos.extract'
+import { Route as VideosConvertRouteImport } from './routes/videos.convert'
+import { Route as VideosCompressRouteImport } from './routes/videos.compress'
+import { Route as UtilitiesMetadataRouteImport } from './routes/utilities.metadata'
+import { Route as UtilitiesHashRouteImport } from './routes/utilities.hash'
+import { Route as PdfsSplitRouteImport } from './routes/pdfs.split'
+import { Route as PdfsMergeRouteImport } from './routes/pdfs.merge'
+import { Route as PdfsCompressRouteImport } from './routes/pdfs.compress'
+import { Route as OfficeDocumentsConvertRouteImport } from './routes/office-documents.convert'
+import { Route as ImagesResizeRouteImport } from './routes/images.resize'
+import { Route as ImagesRedactRouteImport } from './routes/images.redact'
+import { Route as ImagesMetadataRouteImport } from './routes/images.metadata'
+import { Route as ImagesConvertRouteImport } from './routes/images.convert'
+import { Route as ImagesCompressRouteImport } from './routes/images.compress'
+import { Route as ArchivesExtractRouteImport } from './routes/archives.extract'
+import { Route as ArchivesCompressRouteImport } from './routes/archives.compress'
 
 const VideosRoute = VideosRouteImport.update({
   id: '/videos',
@@ -52,34 +76,220 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VideosIndexRoute = VideosIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VideosRoute,
+} as any)
+const UtilitiesIndexRoute = UtilitiesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UtilitiesRoute,
+} as any)
+const PdfsIndexRoute = PdfsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const OfficeDocumentsIndexRoute = OfficeDocumentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OfficeDocumentsRoute,
+} as any)
+const ImagesIndexRoute = ImagesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ArchivesIndexRoute = ArchivesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArchivesRoute,
+} as any)
+const VideosTrimRoute = VideosTrimRouteImport.update({
+  id: '/trim',
+  path: '/trim',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosMetadataRoute = VideosMetadataRouteImport.update({
+  id: '/metadata',
+  path: '/metadata',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosExtractRoute = VideosExtractRouteImport.update({
+  id: '/extract',
+  path: '/extract',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosConvertRoute = VideosConvertRouteImport.update({
+  id: '/convert',
+  path: '/convert',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosCompressRoute = VideosCompressRouteImport.update({
+  id: '/compress',
+  path: '/compress',
+  getParentRoute: () => VideosRoute,
+} as any)
+const UtilitiesMetadataRoute = UtilitiesMetadataRouteImport.update({
+  id: '/metadata',
+  path: '/metadata',
+  getParentRoute: () => UtilitiesRoute,
+} as any)
+const UtilitiesHashRoute = UtilitiesHashRouteImport.update({
+  id: '/hash',
+  path: '/hash',
+  getParentRoute: () => UtilitiesRoute,
+} as any)
+const PdfsSplitRoute = PdfsSplitRouteImport.update({
+  id: '/split',
+  path: '/split',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsMergeRoute = PdfsMergeRouteImport.update({
+  id: '/merge',
+  path: '/merge',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsCompressRoute = PdfsCompressRouteImport.update({
+  id: '/compress',
+  path: '/compress',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const OfficeDocumentsConvertRoute = OfficeDocumentsConvertRouteImport.update({
+  id: '/convert',
+  path: '/convert',
+  getParentRoute: () => OfficeDocumentsRoute,
+} as any)
+const ImagesResizeRoute = ImagesResizeRouteImport.update({
+  id: '/resize',
+  path: '/resize',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesRedactRoute = ImagesRedactRouteImport.update({
+  id: '/redact',
+  path: '/redact',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesMetadataRoute = ImagesMetadataRouteImport.update({
+  id: '/metadata',
+  path: '/metadata',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesConvertRoute = ImagesConvertRouteImport.update({
+  id: '/convert',
+  path: '/convert',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesCompressRoute = ImagesCompressRouteImport.update({
+  id: '/compress',
+  path: '/compress',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ArchivesExtractRoute = ArchivesExtractRouteImport.update({
+  id: '/extract',
+  path: '/extract',
+  getParentRoute: () => ArchivesRoute,
+} as any)
+const ArchivesCompressRoute = ArchivesCompressRouteImport.update({
+  id: '/compress',
+  path: '/compress',
+  getParentRoute: () => ArchivesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/archives': typeof ArchivesRoute
-  '/images': typeof ImagesRoute
-  '/office-documents': typeof OfficeDocumentsRoute
-  '/pdfs': typeof PdfsRoute
-  '/utilities': typeof UtilitiesRoute
-  '/videos': typeof VideosRoute
+  '/archives': typeof ArchivesRouteWithChildren
+  '/images': typeof ImagesRouteWithChildren
+  '/office-documents': typeof OfficeDocumentsRouteWithChildren
+  '/pdfs': typeof PdfsRouteWithChildren
+  '/utilities': typeof UtilitiesRouteWithChildren
+  '/videos': typeof VideosRouteWithChildren
+  '/archives/compress': typeof ArchivesCompressRoute
+  '/archives/extract': typeof ArchivesExtractRoute
+  '/images/compress': typeof ImagesCompressRoute
+  '/images/convert': typeof ImagesConvertRoute
+  '/images/metadata': typeof ImagesMetadataRoute
+  '/images/redact': typeof ImagesRedactRoute
+  '/images/resize': typeof ImagesResizeRoute
+  '/office-documents/convert': typeof OfficeDocumentsConvertRoute
+  '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/merge': typeof PdfsMergeRoute
+  '/pdfs/split': typeof PdfsSplitRoute
+  '/utilities/hash': typeof UtilitiesHashRoute
+  '/utilities/metadata': typeof UtilitiesMetadataRoute
+  '/videos/compress': typeof VideosCompressRoute
+  '/videos/convert': typeof VideosConvertRoute
+  '/videos/extract': typeof VideosExtractRoute
+  '/videos/metadata': typeof VideosMetadataRoute
+  '/videos/trim': typeof VideosTrimRoute
+  '/archives/': typeof ArchivesIndexRoute
+  '/images/': typeof ImagesIndexRoute
+  '/office-documents/': typeof OfficeDocumentsIndexRoute
+  '/pdfs/': typeof PdfsIndexRoute
+  '/utilities/': typeof UtilitiesIndexRoute
+  '/videos/': typeof VideosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/archives': typeof ArchivesRoute
-  '/images': typeof ImagesRoute
-  '/office-documents': typeof OfficeDocumentsRoute
-  '/pdfs': typeof PdfsRoute
-  '/utilities': typeof UtilitiesRoute
-  '/videos': typeof VideosRoute
+  '/archives/compress': typeof ArchivesCompressRoute
+  '/archives/extract': typeof ArchivesExtractRoute
+  '/images/compress': typeof ImagesCompressRoute
+  '/images/convert': typeof ImagesConvertRoute
+  '/images/metadata': typeof ImagesMetadataRoute
+  '/images/redact': typeof ImagesRedactRoute
+  '/images/resize': typeof ImagesResizeRoute
+  '/office-documents/convert': typeof OfficeDocumentsConvertRoute
+  '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/merge': typeof PdfsMergeRoute
+  '/pdfs/split': typeof PdfsSplitRoute
+  '/utilities/hash': typeof UtilitiesHashRoute
+  '/utilities/metadata': typeof UtilitiesMetadataRoute
+  '/videos/compress': typeof VideosCompressRoute
+  '/videos/convert': typeof VideosConvertRoute
+  '/videos/extract': typeof VideosExtractRoute
+  '/videos/metadata': typeof VideosMetadataRoute
+  '/videos/trim': typeof VideosTrimRoute
+  '/archives': typeof ArchivesIndexRoute
+  '/images': typeof ImagesIndexRoute
+  '/office-documents': typeof OfficeDocumentsIndexRoute
+  '/pdfs': typeof PdfsIndexRoute
+  '/utilities': typeof UtilitiesIndexRoute
+  '/videos': typeof VideosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/archives': typeof ArchivesRoute
-  '/images': typeof ImagesRoute
-  '/office-documents': typeof OfficeDocumentsRoute
-  '/pdfs': typeof PdfsRoute
-  '/utilities': typeof UtilitiesRoute
-  '/videos': typeof VideosRoute
+  '/archives': typeof ArchivesRouteWithChildren
+  '/images': typeof ImagesRouteWithChildren
+  '/office-documents': typeof OfficeDocumentsRouteWithChildren
+  '/pdfs': typeof PdfsRouteWithChildren
+  '/utilities': typeof UtilitiesRouteWithChildren
+  '/videos': typeof VideosRouteWithChildren
+  '/archives/compress': typeof ArchivesCompressRoute
+  '/archives/extract': typeof ArchivesExtractRoute
+  '/images/compress': typeof ImagesCompressRoute
+  '/images/convert': typeof ImagesConvertRoute
+  '/images/metadata': typeof ImagesMetadataRoute
+  '/images/redact': typeof ImagesRedactRoute
+  '/images/resize': typeof ImagesResizeRoute
+  '/office-documents/convert': typeof OfficeDocumentsConvertRoute
+  '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/merge': typeof PdfsMergeRoute
+  '/pdfs/split': typeof PdfsSplitRoute
+  '/utilities/hash': typeof UtilitiesHashRoute
+  '/utilities/metadata': typeof UtilitiesMetadataRoute
+  '/videos/compress': typeof VideosCompressRoute
+  '/videos/convert': typeof VideosConvertRoute
+  '/videos/extract': typeof VideosExtractRoute
+  '/videos/metadata': typeof VideosMetadataRoute
+  '/videos/trim': typeof VideosTrimRoute
+  '/archives/': typeof ArchivesIndexRoute
+  '/images/': typeof ImagesIndexRoute
+  '/office-documents/': typeof OfficeDocumentsIndexRoute
+  '/pdfs/': typeof PdfsIndexRoute
+  '/utilities/': typeof UtilitiesIndexRoute
+  '/videos/': typeof VideosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,9 +301,51 @@ export interface FileRouteTypes {
     | '/pdfs'
     | '/utilities'
     | '/videos'
+    | '/archives/compress'
+    | '/archives/extract'
+    | '/images/compress'
+    | '/images/convert'
+    | '/images/metadata'
+    | '/images/redact'
+    | '/images/resize'
+    | '/office-documents/convert'
+    | '/pdfs/compress'
+    | '/pdfs/merge'
+    | '/pdfs/split'
+    | '/utilities/hash'
+    | '/utilities/metadata'
+    | '/videos/compress'
+    | '/videos/convert'
+    | '/videos/extract'
+    | '/videos/metadata'
+    | '/videos/trim'
+    | '/archives/'
+    | '/images/'
+    | '/office-documents/'
+    | '/pdfs/'
+    | '/utilities/'
+    | '/videos/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/archives/compress'
+    | '/archives/extract'
+    | '/images/compress'
+    | '/images/convert'
+    | '/images/metadata'
+    | '/images/redact'
+    | '/images/resize'
+    | '/office-documents/convert'
+    | '/pdfs/compress'
+    | '/pdfs/merge'
+    | '/pdfs/split'
+    | '/utilities/hash'
+    | '/utilities/metadata'
+    | '/videos/compress'
+    | '/videos/convert'
+    | '/videos/extract'
+    | '/videos/metadata'
+    | '/videos/trim'
     | '/archives'
     | '/images'
     | '/office-documents'
@@ -109,16 +361,40 @@ export interface FileRouteTypes {
     | '/pdfs'
     | '/utilities'
     | '/videos'
+    | '/archives/compress'
+    | '/archives/extract'
+    | '/images/compress'
+    | '/images/convert'
+    | '/images/metadata'
+    | '/images/redact'
+    | '/images/resize'
+    | '/office-documents/convert'
+    | '/pdfs/compress'
+    | '/pdfs/merge'
+    | '/pdfs/split'
+    | '/utilities/hash'
+    | '/utilities/metadata'
+    | '/videos/compress'
+    | '/videos/convert'
+    | '/videos/extract'
+    | '/videos/metadata'
+    | '/videos/trim'
+    | '/archives/'
+    | '/images/'
+    | '/office-documents/'
+    | '/pdfs/'
+    | '/utilities/'
+    | '/videos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ArchivesRoute: typeof ArchivesRoute
-  ImagesRoute: typeof ImagesRoute
-  OfficeDocumentsRoute: typeof OfficeDocumentsRoute
-  PdfsRoute: typeof PdfsRoute
-  UtilitiesRoute: typeof UtilitiesRoute
-  VideosRoute: typeof VideosRoute
+  ArchivesRoute: typeof ArchivesRouteWithChildren
+  ImagesRoute: typeof ImagesRouteWithChildren
+  OfficeDocumentsRoute: typeof OfficeDocumentsRouteWithChildren
+  PdfsRoute: typeof PdfsRouteWithChildren
+  UtilitiesRoute: typeof UtilitiesRouteWithChildren
+  VideosRoute: typeof VideosRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -172,17 +448,289 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/videos/': {
+      id: '/videos/'
+      path: '/'
+      fullPath: '/videos/'
+      preLoaderRoute: typeof VideosIndexRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/utilities/': {
+      id: '/utilities/'
+      path: '/'
+      fullPath: '/utilities/'
+      preLoaderRoute: typeof UtilitiesIndexRouteImport
+      parentRoute: typeof UtilitiesRoute
+    }
+    '/pdfs/': {
+      id: '/pdfs/'
+      path: '/'
+      fullPath: '/pdfs/'
+      preLoaderRoute: typeof PdfsIndexRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/office-documents/': {
+      id: '/office-documents/'
+      path: '/'
+      fullPath: '/office-documents/'
+      preLoaderRoute: typeof OfficeDocumentsIndexRouteImport
+      parentRoute: typeof OfficeDocumentsRoute
+    }
+    '/images/': {
+      id: '/images/'
+      path: '/'
+      fullPath: '/images/'
+      preLoaderRoute: typeof ImagesIndexRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/archives/': {
+      id: '/archives/'
+      path: '/'
+      fullPath: '/archives/'
+      preLoaderRoute: typeof ArchivesIndexRouteImport
+      parentRoute: typeof ArchivesRoute
+    }
+    '/videos/trim': {
+      id: '/videos/trim'
+      path: '/trim'
+      fullPath: '/videos/trim'
+      preLoaderRoute: typeof VideosTrimRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/metadata': {
+      id: '/videos/metadata'
+      path: '/metadata'
+      fullPath: '/videos/metadata'
+      preLoaderRoute: typeof VideosMetadataRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/extract': {
+      id: '/videos/extract'
+      path: '/extract'
+      fullPath: '/videos/extract'
+      preLoaderRoute: typeof VideosExtractRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/convert': {
+      id: '/videos/convert'
+      path: '/convert'
+      fullPath: '/videos/convert'
+      preLoaderRoute: typeof VideosConvertRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/compress': {
+      id: '/videos/compress'
+      path: '/compress'
+      fullPath: '/videos/compress'
+      preLoaderRoute: typeof VideosCompressRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/utilities/metadata': {
+      id: '/utilities/metadata'
+      path: '/metadata'
+      fullPath: '/utilities/metadata'
+      preLoaderRoute: typeof UtilitiesMetadataRouteImport
+      parentRoute: typeof UtilitiesRoute
+    }
+    '/utilities/hash': {
+      id: '/utilities/hash'
+      path: '/hash'
+      fullPath: '/utilities/hash'
+      preLoaderRoute: typeof UtilitiesHashRouteImport
+      parentRoute: typeof UtilitiesRoute
+    }
+    '/pdfs/split': {
+      id: '/pdfs/split'
+      path: '/split'
+      fullPath: '/pdfs/split'
+      preLoaderRoute: typeof PdfsSplitRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/merge': {
+      id: '/pdfs/merge'
+      path: '/merge'
+      fullPath: '/pdfs/merge'
+      preLoaderRoute: typeof PdfsMergeRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/compress': {
+      id: '/pdfs/compress'
+      path: '/compress'
+      fullPath: '/pdfs/compress'
+      preLoaderRoute: typeof PdfsCompressRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/office-documents/convert': {
+      id: '/office-documents/convert'
+      path: '/convert'
+      fullPath: '/office-documents/convert'
+      preLoaderRoute: typeof OfficeDocumentsConvertRouteImport
+      parentRoute: typeof OfficeDocumentsRoute
+    }
+    '/images/resize': {
+      id: '/images/resize'
+      path: '/resize'
+      fullPath: '/images/resize'
+      preLoaderRoute: typeof ImagesResizeRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/redact': {
+      id: '/images/redact'
+      path: '/redact'
+      fullPath: '/images/redact'
+      preLoaderRoute: typeof ImagesRedactRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/metadata': {
+      id: '/images/metadata'
+      path: '/metadata'
+      fullPath: '/images/metadata'
+      preLoaderRoute: typeof ImagesMetadataRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/convert': {
+      id: '/images/convert'
+      path: '/convert'
+      fullPath: '/images/convert'
+      preLoaderRoute: typeof ImagesConvertRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/compress': {
+      id: '/images/compress'
+      path: '/compress'
+      fullPath: '/images/compress'
+      preLoaderRoute: typeof ImagesCompressRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/archives/extract': {
+      id: '/archives/extract'
+      path: '/extract'
+      fullPath: '/archives/extract'
+      preLoaderRoute: typeof ArchivesExtractRouteImport
+      parentRoute: typeof ArchivesRoute
+    }
+    '/archives/compress': {
+      id: '/archives/compress'
+      path: '/compress'
+      fullPath: '/archives/compress'
+      preLoaderRoute: typeof ArchivesCompressRouteImport
+      parentRoute: typeof ArchivesRoute
+    }
   }
 }
 
+interface ArchivesRouteChildren {
+  ArchivesCompressRoute: typeof ArchivesCompressRoute
+  ArchivesExtractRoute: typeof ArchivesExtractRoute
+  ArchivesIndexRoute: typeof ArchivesIndexRoute
+}
+
+const ArchivesRouteChildren: ArchivesRouteChildren = {
+  ArchivesCompressRoute: ArchivesCompressRoute,
+  ArchivesExtractRoute: ArchivesExtractRoute,
+  ArchivesIndexRoute: ArchivesIndexRoute,
+}
+
+const ArchivesRouteWithChildren = ArchivesRoute._addFileChildren(
+  ArchivesRouteChildren,
+)
+
+interface ImagesRouteChildren {
+  ImagesCompressRoute: typeof ImagesCompressRoute
+  ImagesConvertRoute: typeof ImagesConvertRoute
+  ImagesMetadataRoute: typeof ImagesMetadataRoute
+  ImagesRedactRoute: typeof ImagesRedactRoute
+  ImagesResizeRoute: typeof ImagesResizeRoute
+  ImagesIndexRoute: typeof ImagesIndexRoute
+}
+
+const ImagesRouteChildren: ImagesRouteChildren = {
+  ImagesCompressRoute: ImagesCompressRoute,
+  ImagesConvertRoute: ImagesConvertRoute,
+  ImagesMetadataRoute: ImagesMetadataRoute,
+  ImagesRedactRoute: ImagesRedactRoute,
+  ImagesResizeRoute: ImagesResizeRoute,
+  ImagesIndexRoute: ImagesIndexRoute,
+}
+
+const ImagesRouteWithChildren =
+  ImagesRoute._addFileChildren(ImagesRouteChildren)
+
+interface OfficeDocumentsRouteChildren {
+  OfficeDocumentsConvertRoute: typeof OfficeDocumentsConvertRoute
+  OfficeDocumentsIndexRoute: typeof OfficeDocumentsIndexRoute
+}
+
+const OfficeDocumentsRouteChildren: OfficeDocumentsRouteChildren = {
+  OfficeDocumentsConvertRoute: OfficeDocumentsConvertRoute,
+  OfficeDocumentsIndexRoute: OfficeDocumentsIndexRoute,
+}
+
+const OfficeDocumentsRouteWithChildren = OfficeDocumentsRoute._addFileChildren(
+  OfficeDocumentsRouteChildren,
+)
+
+interface PdfsRouteChildren {
+  PdfsCompressRoute: typeof PdfsCompressRoute
+  PdfsMergeRoute: typeof PdfsMergeRoute
+  PdfsSplitRoute: typeof PdfsSplitRoute
+  PdfsIndexRoute: typeof PdfsIndexRoute
+}
+
+const PdfsRouteChildren: PdfsRouteChildren = {
+  PdfsCompressRoute: PdfsCompressRoute,
+  PdfsMergeRoute: PdfsMergeRoute,
+  PdfsSplitRoute: PdfsSplitRoute,
+  PdfsIndexRoute: PdfsIndexRoute,
+}
+
+const PdfsRouteWithChildren = PdfsRoute._addFileChildren(PdfsRouteChildren)
+
+interface UtilitiesRouteChildren {
+  UtilitiesHashRoute: typeof UtilitiesHashRoute
+  UtilitiesMetadataRoute: typeof UtilitiesMetadataRoute
+  UtilitiesIndexRoute: typeof UtilitiesIndexRoute
+}
+
+const UtilitiesRouteChildren: UtilitiesRouteChildren = {
+  UtilitiesHashRoute: UtilitiesHashRoute,
+  UtilitiesMetadataRoute: UtilitiesMetadataRoute,
+  UtilitiesIndexRoute: UtilitiesIndexRoute,
+}
+
+const UtilitiesRouteWithChildren = UtilitiesRoute._addFileChildren(
+  UtilitiesRouteChildren,
+)
+
+interface VideosRouteChildren {
+  VideosCompressRoute: typeof VideosCompressRoute
+  VideosConvertRoute: typeof VideosConvertRoute
+  VideosExtractRoute: typeof VideosExtractRoute
+  VideosMetadataRoute: typeof VideosMetadataRoute
+  VideosTrimRoute: typeof VideosTrimRoute
+  VideosIndexRoute: typeof VideosIndexRoute
+}
+
+const VideosRouteChildren: VideosRouteChildren = {
+  VideosCompressRoute: VideosCompressRoute,
+  VideosConvertRoute: VideosConvertRoute,
+  VideosExtractRoute: VideosExtractRoute,
+  VideosMetadataRoute: VideosMetadataRoute,
+  VideosTrimRoute: VideosTrimRoute,
+  VideosIndexRoute: VideosIndexRoute,
+}
+
+const VideosRouteWithChildren =
+  VideosRoute._addFileChildren(VideosRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ArchivesRoute: ArchivesRoute,
-  ImagesRoute: ImagesRoute,
-  OfficeDocumentsRoute: OfficeDocumentsRoute,
-  PdfsRoute: PdfsRoute,
-  UtilitiesRoute: UtilitiesRoute,
-  VideosRoute: VideosRoute,
+  ArchivesRoute: ArchivesRouteWithChildren,
+  ImagesRoute: ImagesRouteWithChildren,
+  OfficeDocumentsRoute: OfficeDocumentsRouteWithChildren,
+  PdfsRoute: PdfsRouteWithChildren,
+  UtilitiesRoute: UtilitiesRouteWithChildren,
+  VideosRoute: VideosRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
