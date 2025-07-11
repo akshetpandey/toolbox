@@ -395,8 +395,12 @@ function RedactPage() {
             tempCanvas.height = scaledHeight
             tempCtx.putImageData(imageData, 0, 0)
 
+            // Scale the blur radius to match the visual effect of the preview
+            const scaledBlurRadius =
+              (area.blurRadius ?? 10) * Math.max(scaleFactor.x, scaleFactor.y)
+
             outputCtx.save()
-            outputCtx.filter = `blur(${area.blurRadius ?? 10}px)`
+            outputCtx.filter = `blur(${scaledBlurRadius}px)`
             outputCtx.drawImage(tempCanvas, scaledX, scaledY)
             outputCtx.restore()
           }
@@ -633,26 +637,15 @@ function RedactPage() {
           )}
         </div>
 
-        <div className="border-2 border-dashed border-primary/20 rounded-lg p-4 bg-muted/20">
+        <div className="border-2 border-dashed border-primary/20 rounded-lg p-4 bg-muted/20 flex justify-center">
           <canvas
             ref={canvasRef}
-            className="w-full max-h-[500px] border border-border/50 rounded cursor-crosshair"
+            className="max-w-full max-h-[500px] border border-border/50 rounded cursor-crosshair"
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
           />
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p>
-              Click and drag to create{' '}
-              {redactionMode === 'box'
-                ? 'redaction boxes'
-                : redactionMode === 'blur'
-                  ? 'blur areas'
-                  : 'pixelated areas'}
-            </p>
-            <p>Total redactions applied: {redactionAreas.length}</p>
-          </div>
         </div>
 
         <div className="flex justify-between items-center">
