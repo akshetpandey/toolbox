@@ -5,6 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useVideoTools } from '@/contexts/VideoToolsContext'
 import { downloadFile } from '@/lib/shared'
 import type { TrimOptions } from '@/lib/ffmpeg'
@@ -36,6 +44,10 @@ function VideoTrimComponent() {
   // Trim settings
   const [startTime, setStartTime] = useState('00:00:00')
   const [endTime, setEndTime] = useState('00:00:10')
+  const [exportFormat, setExportFormat] = useState<'original' | 'gif' | 'webp'>(
+    'original',
+  )
+  const [enableLoop, setEnableLoop] = useState<boolean>(false) // true for infinite loop
 
   const trimVideo = useCallback(async () => {
     if (!selectedFile) return
@@ -60,6 +72,11 @@ function VideoTrimComponent() {
       const options: TrimOptions = {
         startTime,
         endTime,
+        format: exportFormat,
+        loop:
+          exportFormat === 'gif' || exportFormat === 'webp'
+            ? enableLoop
+            : undefined,
         signal: abortController.signal,
       }
 
@@ -75,8 +92,16 @@ function VideoTrimComponent() {
         /\.[^/.]+$/,
         '',
       ) // Remove extension
-      const extension =
-        ffmpegProcessor.inputFile?.name.split('.').pop() ?? 'mp4'
+
+      let extension: string
+      if (exportFormat === 'gif') {
+        extension = 'gif'
+      } else if (exportFormat === 'webp') {
+        extension = 'webp'
+      } else {
+        extension = ffmpegProcessor.inputFile?.name.split('.').pop() ?? 'mp4'
+      }
+
       const filename = `${originalName}_trimmed.${extension}`
 
       // Download the file directly
@@ -99,6 +124,8 @@ function VideoTrimComponent() {
     selectedFile,
     startTime,
     endTime,
+    exportFormat,
+    enableLoop,
     getFfmpegProcessor,
     setCurrentAbortController,
     setIsProcessing,
@@ -210,6 +237,51 @@ function VideoTrimComponent() {
               </div>
             </div>
           )}
+
+          {/* Export Format Selection */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Export Format</Label>
+            <div className="flex items-center gap-3">
+              <Select
+                value={exportFormat}
+                onValueChange={(value) =>
+                  setExportFormat(value as 'original' | 'gif' | 'webp')
+                }
+                disabled={isProcessing}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="original">Original Format</SelectItem>
+                  <SelectItem value="gif">Animated GIF</SelectItem>
+                  <SelectItem value="webp">Animated WebP</SelectItem>
+                </SelectContent>
+              </Select>
+              {(exportFormat === 'gif' || exportFormat === 'webp') && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="enableLoop"
+                    checked={enableLoop}
+                    onCheckedChange={(checked) =>
+                      setEnableLoop(checked === true)
+                    }
+                    disabled={isProcessing}
+                  />
+                  <Label htmlFor="enableLoop" className="text-sm font-medium">
+                    Loop
+                  </Label>
+                </div>
+              )}
+            </div>
+            {(exportFormat === 'gif' || exportFormat === 'webp') && (
+              <div className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
+                <strong>Note:</strong> GIF and WebP exports will be video only
+                (no audio)
+                {enableLoop && ' and will loop continuously'}
+              </div>
+            )}
+          </div>
 
           {/* Quick Presets */}
           <div className="space-y-3">

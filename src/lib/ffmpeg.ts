@@ -99,6 +99,8 @@ export interface VideoCompressOptions {
 export interface TrimOptions {
   startTime: string
   endTime: string
+  format?: 'original' | 'gif' | 'webp'
+  loop?: boolean // true for infinite loop, false for play once
   signal?: AbortSignal
 }
 
@@ -544,21 +546,88 @@ export class FFmpegProcessor {
       options,
     })
 
-    const outputFileName = `trimmed.${this.getFileExtension(this.inputFileName ?? '')}`
+    const format = options.format ?? 'original'
+    let outputFileName: string
+    let command: string[]
+    let outputMimeType: string
 
-    const command = [
-      '-i',
-      this.inputFileName ?? '',
-      '-ss',
-      options.startTime,
-      '-to',
-      options.endTime,
-      '-c',
-      'copy',
-      outputFileName,
-    ]
+    // Determine output format and filename
+    if (format === 'gif') {
+      outputFileName = 'trimmed.gif'
+      outputMimeType = 'image/gif'
+    } else if (format === 'webp') {
+      outputFileName = 'trimmed.webp'
+      outputMimeType = 'image/webp'
+    } else {
+      outputFileName = `trimmed.${this.getFileExtension(this.inputFileName ?? '')}`
+      outputMimeType = this.inputFile?.type ?? 'video/mp4'
+    }
 
-    console.log('🎬 FFmpeg: Executing trim command', { command })
+    // Build FFmpeg command based on format
+    if (format === 'gif') {
+      command = [
+        '-i',
+        this.inputFileName ?? '',
+        '-ss',
+        options.startTime,
+        '-to',
+        options.endTime,
+        '-vf',
+        'fps=15',
+        '-c:v',
+        'gif',
+      ]
+
+      // Add loop option if specified
+      if (options.loop === true) {
+        command.push('-loop', '0') // 0 = infinite loop
+      }
+
+      command.push('-f', 'gif', outputFileName)
+    } else if (format === 'webp') {
+      command = [
+        '-i',
+        this.inputFileName ?? '',
+        '-ss',
+        options.startTime,
+        '-to',
+        options.endTime,
+        '-vf',
+        'fps=20',
+        '-c:v',
+        'libwebp',
+        '-lossless',
+        '0',
+        '-compression_level',
+        '6',
+        '-quality',
+        '80',
+        '-preset',
+        'default',
+      ]
+
+      // Add loop option if specified
+      if (options.loop === true) {
+        command.push('-loop', '0') // 0 = infinite loop
+      }
+
+      command.push('-f', 'webp', outputFileName)
+    } else {
+      // Original format - use stream copy for speed
+      command = [
+        '-i',
+        this.inputFileName ?? '',
+        '-ss',
+        options.startTime,
+        '-to',
+        options.endTime,
+        '-c',
+        'copy',
+        outputFileName,
+      ]
+    }
+
+    console.log('🎬 FFmpeg: Executing trim command', { command, format })
     try {
       await this.ffmpeg.exec(command, -1, { signal: options.signal })
     } catch (error) {
@@ -572,10 +641,7 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Video trimming completed successfully')
     await this.ffmpeg.deleteFile(outputFileName)
 
-    return this.createBlobFromFFmpegOutput(
-      data,
-      this.inputFile?.type ?? 'video/mp4',
-    )
+    return this.createBlobFromFFmpegOutput(data, outputMimeType)
   }
 
   async extractAudio(options: AudioExtractOptions): Promise<Blob> {
