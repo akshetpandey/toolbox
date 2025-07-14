@@ -235,8 +235,8 @@ function VideoTrimComponent() {
           {/* Export Format Selection */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Export Format</Label>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant={exportFormat === 'original' ? 'default' : 'outline'}
                   size="sm"
