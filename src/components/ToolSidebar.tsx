@@ -145,12 +145,14 @@ export function ToolSidebar() {
   const { isProcessing } = useProcessing()
   const activeToolRef = useRef<HTMLDivElement>(null)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Check if mobile on mount and set collapsed state accordingly
   useEffect(() => {
     const checkMobile = () => {
-      const isMobile = window.innerWidth < 768 // Tailwind's md breakpoint
-      setIsCollapsed(isMobile)
+      const mobile = window.innerWidth < 768 // Tailwind's md breakpoint
+      setIsMobile(mobile)
+      setIsCollapsed(mobile)
     }
 
     checkMobile()
@@ -172,174 +174,198 @@ export function ToolSidebar() {
     setIsCollapsed(!isCollapsed)
   }
 
+  // Close sidebar when clicking outside on mobile
+  const handleOverlayClick = () => {
+    if (isMobile) {
+      setIsCollapsed(true)
+    }
+  }
+
   return (
-    <div
-      className={`glass border-r border-border/50 h-screen flex flex-col transition-all duration-300 ${
-        isCollapsed ? 'w-16' : 'w-72'
-      }`}
-    >
-      {/* Header */}
+    <>
+      {/* Mobile Overlay */}
+      {isMobile && !isCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={handleOverlayClick}
+        />
+      )}
+
+      {/* Sidebar */}
       <div
-        className={`border-b border-border/50 shrink-0 ${
-          isCollapsed ? 'p-2' : 'p-4'
+        className={`bg-background border-r border-border/50 h-screen flex flex-col transition-all duration-300 z-50 ${
+          isMobile
+            ? `fixed top-0 left-0 ${isCollapsed ? 'w-16' : 'w-80'}`
+            : `${isCollapsed ? 'w-16' : 'w-72'}`
         }`}
       >
-        <div className="flex flex-col gap-3">
-          {/* First row: Logo/Title */}
-          <div
-            className={`flex items-center ${
-              isCollapsed ? 'justify-center' : 'justify-start'
-            }`}
-          >
-            <Link
-              to="/"
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        {/* Header */}
+        <div
+          className={`border-b border-border/50 shrink-0 ${
+            isCollapsed ? 'p-2' : 'p-4'
+          }`}
+        >
+          <div className="flex flex-col gap-3">
+            {/* First row: Logo/Title */}
+            <div
+              className={`flex items-center ${
+                isCollapsed ? 'justify-center' : 'justify-start'
+              }`}
             >
-              <div
-                className={`${
-                  isCollapsed ? 'w-8 h-8' : 'w-12 h-12'
-                } bg-gradient-to-br from-primary/20 to-primary/10 ${
-                  isCollapsed ? 'rounded-xl' : 'rounded-2xl'
-                } flex items-center justify-center`}
+              <Link
+                to="/"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
               >
-                <Hammer
+                <div
                   className={`${
-                    isCollapsed ? 'w-4 h-4' : 'w-6 h-6'
-                  } text-primary`}
-                />
-              </div>
-              {!isCollapsed && (
-                <h2 className="text-heading text-foreground">Toolbox</h2>
-              )}
-            </Link>
-          </div>
-
-          {/* Second row: Collapse Button and Theme Toggle */}
-          <div className="pl-2 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleSidebar}
-              className="h-8 w-8 p-0 hover:bg-accent/50"
-            >
-              {isCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
-            </Button>
-            {!isCollapsed && <ThemeToggle />}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className={`py-2 ${isCollapsed ? 'px-1' : 'px-2'}`}>
-            {/* Tool categories */}
-            <div className="flex flex-col gap-2">
-              {toolCategories.map((category) => (
-                <div key={category.name} className="flex flex-col">
-                  {/* Category header */}
-                  <Link to={category.route} className="w-full">
-                    <div
-                      className={`flex items-center rounded-lg transition-colors group cursor-pointer ${
-                        isCollapsed ? 'p-2 justify-center' : 'gap-3 p-3'
-                      } ${
-                        isProcessing
-                          ? 'opacity-50 cursor-not-allowed'
-                          : 'hover:bg-accent/50'
-                      }`}
-                      onClick={(e) => {
-                        if (isProcessing) {
-                          e.preventDefault()
-                        }
-                      }}
-                      title={isCollapsed ? category.name : ''}
-                    >
-                      <div
-                        className={`${isCollapsed ? 'w-8 h-8' : 'w-10 h-10'} ${category.bgColor} rounded-xl flex items-center justify-center ${
-                          isProcessing ? '' : 'group-hover:scale-110'
-                        } transition-transform`}
-                      >
-                        <category.icon
-                          className={`${isCollapsed ? 'h-4 w-4' : 'h-5 w-5'} ${category.color}`}
-                        />
-                      </div>
-                      {!isCollapsed && (
-                        <div className="flex-1">
-                          <h3
-                            className={`font-semibold text-foreground transition-colors ${
-                              isProcessing ? '' : 'group-hover:text-primary'
-                            }`}
-                          >
-                            {category.name}
-                          </h3>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-
-                  {/* Tool list */}
-                  {!isCollapsed && (
-                    <div className="ml-12 flex flex-col gap-1">
-                      {category.tools.map((tool) => {
-                        const isActive = isToolActive(tool.route)
-
-                        return (
-                          <div
-                            key={tool.name}
-                            ref={isActive ? activeToolRef : null}
-                          >
-                            {tool.underConstruction ? (
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg cursor-not-allowed opacity-60"
-                                disabled
-                              >
-                                <Construction className="w-3 h-3 mr-2" />
-                                {tool.name}
-                              </Button>
-                            ) : (
-                              <Link
-                                to={tool.route}
-                                className="w-full"
-                                onClick={(e) => {
-                                  if (isProcessing) {
-                                    e.preventDefault()
-                                  }
-                                }}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  disabled={isProcessing}
-                                  className={`w-full justify-start h-auto p-2 text-sm rounded-lg ${
-                                    isActive
-                                      ? 'bg-primary/10 text-primary border border-primary/20'
-                                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                                  } ${
-                                    isProcessing
-                                      ? 'opacity-50 cursor-not-allowed'
-                                      : 'cursor-pointer'
-                                  }`}
-                                >
-                                  <tool.icon className="w-3 h-3 mr-2" />
-                                  {tool.name}
-                                </Button>
-                              </Link>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                    isCollapsed ? 'w-8 h-8' : 'w-12 h-12'
+                  } bg-gradient-to-br from-primary/20 to-primary/10 ${
+                    isCollapsed ? 'rounded-xl' : 'rounded-2xl'
+                  } flex items-center justify-center`}
+                >
+                  <Hammer
+                    className={`${
+                      isCollapsed ? 'w-4 h-4' : 'w-6 h-6'
+                    } text-primary`}
+                  />
                 </div>
-              ))}
+                {!isCollapsed && (
+                  <h2 className="text-heading text-foreground">Toolbox</h2>
+                )}
+              </Link>
+            </div>
+
+            {/* Second row: Collapse Button and Theme Toggle */}
+            <div className="pl-2 flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleSidebar}
+                className="h-8 w-8 p-0 hover:bg-accent/50"
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4" />
+                )}
+              </Button>
+              {!isCollapsed && <ThemeToggle />}
             </div>
           </div>
-        </ScrollArea>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className={`py-2 ${isCollapsed ? 'px-1' : 'px-2'}`}>
+              {/* Tool categories */}
+              <div className="flex flex-col gap-2">
+                {toolCategories.map((category) => (
+                  <div key={category.name} className="flex flex-col">
+                    {/* Category header */}
+                    <Link to={category.route} className="w-full">
+                      <div
+                        className={`flex items-center rounded-lg transition-colors group cursor-pointer ${
+                          isCollapsed ? 'p-2 justify-center' : 'gap-3 p-3'
+                        } ${
+                          isProcessing
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:bg-accent/50'
+                        }`}
+                        onClick={(e) => {
+                          if (isProcessing) {
+                            e.preventDefault()
+                          }
+                        }}
+                        title={isCollapsed ? category.name : ''}
+                      >
+                        <div
+                          className={`${isCollapsed ? 'w-8 h-8' : 'w-10 h-10'} ${category.bgColor} rounded-xl flex items-center justify-center ${
+                            isProcessing ? '' : 'group-hover:scale-110'
+                          } transition-transform`}
+                        >
+                          <category.icon
+                            className={`${isCollapsed ? 'h-4 w-4' : 'h-5 w-5'} ${category.color}`}
+                          />
+                        </div>
+                        {!isCollapsed && (
+                          <div className="flex-1">
+                            <h3
+                              className={`font-semibold text-foreground transition-colors ${
+                                isProcessing ? '' : 'group-hover:text-primary'
+                              }`}
+                            >
+                              {category.name}
+                            </h3>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+
+                    {/* Tool list */}
+                    {!isCollapsed && (
+                      <div className="ml-12 flex flex-col gap-1">
+                        {category.tools.map((tool) => {
+                          const isActive = isToolActive(tool.route)
+
+                          return (
+                            <div
+                              key={tool.name}
+                              ref={isActive ? activeToolRef : null}
+                            >
+                              {tool.underConstruction ? (
+                                <Button
+                                  variant="ghost"
+                                  className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg cursor-not-allowed opacity-60"
+                                  disabled
+                                >
+                                  <Construction className="w-3 h-3 mr-2" />
+                                  {tool.name}
+                                </Button>
+                              ) : (
+                                <Link
+                                  to={tool.route}
+                                  className="w-full"
+                                  onClick={(e) => {
+                                    if (isProcessing) {
+                                      e.preventDefault()
+                                    }
+                                    // Close sidebar on mobile when navigating
+                                    if (isMobile) {
+                                      setIsCollapsed(true)
+                                    }
+                                  }}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    disabled={isProcessing}
+                                    className={`w-full justify-start h-auto p-2 text-sm rounded-lg ${
+                                      isActive
+                                        ? 'bg-primary/10 text-primary border border-primary/20'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                                    } ${
+                                      isProcessing
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : 'cursor-pointer'
+                                    }`}
+                                  >
+                                    <tool.icon className="w-3 h-3 mr-2" />
+                                    {tool.name}
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

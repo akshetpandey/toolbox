@@ -18,7 +18,7 @@ function RootDocument() {
     <>
       <div className="flex h-screen overflow-hidden bg-background">
         <ToolSidebar />
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden ml-16 md:ml-0">
           <Outlet />
         </div>
       </div>

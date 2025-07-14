@@ -43,7 +43,7 @@ function App() {
     <div className="flex flex-col h-full bg-background">
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
-        <div className="container mx-auto px-8 py-12">
+        <div className="container mx-auto px-4 sm:px-8 py-12">
           {/* Hero Section */}
           <div className="text-center max-w-4xl mx-auto mb-16">
             <div className="flex items-center justify-center gap-2 mb-6">
@@ -59,7 +59,7 @@ function App() {
               Process images, videos, and documents entirely in your browser.
             </p>
 
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
               <Button
                 asChild
                 variant="outline"
@@ -136,24 +136,28 @@ function App() {
               ))}
             </div>
           </div>
-        </div>
-      </div>
-      <div className="text-center border-t border-border/50 py-4">
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
-          <span>Made with</span>
-          <Heart className="w-4 h-4 text-red-500 fill-current" />
-          <span>for the open source community</span>
-        </div>
 
-        <div className="flex items-center justify-center gap-6 text-sm">
-          <a
-            href="https://github.com/akshetpandey/toolbox/blob/main/LICENSE"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            MIT License
-          </a>
+          {/* Footer */}
+          <div className="text-center border-t border-border/50 py-8 mt-16">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 flex-nowrap">
+              <span className="whitespace-nowrap">Made with</span>
+              <Heart className="w-4 h-4 text-red-500 fill-current flex-shrink-0" />
+              <span className="whitespace-nowrap">
+                for the open source community
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center gap-6 text-sm">
+              <a
+                href="https://github.com/akshetpandey/toolbox/blob/main/LICENSE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                MIT License
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
