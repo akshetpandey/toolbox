@@ -74,6 +74,108 @@ export const isCodecCompatible = (
   return compatibleCodecs.includes(codec)
 }
 
+// Common resolution presets for both orientations
+export const getCommonResolutions = () => {
+  return [
+    // Widescreen (16:9) - Horizontal
+    { value: '3840x2160', label: '4K (3840×2160)', description: 'Ultra HD' },
+    { value: '2560x1440', label: '1440p (2560×1440)', description: 'QHD' },
+    { value: '1920x1080', label: '1080p (1920×1080)', description: 'Full HD' },
+    { value: '1280x720', label: '720p (1280×720)', description: 'HD' },
+    { value: '854x480', label: '480p (854×480)', description: 'SD' },
+    { value: '640x360', label: '360p (640×360)', description: 'Low' },
+
+    // Widescreen (16:9) - Vertical
+    {
+      value: '2160x3840',
+      label: '4K Vertical (2160×3840)',
+      description: 'Ultra HD Portrait',
+    },
+    {
+      value: '1440x2560',
+      label: '1440p Vertical (1440×2560)',
+      description: 'QHD Portrait',
+    },
+    {
+      value: '1080x1920',
+      label: '1080p Vertical (1080×1920)',
+      description: 'Full HD Portrait',
+    },
+    {
+      value: '720x1280',
+      label: '720p Vertical (720×1280)',
+      description: 'HD Portrait',
+    },
+    {
+      value: '480x854',
+      label: '480p Vertical (480×854)',
+      description: 'SD Portrait',
+    },
+    {
+      value: '360x640',
+      label: '360p Vertical (360×640)',
+      description: 'Low Portrait',
+    },
+
+    // Standard (4:3) - Horizontal
+    { value: '1440x1080', label: '1440×1080', description: '4:3 HD' },
+    { value: '1024x768', label: '1024×768', description: '4:3 Standard' },
+    { value: '800x600', label: '800×600', description: '4:3 Low' },
+    { value: '640x480', label: '640×480', description: '4:3 Basic' },
+
+    // Standard (4:3) - Vertical
+    { value: '1080x1440', label: '1080×1440', description: '4:3 HD Portrait' },
+    {
+      value: '768x1024',
+      label: '768×1024',
+      description: '4:3 Standard Portrait',
+    },
+    { value: '600x800', label: '600×800', description: '4:3 Low Portrait' },
+    { value: '480x640', label: '480×640', description: '4:3 Basic Portrait' },
+
+    // Square
+    { value: '1080x1080', label: '1080×1080', description: 'Square HD' },
+    { value: '720x720', label: '720×720', description: 'Square Standard' },
+    { value: '480x480', label: '480×480', description: 'Square Low' },
+  ]
+}
+
+export const calculateAspectRatio = (width: number, height: number): number => {
+  return width / height
+}
+
+export const isAspectRatioCompatible = (
+  videoAspectRatio: number,
+  resolutionAspectRatio: number,
+  tolerance = 0.1,
+): boolean => {
+  return Math.abs(videoAspectRatio - resolutionAspectRatio) <= tolerance
+}
+
+export const getCompatibleResolutions = (
+  videoWidth: number,
+  videoHeight: number,
+) => {
+  const videoAspectRatio = calculateAspectRatio(videoWidth, videoHeight)
+  const allResolutions = getCommonResolutions()
+
+  return allResolutions.filter((resolution) => {
+    const [width, height] = resolution.value.split('x').map(Number)
+    const resolutionAspectRatio = calculateAspectRatio(width, height)
+
+    // Check aspect ratio compatibility
+    const aspectRatioMatches = isAspectRatioCompatible(
+      videoAspectRatio,
+      resolutionAspectRatio,
+    )
+
+    // Check that resolution is not larger than source video
+    const isNotLarger = width <= videoWidth && height <= videoHeight
+
+    return aspectRatioMatches && isNotLarger
+  })
+}
+
 // Radio Group Components
 interface RadioGroupProps<T extends string> {
   options: readonly {

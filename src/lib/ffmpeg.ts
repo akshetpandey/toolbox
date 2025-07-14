@@ -86,7 +86,13 @@ export interface VideoConvertOptions {
   videoCodec: string
   audioCodec: string
   preset: string
-  fastConvert?: boolean // Use stream copy when possible
+  downscale?: {
+    enabled: boolean
+    resolution?: string // e.g., '1920x1080', '1280x720', etc.
+    customWidth?: number
+    customHeight?: number
+    maintainAspectRatio?: boolean
+  }
   signal?: AbortSignal
 }
 
@@ -403,6 +409,46 @@ export class FFmpegProcessor {
     return undefined
   }
 
+  private async getCurrentVideoCodec(): Promise<string | null> {
+    if (!this.inputFile) return null
+
+    try {
+      const metadata = await this.extractMetadata()
+      return metadata.video_streams[0]?.codec_name || null
+    } catch (error) {
+      console.error('🎬 FFmpeg: Error getting current video codec:', error)
+      return null
+    }
+  }
+
+  private async getCurrentAudioCodec(): Promise<string | null> {
+    if (!this.inputFile) return null
+
+    try {
+      const metadata = await this.extractMetadata()
+      return metadata.audio_streams[0]?.codec_name || null
+    } catch (error) {
+      console.error('🎬 FFmpeg: Error getting current audio codec:', error)
+      return null
+    }
+  }
+
+  private mapCodecToFfmpegCodec(codec: string): string {
+    // Map common codec names to FFmpeg codec names
+    const codecMap: Record<string, string> = {
+      h264: 'libx264',
+      h265: 'libx265',
+      hevc: 'libx265',
+      vp9: 'libvpx-vp9',
+      vp8: 'libvpx',
+      aac: 'aac',
+      mp3: 'mp3',
+      opus: 'libopus',
+    }
+
+    return codecMap[codec.toLowerCase()] || codec
+  }
+
   async convertVideo(options: VideoConvertOptions): Promise<Blob> {
     console.log('🎬 FFmpeg: Starting video conversion', {
       fileName: this.inputFileName,
@@ -412,46 +458,82 @@ export class FFmpegProcessor {
     // Build FFmpeg command based on format
     const command = ['-i', this.inputFileName ?? '']
 
-    // Check if we can use fast convert (stream copy)
-    if (options.fastConvert) {
-      console.log('🎬 FFmpeg: Using fast convert (stream copy)')
-      command.push('-c', 'copy')
-    } else {
-      // Add memory-efficient encoding options
-      command.push('-movflags', '+faststart') // Optimize for streaming
-      command.push('-threads', '4') // Use a small no. of thread to avoid memory issues
-      command.push('-max_muxing_queue_size', '1024') // Limit muxing queue
+    // Get current video and audio codec information
+    const currentVideoCodec = this.inputFile
+      ? await this.getCurrentVideoCodec()
+      : null
+    const currentAudioCodec = this.inputFile
+      ? await this.getCurrentAudioCodec()
+      : null
+
+    // Determine if we can use stream copy for video and audio
+    const canCopyVideo =
+      !options.downscale?.enabled &&
+      currentVideoCodec &&
+      this.mapCodecToFfmpegCodec(currentVideoCodec) === options.videoCodec
+    const canCopyAudio =
+      currentAudioCodec &&
+      this.mapCodecToFfmpegCodec(currentAudioCodec) === options.audioCodec
+
+    // Add memory-efficient encoding options
+    command.push('-movflags', '+faststart') // Optimize for streaming
+    command.push('-threads', '4') // Use a small no. of thread to avoid memory issues
+    command.push('-max_muxing_queue_size', '1024') // Limit muxing queue
+
+    // Add downscaling filter if enabled
+    if (options.downscale?.enabled) {
+      let scaleFilter = ''
+
+      if (options.downscale.resolution) {
+        const [width, height] = options.downscale.resolution
+          .split('x')
+          .map(Number)
+        if (options.downscale.maintainAspectRatio) {
+          scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`
+        } else {
+          scaleFilter = `scale=${width}:${height}`
+        }
+      } else if (
+        options.downscale.customWidth ||
+        options.downscale.customHeight
+      ) {
+        const width = options.downscale.customWidth ?? -1
+        const height = options.downscale.customHeight ?? -1
+        scaleFilter = `scale=${width}:${height}`
+      }
+
+      if (scaleFilter) {
+        command.push('-vf', scaleFilter)
+        console.log('🎬 FFmpeg: Adding downscale filter', { scaleFilter })
+      }
     }
 
-    if (!options.fastConvert && options.targetFormat === 'mp4') {
-      command.push(
-        '-c:v',
-        options.videoCodec,
-        '-c:a',
-        options.audioCodec,
-        '-preset',
-        options.preset,
-      )
+    // Set video codec (use stream copy if possible)
+    if (canCopyVideo) {
+      command.push('-c:v', 'copy')
+      console.log('🎬 FFmpeg: Using video stream copy')
+    } else {
+      command.push('-c:v', options.videoCodec, '-preset', options.preset)
       // Add quality constraints to prevent memory issues
       if (options.videoCodec === 'libx264') {
         command.push('-crf', '23') // Reasonable quality
         command.push('-maxrate', '2M') // Max bitrate
         command.push('-bufsize', '4M') // Buffer size
       }
-    } else if (!options.fastConvert && options.targetFormat === 'webm') {
-      command.push('-c:v', 'libvpx-vp9', '-c:a', 'libopus')
+    }
+
+    // Set audio codec (use stream copy if possible)
+    if (canCopyAudio) {
+      command.push('-c:a', 'copy')
+      console.log('🎬 FFmpeg: Using audio stream copy')
+    } else {
+      command.push('-c:a', options.audioCodec)
+    }
+
+    // Add format-specific settings
+    if (options.targetFormat === 'webm' && !canCopyVideo) {
       command.push('-crf', '30') // Lower quality for WebM
       command.push('-b:v', '1M') // Target bitrate
-    } else if (!options.fastConvert && options.targetFormat === 'avi') {
-      command.push('-c:v', 'libx264', '-c:a', 'mp3')
-      command.push('-crf', '23')
-      command.push('-maxrate', '2M')
-      command.push('-bufsize', '4M')
-    } else if (!options.fastConvert && options.targetFormat === 'mov') {
-      command.push('-c:v', 'libx264', '-c:a', 'aac')
-      command.push('-crf', '23')
-      command.push('-maxrate', '2M')
-      command.push('-bufsize', '4M')
     }
 
     command.push(outputFileName)

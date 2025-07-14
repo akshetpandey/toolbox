@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -23,8 +24,10 @@ import {
   isCodecCompatible,
   FormatRadioGroup,
   CodecRadioGroup,
+  getCommonResolutions,
+  getCompatibleResolutions,
 } from '@/lib/videoToolsUtils'
-import { AlertTriangle, X, Play, Pause, Square } from 'lucide-react'
+import { AlertTriangle, X, Play, Pause, Square, Monitor } from 'lucide-react'
 
 export const Route = createFileRoute('/videos/convert')({
   component: VideoConvertComponent,
@@ -33,6 +36,7 @@ export const Route = createFileRoute('/videos/convert')({
 function VideoConvertComponent() {
   const {
     selectedFile,
+    metadata,
     isProcessing,
     progress,
     estimatedTimeRemaining,
@@ -54,7 +58,33 @@ function VideoConvertComponent() {
   const [videoCodec, setVideoCodec] = useState('libx264')
   const [audioCodec, setAudioCodec] = useState('aac')
   const [preset, setPreset] = useState('ultrafast')
-  const [fastConvert, setFastConvert] = useState(false)
+
+  // Resolution settings
+  const [selectedResolution, setSelectedResolution] = useState('original')
+  const [customWidth, setCustomWidth] = useState('')
+  const [customHeight, setCustomHeight] = useState('')
+  const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
+
+  // Reset resolution selection if current selection becomes incompatible with new video
+  useEffect(() => {
+    if (
+      selectedFile?.dimensions &&
+      selectedResolution !== 'original' &&
+      selectedResolution !== 'custom'
+    ) {
+      const compatibleResolutions = getCompatibleResolutions(
+        selectedFile.dimensions.width,
+        selectedFile.dimensions.height,
+      )
+      const isCurrentResolutionCompatible = compatibleResolutions.some(
+        (res) => res.value === selectedResolution,
+      )
+
+      if (!isCurrentResolutionCompatible) {
+        setSelectedResolution('original')
+      }
+    }
+  }, [selectedFile, selectedResolution])
 
   // Handle format change and auto-select compatible codecs
   const handleFormatChange = useCallback(
@@ -109,7 +139,25 @@ function VideoConvertComponent() {
         videoCodec,
         audioCodec,
         preset,
-        fastConvert,
+        downscale:
+          selectedResolution !== 'original'
+            ? {
+                enabled: true,
+                resolution:
+                  selectedResolution !== 'custom'
+                    ? selectedResolution
+                    : undefined,
+                customWidth:
+                  selectedResolution === 'custom' && customWidth
+                    ? parseInt(customWidth)
+                    : undefined,
+                customHeight:
+                  selectedResolution === 'custom' && customHeight
+                    ? parseInt(customHeight)
+                    : undefined,
+                maintainAspectRatio,
+              }
+            : undefined,
         signal: abortController.signal,
       }
 
@@ -149,7 +197,10 @@ function VideoConvertComponent() {
     videoCodec,
     audioCodec,
     preset,
-    fastConvert,
+    selectedResolution,
+    customWidth,
+    customHeight,
+    maintainAspectRatio,
     getFfmpegProcessor,
     setCurrentAbortController,
     setIsProcessing,
@@ -244,7 +295,17 @@ function VideoConvertComponent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Video Codec Selection */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Video Codec</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Video Codec</Label>
+                {selectedFile && metadata[selectedFile.name] && (
+                  <div className="text-xs text-muted-foreground">
+                    Current:{' '}
+                    {metadata[
+                      selectedFile.name
+                    ].video_streams[0]?.codec_name.toUpperCase() || 'Unknown'}
+                  </div>
+                )}
+              </div>
               <CodecRadioGroup
                 options={videoCodecOptions}
                 value={videoCodec}
@@ -261,7 +322,17 @@ function VideoConvertComponent() {
 
             {/* Audio Codec Selection */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Audio Codec</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Audio Codec</Label>
+                {selectedFile && metadata[selectedFile.name] && (
+                  <div className="text-xs text-muted-foreground">
+                    Current:{' '}
+                    {metadata[
+                      selectedFile.name
+                    ].audio_streams[0]?.codec_name.toUpperCase() || 'Unknown'}
+                  </div>
+                )}
+              </div>
               <CodecRadioGroup
                 options={audioCodecOptions}
                 value={audioCodec}
@@ -277,13 +348,125 @@ function VideoConvertComponent() {
             </div>
           </div>
 
-          <div className="space-y-3 w-full flex flex-row justify-between">
+          {/* Resolution Options */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">
+                <Monitor className="inline h-4 w-4 mr-1" />
+                Output Resolution
+              </Label>
+              {selectedFile?.dimensions && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Current: {selectedFile.dimensions.width}×
+                    {selectedFile.dimensions.height}
+                    {(() => {
+                      const aspectRatio =
+                        selectedFile.dimensions.width /
+                        selectedFile.dimensions.height
+                      if (Math.abs(aspectRatio - 16 / 9) <= 0.1)
+                        return ' (16:9)'
+                      if (Math.abs(aspectRatio - 4 / 3) <= 0.1) return ' (4:3)'
+                      if (Math.abs(aspectRatio - 1) <= 0.1) return ' (1:1)'
+                      return ` (${aspectRatio.toFixed(2)}:1)`
+                    })()}
+                  </span>
+                  <span className="text-green-600">
+                    • Showing same aspect ratio, smaller/equal size only
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <Select
+              value={selectedResolution}
+              disabled={isProcessing}
+              onValueChange={setSelectedResolution}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="original">
+                  Keep original resolution
+                </SelectItem>
+                {(() => {
+                  const resolutions = selectedFile?.dimensions
+                    ? getCompatibleResolutions(
+                        selectedFile.dimensions.width,
+                        selectedFile.dimensions.height,
+                      )
+                    : getCommonResolutions()
+                  return resolutions.map((resolution) => (
+                    <SelectItem key={resolution.value} value={resolution.value}>
+                      {resolution.label} - {resolution.description}
+                    </SelectItem>
+                  ))
+                })()}
+                <SelectItem value="custom">Custom resolution</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {selectedResolution === 'custom' && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Custom Resolution:
+                </Label>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    type="number"
+                    placeholder="Width"
+                    value={customWidth}
+                    onChange={(e) => setCustomWidth(e.target.value)}
+                    className="w-24"
+                    min="1"
+                    disabled={isProcessing}
+                  />
+                  <span className="text-sm text-muted-foreground">×</span>
+                  <Input
+                    type="number"
+                    placeholder="Height"
+                    value={customHeight}
+                    onChange={(e) => setCustomHeight(e.target.value)}
+                    className="w-24"
+                    min="1"
+                    disabled={isProcessing}
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedResolution !== 'original' && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="maintainAspectRatio"
+                  checked={maintainAspectRatio}
+                  onCheckedChange={(checked) =>
+                    setMaintainAspectRatio(!!checked)
+                  }
+                  disabled={isProcessing}
+                />
+                <Label
+                  htmlFor="maintainAspectRatio"
+                  className="text-sm font-medium"
+                >
+                  Maintain aspect ratio
+                </Label>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-6 flex-wrap">
             {/* Preset Selection */}
             <div className="flex items-center space-x-2">
               <Label htmlFor="preset" className="text-sm font-medium">
                 Encoding Preset
               </Label>
-              <Select value={preset} onValueChange={setPreset}>
+              <Select
+                value={preset}
+                disabled={isProcessing}
+                onValueChange={setPreset}
+              >
                 <SelectTrigger className="border-border/50">
                   <SelectValue />
                 </SelectTrigger>
@@ -315,19 +498,6 @@ function VideoConvertComponent() {
                   </SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Fast Convert Option */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="fastConvert"
-                checked={fastConvert}
-                onCheckedChange={(checked) => setFastConvert(!!checked)}
-                disabled={isProcessing}
-              />
-              <Label htmlFor="fastConvert" className="text-sm font-medium">
-                Fast Convert (Use stream copy when possible)
-              </Label>
             </div>
           </div>
 

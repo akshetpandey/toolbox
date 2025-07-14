@@ -5,13 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+
 import { Checkbox } from '@/components/ui/checkbox'
 import { useVideoTools } from '@/contexts/VideoToolsContext'
 import { downloadFile } from '@/lib/shared'
@@ -242,22 +236,32 @@ function VideoTrimComponent() {
           <div className="space-y-3">
             <Label className="text-sm font-medium">Export Format</Label>
             <div className="flex items-center gap-3">
-              <Select
-                value={exportFormat}
-                onValueChange={(value) =>
-                  setExportFormat(value as 'original' | 'gif' | 'webp')
-                }
-                disabled={isProcessing}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="original">Original Format</SelectItem>
-                  <SelectItem value="gif">Animated GIF</SelectItem>
-                  <SelectItem value="webp">Animated WebP</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={exportFormat === 'original' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setExportFormat('original')}
+                  disabled={isProcessing}
+                >
+                  Original Format
+                </Button>
+                <Button
+                  variant={exportFormat === 'gif' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setExportFormat('gif')}
+                  disabled={isProcessing}
+                >
+                  Animated GIF
+                </Button>
+                <Button
+                  variant={exportFormat === 'webp' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setExportFormat('webp')}
+                  disabled={isProcessing}
+                >
+                  Animated WebP
+                </Button>
+              </div>
               {(exportFormat === 'gif' || exportFormat === 'webp') && (
                 <div className="flex items-center space-x-2">
                   <Checkbox
