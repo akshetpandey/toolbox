@@ -128,7 +128,7 @@ function CompressPage() {
             {isProcessing ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : null}
-            Compress & Download
+            Download
           </Button>
         </div>
       </CardContent>

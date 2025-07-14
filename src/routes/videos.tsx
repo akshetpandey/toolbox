@@ -6,9 +6,9 @@ import {
 } from '@tanstack/react-router'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
+import { ToolLayout } from '@/components/ToolLayout'
+import { FileUpload } from '@/components/FileUpload'
 import { useInitFFmpeg } from '@/hooks/useInitFFmpeg'
 import {
   FFmpegProcessor,
@@ -26,7 +26,6 @@ import {
   Upload,
   Info,
   FileVideo,
-  Loader2,
   Settings,
   Zap,
   Scissors,
@@ -34,6 +33,14 @@ import {
   X,
   Video as VideoIcon,
 } from 'lucide-react'
+
+const videoTabs = [
+  { value: 'metadata', label: 'Metadata', icon: Info },
+  { value: 'convert', label: 'Convert', icon: Settings },
+  { value: 'compress', label: 'Compress', icon: Zap },
+  { value: 'trim', label: 'Trim', icon: Scissors },
+  { value: 'extract', label: 'Extract', icon: Volume2 },
+]
 
 export const Route = createFileRoute('/videos')({
   component: VideoToolsLayout,
@@ -54,15 +61,106 @@ const formatTime = (seconds: number): string => {
   }
 }
 
+// Video-specific file upload component
+function VideoFileUpload({
+  selectedFiles,
+  onFileSelect,
+  onClear,
+}: {
+  selectedFiles: VideoFile[]
+  onFileSelect: (files: FileList) => Promise<void>
+  onClear: () => void
+}) {
+  // Convert VideoFile to simple format for FileUpload component
+  const simpleFiles = selectedFiles.map((file) => ({
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    preview: file.preview,
+    duration: file.duration,
+    dimensions: file.dimensions,
+  }))
+
+  return (
+    <FileUpload
+      selectedFiles={simpleFiles}
+      onFileSelect={(files) => void onFileSelect(files)}
+      onClearFiles={onClear}
+      acceptedTypes="video/*,.mkv"
+      title="Drop a video here"
+      description="Supports MP4, WebM, AVI, MOV, MKV"
+      supportedFormats={['MP4', 'WebM', 'AVI', 'MOV', 'MKV']}
+      emptyStateIcon={Upload}
+      selectedFileIcon={FileVideo}
+    >
+      {selectedFiles.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2">
+            {selectedFiles.map((file) => (
+              <div key={file.name} className="flex flex-col gap-2">
+                <div className="relative">
+                  <video
+                    src={file.preview}
+                    className="w-full max-h-48 lg:max-h-48 rounded-lg bg-muted/20"
+                    controls
+                    preload="metadata"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="font-medium text-foreground truncate text-sm">
+                    {file.name}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{formatFileSize(file.size)}</span>
+                    {file.dimensions && (
+                      <span>
+                        {file.dimensions.width} × {file.dimensions.height}
+                      </span>
+                    )}
+                  </div>
+                  {file.duration && (
+                    <div className="text-xs text-muted-foreground">
+                      Duration: {formatDuration(file.duration)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </FileUpload>
+  )
+}
+
+// Video tools component with tabs and outlet
+function VideoTools({
+  currentTab,
+  onTabChange,
+  isProcessing,
+}: {
+  currentTab: string
+  onTabChange: (tab: string) => void
+  isProcessing: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="w-full">
+        <ResponsiveTabs
+          tabs={videoTabs}
+          currentTab={currentTab}
+          onTabChange={onTabChange}
+          isProcessing={isProcessing}
+        />
+      </div>
+      <Outlet />
+    </div>
+  )
+}
+
 function VideoToolsLayout() {
-  const {
-    ffmpeg,
-    isInitialized,
-    isInitializing,
-    error,
-    init,
-    setProgressCallback,
-  } = useInitFFmpeg()
+  const { ffmpeg, isInitialized, error, init, setProgressCallback } =
+    useInitFFmpeg()
   const { isProcessing, setIsProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
@@ -80,7 +178,6 @@ function VideoToolsLayout() {
     useState(false)
   const [currentAbortController, setCurrentAbortController] =
     useState<AbortController | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Create FFmpeg processor instance
   const ffmpegProcessorRef = useRef<FFmpegProcessor | null>(null)
@@ -240,20 +337,6 @@ function VideoToolsLayout() {
     [isInitialized, init, getFfmpegProcessor],
   )
 
-  const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
-      e.preventDefault()
-      if (e.dataTransfer.files) {
-        await handleFileSelect(e.dataTransfer.files)
-      }
-    },
-    [handleFileSelect],
-  )
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-  }, [])
-
   const clearSelectedFile = useCallback(() => {
     setSelectedFiles([])
     setMetadata({})
@@ -336,225 +419,26 @@ function VideoToolsLayout() {
 
   return (
     <VideoToolsContext.Provider value={contextValue}>
-      <div className="flex flex-col h-full bg-background">
-        {/* Loading overlay */}
-        {isInitializing && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Initializing FFmpeg...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="glass border-b border-border/50">
-          <div className="container mx-auto p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500/10 to-purple-500/5 rounded-lg flex items-center justify-center">
-                  <VideoIcon className="h-4 w-4 text-purple-500" />
-                </div>
-                <div>
-                  <h1 className="text-heading text-foreground">Video Tools</h1>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6">
-            <div className="flex gap-6 h-full">
-              {/* Left 1/3 - File Upload Area */}
-              <div className="w-1/3">
-                <Card className="glass-card border-0 animate-fade-in h-full">
-                  <CardContent className="p-6 h-full">
-                    {selectedFiles.length === 0 ? (
-                      <div
-                        className="border-2 border-dashed border-primary/20 rounded-xl p-6 text-center hover:border-primary/40 transition-all duration-300 cursor-pointer group h-full flex flex-col justify-center"
-                        onDrop={(e) => void handleDrop(e)}
-                        onDragOver={handleDragOver}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <Upload className="h-6 w-6 text-primary" />
-                        </div>
-                        <h3 className="text-lg font-medium text-foreground mb-2">
-                          Drop a video here
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Supports MP4, WebM, AVI, MOV, MKV
-                        </p>
-                        <div className="flex flex-wrap justify-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            MP4
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            WebM
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            AVI
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            MOV
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            MKV
-                          </Badge>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        className="border-2 border-dashed border-primary/20 rounded-xl p-4 hover:border-primary/40 transition-all duration-300 cursor-pointer group"
-                        onDrop={(e) => void handleDrop(e)}
-                        onDragOver={handleDragOver}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
-                              <FileVideo className="h-3 w-3 text-primary" />
-                            </div>
-                            <span className="text-sm font-medium text-foreground">
-                              Selected Video
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              clearSelectedFile()
-                            }}
-                            className="hover:bg-red-500 hover:text-red-foreground text-xs"
-                          >
-                            Clear
-                          </Button>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          {selectedFiles.map((file) => (
-                            <div
-                              key={file.name}
-                              className="flex flex-col gap-2"
-                            >
-                              <div className="relative">
-                                <video
-                                  src={file.preview}
-                                  className="w-full max-h-48 rounded-lg bg-muted/20"
-                                  controls
-                                  preload="metadata"
-                                />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <p className="font-medium text-foreground truncate text-sm">
-                                  {file.name}
-                                </p>
-                                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                  <span>{formatFileSize(file.size)}</span>
-                                  {file.dimensions && (
-                                    <span>
-                                      {file.dimensions.width} ×{' '}
-                                      {file.dimensions.height}
-                                    </span>
-                                  )}
-                                </div>
-                                {file.duration && (
-                                  <div className="text-xs text-muted-foreground">
-                                    Duration: {formatDuration(file.duration)}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="mt-3 pt-3 border-t border-border/50">
-                          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                            <Upload className="w-3 h-3" />
-                            <span>Click to change video</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="video/*,.mkv"
-                      className="hidden"
-                      onChange={(e) =>
-                        e.target.files && void handleFileSelect(e.target.files)
-                      }
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right 2/3 - Tools */}
-              <div className="w-2/3">
-                <div className="animate-fade-in">
-                  <div className="flex flex-col gap-4">
-                    {/* Navigation */}
-                    <Tabs
-                      value={currentTab}
-                      onValueChange={handleTabChange}
-                      className="w-full"
-                    >
-                      <TabsList className="grid w-full grid-cols-5">
-                        <TabsTrigger
-                          value="metadata"
-                          disabled={isProcessing}
-                          className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <Info className="w-4 h-4" />
-                          Metadata
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="convert"
-                          disabled={isProcessing}
-                          className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <Settings className="w-4 h-4" />
-                          Convert
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="compress"
-                          disabled={isProcessing}
-                          className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <Zap className="w-4 h-4" />
-                          Compress
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="trim"
-                          disabled={isProcessing}
-                          className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <Scissors className="w-4 h-4" />
-                          Trim
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="extract"
-                          disabled={isProcessing}
-                          className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <Volume2 className="w-4 h-4" />
-                          Extract
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-
-                    {/* Tool Content */}
-                    <Outlet />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ToolLayout
+        title="Video Tools"
+        icon={VideoIcon}
+        iconColor="text-purple-500"
+        iconBgColor="bg-gradient-to-br from-purple-500/10 to-purple-500/5"
+        fileUploadComponent={
+          <VideoFileUpload
+            selectedFiles={selectedFiles}
+            onFileSelect={handleFileSelect}
+            onClear={clearSelectedFile}
+          />
+        }
+        toolsComponent={
+          <VideoTools
+            currentTab={currentTab}
+            onTabChange={handleTabChange}
+            isProcessing={isProcessing}
+          />
+        }
+      />
     </VideoToolsContext.Provider>
   )
 }

@@ -207,6 +207,29 @@ function RedactPage() {
     setCurrentArea(null)
   }, [selectedFile])
 
+  // Prevent document scrolling when drawing
+  useEffect(() => {
+    if (isDrawing) {
+      const preventScroll = (e: TouchEvent) => {
+        e.preventDefault()
+      }
+
+      const preventScrollWheel = (e: WheelEvent) => {
+        e.preventDefault()
+      }
+
+      document.body.style.overflow = 'hidden'
+      document.addEventListener('touchmove', preventScroll, { passive: false })
+      document.addEventListener('wheel', preventScrollWheel, { passive: false })
+
+      return () => {
+        document.body.style.overflow = ''
+        document.removeEventListener('touchmove', preventScroll)
+        document.removeEventListener('wheel', preventScrollWheel)
+      }
+    }
+  }, [isDrawing])
+
   // Canvas drawing handlers
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return
@@ -331,6 +354,63 @@ function RedactPage() {
     setIsDrawing(false)
     setDrawingStart(null)
     setCurrentArea(null)
+  }
+
+  // Touch event handlers for mobile support
+  const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault() // Prevent scrolling
+    e.stopPropagation() // Stop event bubbling
+    if (!canvasRef.current || e.touches.length !== 1) return
+
+    const touch = e.touches[0]
+    const rect = canvasRef.current.getBoundingClientRect()
+    const canvas = canvasRef.current
+
+    // Calculate the scale factor between displayed canvas and actual canvas
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
+    const x = (touch.clientX - rect.left) * scaleX
+    const y = (touch.clientY - rect.top) * scaleY
+
+    setIsDrawing(true)
+    setDrawingStart({ x, y })
+  }
+
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault() // Prevent scrolling
+    e.stopPropagation() // Stop event bubbling
+    if (
+      !isDrawing ||
+      !drawingStart ||
+      !canvasRef.current ||
+      e.touches.length !== 1
+    )
+      return
+
+    const touch = e.touches[0]
+    const rect = canvasRef.current.getBoundingClientRect()
+    const canvas = canvasRef.current
+
+    // Calculate the scale factor between displayed canvas and actual canvas
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
+    const x = (touch.clientX - rect.left) * scaleX
+    const y = (touch.clientY - rect.top) * scaleY
+
+    const width = Math.abs(x - drawingStart.x)
+    const height = Math.abs(y - drawingStart.y)
+    const startX = Math.min(x, drawingStart.x)
+    const startY = Math.min(y, drawingStart.y)
+
+    setCurrentArea({ x: startX, y: startY, width, height })
+  }
+
+  const handleCanvasTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault() // Prevent scrolling
+    e.stopPropagation() // Stop event bubbling
+    handleCanvasMouseUp() // Reuse the same logic as mouse up
   }
 
   const downloadRedactedImage = async () => {
@@ -640,11 +720,15 @@ function RedactPage() {
         <div className="border-2 border-dashed border-primary/20 rounded-lg p-4 bg-muted/20 flex justify-center">
           <canvas
             ref={canvasRef}
-            className="max-w-full max-h-[500px] border border-border/50 rounded cursor-crosshair"
+            className="max-w-full max-h-[500px] border border-border/50 rounded cursor-crosshair touch-none"
+            style={{ touchAction: 'none' }}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
+            onTouchStart={handleCanvasTouchStart}
+            onTouchMove={handleCanvasTouchMove}
+            onTouchEnd={handleCanvasTouchEnd}
           />
         </div>
 
@@ -664,7 +748,7 @@ function RedactPage() {
             {isProcessing ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : null}
-            Apply Redaction & Download
+            Download
           </Button>
         </div>
       </CardContent>

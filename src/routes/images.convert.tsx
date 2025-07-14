@@ -162,7 +162,7 @@ function ConvertPage() {
             {isProcessing ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : null}
-            Convert & Download
+            Download
           </Button>
         </div>
       </CardContent>

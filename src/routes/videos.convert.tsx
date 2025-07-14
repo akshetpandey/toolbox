@@ -471,31 +471,15 @@ function VideoConvertComponent() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ultrafast">
-                    Ultrafast - Fastest encoding, largest file
-                  </SelectItem>
-                  <SelectItem value="superfast">
-                    Superfast - Very fast encoding
-                  </SelectItem>
-                  <SelectItem value="veryfast">
-                    Veryfast - Fast encoding
-                  </SelectItem>
-                  <SelectItem value="faster">
-                    Faster - Balanced speed/quality
-                  </SelectItem>
-                  <SelectItem value="fast">Fast - Good balance</SelectItem>
-                  <SelectItem value="medium">
-                    Medium - Default (slower but smaller)
-                  </SelectItem>
-                  <SelectItem value="slow">
-                    Slow - Better quality, smaller file
-                  </SelectItem>
-                  <SelectItem value="slower">
-                    Slower - High quality, very small file
-                  </SelectItem>
-                  <SelectItem value="veryslow">
-                    Very Slow - Highest quality, smallest file
-                  </SelectItem>
+                  <SelectItem value="ultrafast">Ultrafast</SelectItem>
+                  <SelectItem value="superfast">Superfast</SelectItem>
+                  <SelectItem value="veryfast">Veryfast</SelectItem>
+                  <SelectItem value="faster">Faster</SelectItem>
+                  <SelectItem value="fast">Fast</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="slow">Slow</SelectItem>
+                  <SelectItem value="slower">Slower</SelectItem>
+                  <SelectItem value="veryslow">Very Slow</SelectItem>
                 </SelectContent>
               </Select>
             </div>
