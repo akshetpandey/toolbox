@@ -32,8 +32,8 @@ export interface UtilitiesContextType {
   handleDrop: (e: React.DragEvent) => Promise<void>
   handleDragOver: (e: React.DragEvent) => void
   clearFile: () => void
-  generateHashes: (file?: UploadedFile) => Promise<void>
-  extractMetadata: (file?: UploadedFile) => Promise<void>
+  generateHashes: (file: UploadedFile) => Promise<void>
+  extractMetadata: (file: UploadedFile) => Promise<void>
 }
 
 export const UtilitiesContext = createContext<UtilitiesContextType | undefined>(

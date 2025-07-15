@@ -92,27 +92,27 @@ function HashGenerationPage() {
             {fileHashes && (
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-1 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
                     <span className="text-muted-foreground font-medium">
                       MD5:
                     </span>
-                    <span className="font-mono text-xs bg-background p-1 rounded">
+                    <span className="font-mono text-xs bg-background p-1 rounded break-all">
                       {fileHashes.md5}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
                     <span className="text-muted-foreground font-medium">
                       SHA1:
                     </span>
-                    <span className="font-mono text-xs bg-background p-1 rounded">
+                    <span className="font-mono text-xs bg-background p-1 rounded break-all">
                       {fileHashes.sha1}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
                     <span className="text-muted-foreground font-medium">
                       SHA256:
                     </span>
-                    <span className="font-mono text-xs bg-background p-1 rounded">
+                    <span className="font-mono text-xs bg-background p-1 rounded break-all">
                       {fileHashes.sha256}
                     </span>
                   </div>

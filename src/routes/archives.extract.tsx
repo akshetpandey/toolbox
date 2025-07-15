@@ -91,7 +91,7 @@ function ExtractPage() {
               </div>
             )}
 
-            <div className="flex justify-center gap-4">
+            <div className="flex justify-center gap-4 flex-wrap">
               <Button
                 onClick={() => void handleExtract()}
                 disabled={!uploadedArchive || isProcessing || !isInitialized}

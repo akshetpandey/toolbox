@@ -24,7 +24,7 @@ export function ToolLayout({
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="glass border-b border-border/50">
-        <div className="container mx-auto p-6">
+        <div className="container mx-auto p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div

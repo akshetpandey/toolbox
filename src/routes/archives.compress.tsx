@@ -62,8 +62,8 @@ function CompressPage() {
   return (
     <Card className="glass-card border-0">
       <CardContent className="p-6 flex flex-col gap-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <div className="flex-1">
               <Label htmlFor="archive-name">Archive Name</Label>
               <Input
