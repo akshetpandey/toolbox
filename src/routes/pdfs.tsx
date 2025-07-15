@@ -4,11 +4,10 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { useState, useCallback, useRef, useMemo } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState, useCallback, useMemo } from 'react'
+import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
+import { ToolLayout } from '@/components/ToolLayout'
+import { FileUpload } from '@/components/FileUpload'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   PDFToolsContext,
@@ -31,7 +30,6 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  Upload,
   FileText,
   Merge,
   Split,
@@ -43,6 +41,13 @@ import {
 } from 'lucide-react'
 import { type PDFFile, isPDFFile, createPDFFile } from '@/lib/pdf'
 import { formatFileSize, truncateFilename } from '@/lib/shared'
+import { Button } from '@/components/ui'
+
+const pdfTabs = [
+  { value: 'merge', label: 'Merge', icon: Merge },
+  { value: 'split', label: 'Split', icon: Split },
+  { value: 'compress', label: 'Compress', icon: Minimize },
+]
 
 interface SortableFileItemProps {
   file: PDFFile
@@ -103,7 +108,7 @@ function SortableFileItem({
           e.stopPropagation()
           onRemove(file.id)
         }}
-        className="text-destructive hover:text-destructive h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className="text-destructive hover:text-destructive h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
       >
         <Trash2 className="h-4 w-4" />
       </Button>
@@ -121,7 +126,6 @@ function PDFToolsLayout() {
   const location = useLocation()
   const [selectedFiles, setSelectedFiles] = useState<PDFFile[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -185,22 +189,6 @@ function PDFToolsLayout() {
     }
   }, [])
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        handleFileSelect(e.dataTransfer.files)
-      }
-    },
-    [handleFileSelect],
-  )
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-  }, [])
-
   const removeFile = useCallback((id: string) => {
     setSelectedFiles((prev) => prev.filter((file) => file.id !== id))
   }, [])
@@ -246,207 +234,101 @@ function PDFToolsLayout() {
     reorderFiles,
   }
 
+  const pdfFileUpload = (
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <FileUpload
+        selectedFiles={selectedFiles.map((file) => ({
+          name: file.name,
+          size: file.size,
+          id: file.id,
+        }))}
+        onFileSelect={handleFileSelect}
+        onClearFiles={clearFiles}
+        acceptedTypes=".pdf"
+        title="Drop PDF files here"
+        description="Supports multiple PDF files"
+        supportedFormats={['PDF']}
+        selectedFileIcon={File}
+      >
+        {/* Custom file display for PDFs with drag-and-drop reordering */}
+        {selectedFiles.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {/* Reorder instruction */}
+            {selectedFiles.length > 1 && (
+              <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+                  <ArrowUpDown className="w-3 h-3" />
+                  <span>Drag files to reorder them</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <SortableContext
+                items={selectedFiles}
+                strategy={verticalListSortingStrategy}
+              >
+                {selectedFiles.map((file) => (
+                  <SortableFileItem
+                    key={file.id}
+                    file={file}
+                    onRemove={removeFile}
+                  />
+                ))}
+              </SortableContext>
+            </div>
+          </div>
+        )}
+      </FileUpload>
+
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeFile ? (
+          <div className="group flex items-center justify-between p-3 bg-muted/50 rounded-lg shadow-lg ring-2 ring-primary">
+            <div className="flex items-center gap-3">
+              <GripVertical className="h-4 w-4 text-primary" />
+              <div>
+                <p
+                  className="font-medium text-foreground text-sm"
+                  title={activeFile.name}
+                >
+                  {truncateFilename(activeFile.name, 25)}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  )
+
+  const pdfToolsNav = (
+    <div className="w-full">
+      <ResponsiveTabs
+        tabs={pdfTabs}
+        currentTab={currentTab}
+        onTabChange={handleTabChange}
+        isProcessing={isProcessing}
+      />
+    </div>
+  )
+
   return (
     <PDFToolsContext.Provider value={contextValue}>
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+      <ToolLayout
+        title="PDF Tools"
+        icon={FileText}
+        iconColor="text-green-500"
+        iconBgColor="bg-gradient-to-br from-green-500/10 to-green-500/5"
+        fileUploadComponent={pdfFileUpload}
+        toolsComponent={pdfToolsNav}
       >
-        <div className="flex flex-col h-full bg-background">
-          {/* Header */}
-          <div className="glass border-b border-border/50">
-            <div className="container mx-auto p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg flex items-center justify-center">
-                    <FileText className="h-4 w-4 text-green-500" />
-                  </div>
-                  <div>
-                    <h1 className="text-heading text-foreground">PDF Tools</h1>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1 overflow-auto">
-            <div className="container mx-auto p-6">
-              <div className="flex gap-6 h-full">
-                {/* Left 1/3 - File Upload Area */}
-                <div className="w-1/3">
-                  <Card className="glass-card border-0 animate-fade-in h-full">
-                    <CardContent className="p-6 h-full">
-                      {selectedFiles.length === 0 ? (
-                        // Upload interface when no files are selected
-                        <div
-                          className="border-2 border-dashed border-primary/20 rounded-xl p-6 text-center hover:border-primary/40 transition-all duration-300 cursor-pointer group h-full flex flex-col justify-center"
-                          onDrop={handleDrop}
-                          onDragOver={handleDragOver}
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Upload className="h-6 w-6 text-primary" />
-                          </div>
-                          <h3 className="text-lg font-medium text-foreground mb-2">
-                            Drop PDF files here
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Supports multiple PDF files
-                          </p>
-                          <div className="flex flex-wrap justify-center gap-2">
-                            <Badge variant="secondary" className="text-xs">
-                              PDF
-                            </Badge>
-                          </div>
-                        </div>
-                      ) : (
-                        // Display uploaded files
-                        <div
-                          className="border-2 border-dashed border-primary/20 rounded-xl p-4 hover:border-primary/40 transition-all duration-300 cursor-pointer group h-full flex flex-col"
-                          onDrop={handleDrop}
-                          onDragOver={handleDragOver}
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
-                                <File className="h-3 w-3 text-primary" />
-                              </div>
-                              <span className="text-sm font-medium text-foreground">
-                                Selected Files ({selectedFiles.length})
-                              </span>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                clearFiles()
-                              }}
-                              className="hover:bg-red-500 hover:text-red-foreground text-xs"
-                            >
-                              Clear All
-                            </Button>
-                          </div>
-
-                          {/* Reorder instruction */}
-                          {selectedFiles.length > 1 && (
-                            <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                              <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
-                                <ArrowUpDown className="w-3 h-3" />
-                                <span>Drag files to reorder them</span>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex flex-col gap-2 flex-1 overflow-auto">
-                            <SortableContext
-                              items={selectedFiles}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {selectedFiles.map((file) => (
-                                <SortableFileItem
-                                  key={file.id}
-                                  file={file}
-                                  onRemove={removeFile}
-                                />
-                              ))}
-                            </SortableContext>
-                          </div>
-
-                          <div className="mt-3 pt-3 border-t border-border/50">
-                            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                              <Upload className="w-3 h-3" />
-                              <span>Click to add more files</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files) {
-                            handleFileSelect(e.target.files)
-                          }
-                        }}
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Right 2/3 - Tools */}
-                <div className="w-2/3">
-                  <div className="animate-fade-in">
-                    <div className="flex flex-col gap-4">
-                      {/* Navigation */}
-                      <Tabs
-                        value={currentTab}
-                        onValueChange={handleTabChange}
-                        className="w-full"
-                      >
-                        <TabsList className="grid w-full grid-cols-3">
-                          <TabsTrigger
-                            value="merge"
-                            disabled={isProcessing}
-                            className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Merge className="w-4 h-4" />
-                            Merge
-                          </TabsTrigger>
-                          <TabsTrigger
-                            value="split"
-                            disabled={isProcessing}
-                            className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Split className="w-4 h-4" />
-                            Split
-                          </TabsTrigger>
-                          <TabsTrigger
-                            value="compress"
-                            disabled={isProcessing}
-                            className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Minimize className="w-4 h-4" />
-                            Compress
-                          </TabsTrigger>
-                        </TabsList>
-                      </Tabs>
-
-                      {/* Tool Content */}
-                      <Outlet />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Drag Overlay */}
-        <DragOverlay>
-          {activeFile ? (
-            <div className="group flex items-center justify-between p-3 bg-muted/50 rounded-lg shadow-lg ring-2 ring-primary">
-              <div className="flex items-center gap-3">
-                <GripVertical className="h-4 w-4 text-primary" />
-                <div>
-                  <p
-                    className="font-medium text-foreground text-sm"
-                    title={activeFile.name}
-                  >
-                    {truncateFilename(activeFile.name, 25)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+        <Outlet />
+      </ToolLayout>
     </PDFToolsContext.Provider>
   )
 }
