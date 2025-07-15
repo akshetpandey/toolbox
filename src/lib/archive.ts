@@ -183,6 +183,13 @@ export class ArchiveProcessor {
       size: archiveData.length,
     })
 
+    // Check if this is a tar.gz file that needs special handling
+    const isTarGz =
+      archiveName.toLowerCase().endsWith('.tar.gz') ||
+      archiveName.toLowerCase().endsWith('.tgz')
+
+    let archiveToExtract = archiveName
+
     try {
       // Clean up any existing files first
       try {
@@ -198,10 +205,53 @@ export class ArchiveProcessor {
         onProgress(25)
       }
 
+      // Handle tar.gz files
+      if (isTarGz) {
+        console.log(
+          '🗜️ ArchiveProcessor: Detected tar.gz file, ungzipping first...',
+        )
+
+        // First, extract the gzip to get the tar file
+        const tarFileName = archiveName.replace(/\.(tar\.gz|tgz)$/i, '.tar')
+
+        try {
+          // Extract the gzip to get the tar file
+          this.sevenZip.callMain(['x', archiveName, '-y'])
+
+          // Check if the tar file was created
+          try {
+            this.sevenZip.FS.stat(tarFileName)
+            archiveToExtract = tarFileName
+            console.log(
+              '🗜️ ArchiveProcessor: Successfully ungzipped to',
+              tarFileName,
+            )
+          } catch {
+            // If tar file wasn't created, try to find it with a different name
+            const files = this.sevenZip.FS.readdir('.')
+            const tarFile = files.find((f) => f.endsWith('.tar'))
+            if (tarFile) {
+              archiveToExtract = tarFile
+              console.log('🗜️ ArchiveProcessor: Found tar file:', tarFile)
+            } else {
+              throw new Error('Failed to extract tar file from gzip archive')
+            }
+          }
+        } catch (error) {
+          console.error(
+            '🗜️ ArchiveProcessor: Failed to ungzip tar.gz file:',
+            error,
+          )
+          throw new Error(
+            'Failed to extract tar.gz archive - gzip extraction failed',
+          )
+        }
+      }
+
       // List contents first to validate archive
       console.log('🗜️ ArchiveProcessor: Listing archive contents...')
       try {
-        this.sevenZip.callMain(['l', archiveName])
+        this.sevenZip.callMain(['l', archiveToExtract])
       } catch (error) {
         console.error(
           '🗜️ ArchiveProcessor: Failed to list archive contents:',
@@ -225,7 +275,12 @@ export class ArchiveProcessor {
       // Extract all files to the extraction directory
       console.log('🗜️ ArchiveProcessor: Extracting files...')
       try {
-        this.sevenZip.callMain(['x', archiveName, `-o${extractionDir}`, '-y']) // -o to specify output directory, -y to overwrite without prompting
+        this.sevenZip.callMain([
+          'x',
+          archiveToExtract,
+          `-o${extractionDir}`,
+          '-y',
+        ]) // -o to specify output directory, -y to overwrite without prompting
       } catch (error) {
         console.error('🗜️ ArchiveProcessor: Failed to extract files:', error)
         throw new Error('Failed to extract archive files')
@@ -297,11 +352,20 @@ export class ArchiveProcessor {
         onProgress(100)
       }
 
-      // Clean up archive file
+      // Clean up archive files
       try {
         this.sevenZip.FS.unlink(archiveName)
       } catch {
         // Cleanup errors are not critical
+      }
+
+      // Clean up intermediate tar file if it was created during tar.gz extraction
+      if (isTarGz && archiveToExtract !== archiveName) {
+        try {
+          this.sevenZip.FS.unlink(archiveToExtract)
+        } catch {
+          // Cleanup errors are not critical
+        }
       }
 
       // Clean up extraction directory and its contents
@@ -351,6 +415,15 @@ export class ArchiveProcessor {
         this.sevenZip?.FS.unlink(archiveName)
       } catch {
         // Cleanup errors are not critical
+      }
+
+      // Clean up intermediate tar file if it was created during tar.gz extraction
+      if (isTarGz && archiveToExtract !== archiveName) {
+        try {
+          this.sevenZip?.FS.unlink(archiveToExtract)
+        } catch {
+          // Cleanup errors are not critical
+        }
       }
 
       // Also clean up extraction directory if it exists

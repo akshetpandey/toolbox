@@ -23,6 +23,7 @@ interface FileUploadProps {
   emptyStateIcon?: LucideIcon
   selectedFileIcon?: LucideIcon
   children?: React.ReactNode // For custom file display
+  multiple?: boolean // Allow multiple file selection
 }
 
 export function FileUpload({
@@ -36,6 +37,7 @@ export function FileUpload({
   emptyStateIcon: EmptyIcon = Upload,
   selectedFileIcon: SelectedIcon = FileImage,
   children,
+  multiple = false,
 }: FileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -145,6 +147,7 @@ export function FileUpload({
           ref={fileInputRef}
           type="file"
           accept={acceptedTypes}
+          multiple={multiple}
           className="hidden"
           onChange={(e) => e.target.files && onFileSelect(e.target.files)}
         />

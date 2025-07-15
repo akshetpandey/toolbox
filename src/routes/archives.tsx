@@ -161,6 +161,7 @@ function ArchiveToolsContent() {
       supportedFormats={['All Files']}
       emptyStateIcon={Upload}
       selectedFileIcon={FileIcon}
+      multiple={true}
     >
       {selectedFiles.length > 0 && (
         <div className="flex flex-col gap-2">
