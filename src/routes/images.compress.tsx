@@ -91,9 +91,23 @@ function CompressPage() {
     <Card className="glass-card border-0">
       <CardContent className="p-6 flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          <Label htmlFor="quality" className="text-sm font-medium">
-            Quality: {quality}%
-          </Label>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="quality" className="text-sm font-medium">
+              Quality: {quality}%
+            </Label>
+            {selectedFile && (
+              <div className="text-xs text-muted-foreground">
+                {selectedFile.type.includes('png') ||
+                selectedFile.name.toLowerCase().endsWith('.png') ? (
+                  <span className="text-green-600">
+                    ✨ PNG detected - Using optimized ImageMagick compression
+                  </span>
+                ) : (
+                  <span>Using ImageMagick for compression</span>
+                )}
+              </div>
+            )}
+          </div>
           <Input
             id="quality"
             type="range"

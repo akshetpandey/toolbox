@@ -1,20 +1,48 @@
-import type { ImageMagick, MagickFormat } from '@imagemagick/magick-wasm'
+import type {
+  ImageMagick,
+  MagickFormat,
+  DitherMethod,
+  ColorSpace,
+  QuantizeSettings,
+} from '@imagemagick/magick-wasm'
 
 // Dynamic imports for ImageMagick
 let _ImageMagick: typeof ImageMagick | null = null
 let _MagickFormat: typeof MagickFormat | null = null
+let _DitherMethod: typeof DitherMethod | null = null
+let _ColorSpace: typeof ColorSpace | null = null
+let _QuantizeSettings: typeof QuantizeSettings | null = null
 
 async function initImageMagick() {
-  if (!_ImageMagick || !_MagickFormat) {
+  if (
+    !_ImageMagick ||
+    !_MagickFormat ||
+    !_DitherMethod ||
+    !_ColorSpace ||
+    !_QuantizeSettings
+  ) {
     console.log('🖼️ ImageMagick: Loading ImageMagick library...')
-    const { ImageMagick, MagickFormat } = await import(
-      '@imagemagick/magick-wasm'
-    )
+    const {
+      ImageMagick,
+      MagickFormat,
+      DitherMethod,
+      ColorSpace,
+      QuantizeSettings,
+    } = await import('@imagemagick/magick-wasm')
     _ImageMagick = ImageMagick
     _MagickFormat = MagickFormat
+    _DitherMethod = DitherMethod
+    _ColorSpace = ColorSpace
+    _QuantizeSettings = QuantizeSettings
     console.log('🖼️ ImageMagick: Library loaded successfully')
   }
-  return { ImageMagick: _ImageMagick, MagickFormat: _MagickFormat }
+  return {
+    ImageMagick: _ImageMagick,
+    MagickFormat: _MagickFormat,
+    DitherMethod: _DitherMethod,
+    ColorSpace: _ColorSpace,
+    QuantizeSettings: _QuantizeSettings,
+  }
 }
 
 export interface ImageMetadata {
@@ -261,6 +289,78 @@ export class ImageMagickProcessor {
       options,
     })
 
+    // Check if this is a PNG file and use specialized PNG compression
+    if (
+      imageFile.type.includes('png') ||
+      imageFile.name.toLowerCase().endsWith('.png')
+    ) {
+      console.log(
+        '🖼️ ImageMagick: PNG detected, using specialized PNG compression',
+      )
+      try {
+        const {
+          ImageMagick,
+          MagickFormat,
+          DitherMethod,
+          ColorSpace,
+          QuantizeSettings,
+        } = await initImageMagick()
+
+        const arrayBuffer = await imageFile.file.arrayBuffer()
+        const uint8Array = new Uint8Array(arrayBuffer)
+
+        return new Promise((resolve) => {
+          ImageMagick.read(uint8Array, (img) => {
+            // Calculate number of colors based on quality for palette quantization
+            const colors = Math.max(
+              2,
+              Math.min(256, Math.round((options.quality / 100) * 256)),
+            )
+
+            console.log('🖼️ ImageMagick: Setting PNG compression quality', {
+              quality: options.quality,
+              colors: colors,
+            })
+
+            // Use PNG format with quality settings and color quantization
+            img.strip()
+            img.quality = options.quality
+            const quantizeSettings = new QuantizeSettings()
+            quantizeSettings.colors = colors
+            quantizeSettings.ditherMethod = DitherMethod.FloydSteinberg
+            quantizeSettings.colorSpace = ColorSpace.Undefined
+            quantizeSettings.measureErrors = false
+            quantizeSettings.treeDepth = 0
+            img.quantize(quantizeSettings)
+            img.write(MagickFormat.Png, (data: Uint8Array) => {
+              const blob = new Blob([data], { type: 'image/png' })
+              console.log(
+                '🖼️ ImageMagick: PNG compression completed successfully',
+                {
+                  originalSize: imageFile.size,
+                  newSize: blob.size,
+                  compressionRatio:
+                    (
+                      ((imageFile.size - blob.size) / imageFile.size) *
+                      100
+                    ).toFixed(1) + '%',
+                  colors: colors,
+                },
+              )
+              resolve(blob)
+            })
+          })
+        })
+      } catch (error) {
+        console.warn(
+          '🖼️ ImageMagick: PNG compression failed, falling back to standard compression:',
+          error,
+        )
+        // Fall back to standard ImageMagick compression
+      }
+    }
+
+    // Use ImageMagick for non-PNG files or as fallback
     const { ImageMagick, MagickFormat } = await initImageMagick()
 
     const arrayBuffer = await imageFile.file.arrayBuffer()
