@@ -1,24 +1,29 @@
-import type { parseMetadata } from '@uswriting/exiftool'
+import type { parseMetadata, writeMetadata } from '@uswriting/exiftool'
 import type { WASMagic } from 'wasmagic'
 import type { md5 } from 'hash-wasm'
 import type { sha1 } from 'hash-wasm'
 import type { sha256 } from 'hash-wasm'
 
 let _parseMetadata: typeof parseMetadata | null = null
+let _writeMetadata: typeof writeMetadata | null = null
 let _WASMagic: typeof WASMagic | null = null
 let _md5: typeof md5 | null = null
 let _sha1: typeof sha1 | null = null
 let _sha256: typeof sha256 | null = null
 
-// Lazy load EXIF tool
-async function loadExifTool(): Promise<typeof parseMetadata> {
-  if (!_parseMetadata) {
+// Lazy load EXIF tool library
+async function loadExifTool(): Promise<{
+  parseMetadata: typeof parseMetadata
+  writeMetadata: typeof writeMetadata
+}> {
+  if (!_parseMetadata || !_writeMetadata) {
     console.log('📋 Metadata: Loading exiftool library...')
     const exifModule = await import('@uswriting/exiftool')
     _parseMetadata = exifModule.parseMetadata
+    _writeMetadata = exifModule.writeMetadata
     console.log('📋 Metadata: exiftool library loaded successfully')
   }
-  return _parseMetadata
+  return { parseMetadata: _parseMetadata, writeMetadata: _writeMetadata }
 }
 
 // Lazy load WASMagic
@@ -99,7 +104,7 @@ export const extractExifMetadata = async (
   onProgress?.(true)
 
   try {
-    const parseMetadata = await loadExifTool()
+    const { parseMetadata } = await loadExifTool()
 
     const exifResult = await parseMetadata(file, {
       args: ['-json', '-n'],
@@ -182,6 +187,39 @@ export const extractFileMetadata = async (
       size: file.size,
       name: file.name,
     }
+  }
+}
+
+// Strip metadata from files using ExifTool
+export const stripFileMetadata = async (file: File): Promise<Blob> => {
+  console.log('📋 Metadata: Starting metadata stripping for', file.name)
+
+  try {
+    const { writeMetadata } = await loadExifTool()
+
+    // Use ExifTool to strip all metadata
+    // The -all= tag removes all metadata from the file
+    const result = await writeMetadata(
+      file,
+      {},
+      {
+        args: ['-all='],
+      },
+    )
+
+    console.log('📋 Metadata: Metadata stripping result', result)
+    if (result.success && result.data) {
+      console.log('📋 Metadata: Metadata stripping successful')
+      return new Blob([result.data], { type: file.type })
+    } else {
+      console.error('📋 Metadata: Failed to strip metadata:', result.error)
+      // Return original file as fallback
+      return file
+    }
+  } catch (error) {
+    console.error('📋 Metadata: Error stripping metadata:', error)
+    // Return original file as fallback
+    return file
   }
 }
 

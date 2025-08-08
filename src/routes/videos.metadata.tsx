@@ -1,16 +1,59 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useVideoTools } from '@/contexts/VideoToolsContext'
-import { formatFileSize, formatDuration } from '@/lib/shared'
-import { Info, Video as VideoIcon, Volume2 } from 'lucide-react'
+import { formatFileSize, formatDuration, downloadBlob } from '@/lib/shared'
+import {
+  Info,
+  Video as VideoIcon,
+  Volume2,
+  Download,
+  ShieldOff,
+  Loader2,
+} from 'lucide-react'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/videos/metadata')({
   component: VideoMetadataComponent,
 })
 
 function VideoMetadataComponent() {
-  const { selectedFile, metadata } = useVideoTools()
+  const {
+    selectedFile,
+    metadata,
+    ffmpegProcessor,
+    isProcessing,
+    setIsProcessing,
+  } = useVideoTools()
+  const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
+
+  const handleStripMetadata = async () => {
+    if (!selectedFile || !ffmpegProcessor) return
+
+    try {
+      setIsStrippingMetadata(true)
+      setIsProcessing(true)
+
+      console.log(
+        '🎬 MetadataPage: Starting metadata stripping for',
+        selectedFile.name,
+      )
+
+      const blob = await ffmpegProcessor.stripMetadata()
+      const filename = `no-metadata_${selectedFile.name}`
+
+      downloadBlob(blob, filename)
+
+      console.log('🎬 MetadataPage: Metadata stripping completed successfully')
+    } catch (error) {
+      console.error('🎬 MetadataPage: Error stripping metadata:', error)
+      alert('Failed to strip metadata. Please try again.')
+    } finally {
+      setIsStrippingMetadata(false)
+      setIsProcessing(false)
+    }
+  }
 
   if (!selectedFile) {
     return (
@@ -44,10 +87,29 @@ function VideoMetadataComponent() {
         <div className="flex flex-col gap-6">
           {/* Format Information */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <Info className="h-5 w-5 text-blue-500" />
-              Format Information
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-500" />
+                Format Information
+              </h3>
+              <Button
+                onClick={() => void handleStripMetadata()}
+                disabled={isStrippingMetadata || isProcessing}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                {isStrippingMetadata ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldOff className="h-4 w-4" />
+                )}
+                <Download className="h-4 w-4" />
+                {isStrippingMetadata
+                  ? 'Stripping...'
+                  : 'Download Without Metadata'}
+              </Button>
+            </div>
             <div className="bg-muted/50 p-4 rounded-lg flex flex-col gap-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex justify-between">

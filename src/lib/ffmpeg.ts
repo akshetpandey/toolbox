@@ -786,4 +786,41 @@ export class FFmpegProcessor {
 
     return this.createBlobFromFFmpegOutput(data, `audio/${options.audioFormat}`)
   }
+
+  async stripMetadata(): Promise<Blob> {
+    console.log('🎬 FFmpeg: Starting metadata stripping', {
+      fileName: this.inputFileName,
+    })
+
+    const outputFileName = `stripped.${this.getFileExtension(this.inputFileName ?? '')}`
+
+    const command = [
+      '-i',
+      this.inputFileName ?? '',
+      '-map_metadata',
+      '-1', // Remove all metadata
+      '-c',
+      'copy', // Use stream copy for speed (no re-encoding)
+      outputFileName,
+    ]
+
+    console.log('🎬 FFmpeg: Executing metadata stripping command', { command })
+    try {
+      await this.ffmpeg.exec(command)
+    } catch (error) {
+      console.error('🎬 FFmpeg: Metadata stripping failed', error)
+      await this.reloadFFmpeg()
+      throw error
+    }
+
+    console.log('🎬 FFmpeg: Reading output file', { outputFileName })
+    const data = await this.ffmpeg.readFile(outputFileName)
+    console.log('🎬 FFmpeg: Metadata stripping completed successfully')
+    await this.ffmpeg.deleteFile(outputFileName)
+
+    return this.createBlobFromFFmpegOutput(
+      data,
+      this.inputFile?.type ?? 'video/mp4',
+    )
+  }
 }

@@ -1,14 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Loader2, Settings, Info } from 'lucide-react'
+import { Loader2, Settings, Info, Download, ShieldOff } from 'lucide-react'
 import { formatFileSize } from '@/lib/imagemagick'
+import { downloadBlob } from '@/lib/shared'
+import { stripFileMetadata } from '@/lib/metadata'
 import { useImageTools } from '@/contexts/ImageToolsContext'
+import { useProcessing } from '@/contexts/ProcessingContext'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/images/metadata')({
   component: MetadataPage,
@@ -17,6 +22,35 @@ export const Route = createFileRoute('/images/metadata')({
 function MetadataPage() {
   const { selectedFile, metadata, exifMetadata, isExtractingExif } =
     useImageTools()
+  const { isProcessing, setIsProcessing } = useProcessing()
+  const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
+
+  const handleStripMetadata = async () => {
+    if (!selectedFile) return
+
+    try {
+      setIsStrippingMetadata(true)
+      setIsProcessing(true)
+
+      console.log(
+        '🖼️ MetadataPage: Starting metadata stripping for',
+        selectedFile.name,
+      )
+
+      const blob = await stripFileMetadata(selectedFile.file)
+      const filename = `no-metadata_${selectedFile.name}`
+
+      downloadBlob(blob, filename)
+
+      console.log('🖼️ MetadataPage: Metadata stripping completed successfully')
+    } catch (error) {
+      console.error('🖼️ MetadataPage: Error stripping metadata:', error)
+      alert('Failed to strip metadata. Please try again.')
+    } finally {
+      setIsStrippingMetadata(false)
+      setIsProcessing(false)
+    }
+  }
 
   return (
     <TooltipProvider>
@@ -83,11 +117,32 @@ function MetadataPage() {
         {/* EXIF Metadata Section */}
         <Card className="glass-card border-0">
           <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Info className="h-4 w-4 text-primary" />
-              <h3 className="font-medium text-foreground">EXIF Metadata</h3>
-              {isExtractingExif && (
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 text-primary" />
+                <h3 className="font-medium text-foreground">EXIF Metadata</h3>
+                {isExtractingExif && (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                )}
+              </div>
+              {selectedFile && Object.keys(exifMetadata).length > 0 && (
+                <Button
+                  onClick={() => void handleStripMetadata()}
+                  disabled={isStrippingMetadata || isProcessing}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  {isStrippingMetadata ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldOff className="h-4 w-4" />
+                  )}
+                  <Download className="h-4 w-4" />
+                  {isStrippingMetadata
+                    ? 'Stripping...'
+                    : 'Download Without Metadata'}
+                </Button>
               )}
             </div>
             {isExtractingExif ? (

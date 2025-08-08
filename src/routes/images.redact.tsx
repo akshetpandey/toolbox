@@ -3,8 +3,16 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Loader2, Square, Focus, Grid3x3 } from 'lucide-react'
+import {
+  Loader2,
+  Square,
+  Focus,
+  Grid3x3,
+  Download,
+  ShieldOff,
+} from 'lucide-react'
 import { downloadBlob } from '@/lib/shared'
+import { stripFileMetadata } from '@/lib/metadata'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
@@ -47,6 +55,7 @@ function RedactPage() {
   } | null>(null)
   const [redactionAreas, setRedactionAreas] = useState<RedactionArea[]>([])
   const [scaleFactor, setScaleFactor] = useState({ x: 1, y: 1 })
+  const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const originalImageRef = useRef<HTMLImageElement | null>(null)
 
@@ -413,8 +422,139 @@ function RedactPage() {
     handleCanvasMouseUp() // Reuse the same logic as mouse up
   }
 
+  // Common function to create redacted image blob
+  const createRedactedImageBlob = async (): Promise<Blob> => {
+    if (!selectedFile || !originalImageRef.current) {
+      throw new Error('No file selected or original image not available')
+    }
+
+    // Create full-resolution canvas with original image
+    const originalWidth =
+      selectedFile.dimensions?.width ?? originalImageRef.current.width
+    const originalHeight =
+      selectedFile.dimensions?.height ?? originalImageRef.current.height
+
+    const outputCanvas = document.createElement('canvas')
+    const outputCtx = outputCanvas.getContext('2d')
+    if (!outputCtx) {
+      throw new Error('Could not create output canvas context')
+    }
+
+    // Set output canvas to original image size
+    outputCanvas.width = originalWidth
+    outputCanvas.height = originalHeight
+
+    // Draw original image at full resolution
+    outputCtx.drawImage(
+      originalImageRef.current,
+      0,
+      0,
+      originalWidth,
+      originalHeight,
+    )
+
+    // Apply all redactions at original scale
+    for (const area of redactionAreas) {
+      const scaledX = area.x * scaleFactor.x
+      const scaledY = area.y * scaleFactor.y
+      const scaledWidth = area.width * scaleFactor.x
+      const scaledHeight = area.height * scaleFactor.y
+
+      if (area.mode === 'box') {
+        outputCtx.fillStyle = area.color ?? '#000000'
+        outputCtx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight)
+      } else if (area.mode === 'blur') {
+        // For blur, get the image data and apply blur filter
+        const imageData = outputCtx.getImageData(
+          scaledX,
+          scaledY,
+          scaledWidth,
+          scaledHeight,
+        )
+        const tempCanvas = document.createElement('canvas')
+        const tempCtx = tempCanvas.getContext('2d')
+
+        if (tempCtx) {
+          tempCanvas.width = scaledWidth
+          tempCanvas.height = scaledHeight
+          tempCtx.putImageData(imageData, 0, 0)
+
+          // Scale the blur radius to match the visual effect of the preview
+          const scaledBlurRadius =
+            (area.blurRadius ?? 10) * Math.max(scaleFactor.x, scaleFactor.y)
+
+          outputCtx.save()
+          outputCtx.filter = `blur(${scaledBlurRadius}px)`
+          outputCtx.drawImage(tempCanvas, scaledX, scaledY)
+          outputCtx.restore()
+        }
+      } else if (area.mode === 'pixelate') {
+        // For pixelate, apply pixelation at preview scale then scale up
+        // This maintains the exact same visual effect as the preview
+
+        // Scale it down to preview resolution for pixelation
+        const previewCanvas = document.createElement('canvas')
+        const previewCtx = previewCanvas.getContext('2d')
+        if (previewCtx) {
+          previewCanvas.width = area.width
+          previewCanvas.height = area.height
+
+          // Draw the full-res area scaled down to preview size
+          previewCtx.drawImage(
+            outputCanvas,
+            scaledX,
+            scaledY,
+            scaledWidth,
+            scaledHeight,
+            0,
+            0,
+            area.width,
+            area.height,
+          )
+
+          // Apply pixelation at preview scale
+          const previewAreaData = previewCtx.getImageData(
+            0,
+            0,
+            area.width,
+            area.height,
+          )
+          const pixelatedPreviewData = pixelateImageData(
+            previewAreaData,
+            area.pixelSize ?? 10,
+          )
+          previewCtx.putImageData(pixelatedPreviewData, 0, 0)
+
+          // Scale it back up to full resolution
+          outputCtx.drawImage(
+            previewCanvas,
+            0,
+            0,
+            area.width,
+            area.height,
+            scaledX,
+            scaledY,
+            scaledWidth,
+            scaledHeight,
+          )
+        }
+      }
+    }
+
+    // Convert canvas to blob
+    return new Promise<Blob>((resolve, reject) => {
+      outputCanvas.toBlob((resultBlob) => {
+        if (resultBlob) {
+          resolve(resultBlob)
+        } else {
+          reject(new Error('Failed to create blob from canvas'))
+        }
+      }, 'image/png')
+    })
+  }
+
   const downloadRedactedImage = async () => {
-    if (!selectedFile || !originalImageRef.current) return
+    if (!selectedFile) return
 
     console.log('🖼️ RedactionTool: Starting image download', {
       fileName: selectedFile.name,
@@ -424,128 +564,7 @@ function RedactPage() {
     setIsProcessing(true)
 
     try {
-      // Create full-resolution canvas with original image
-      const originalWidth =
-        selectedFile.dimensions?.width ?? originalImageRef.current.width
-      const originalHeight =
-        selectedFile.dimensions?.height ?? originalImageRef.current.height
-
-      const outputCanvas = document.createElement('canvas')
-      const outputCtx = outputCanvas.getContext('2d')
-      if (!outputCtx) {
-        throw new Error('Could not create output canvas context')
-      }
-
-      // Set output canvas to original image size
-      outputCanvas.width = originalWidth
-      outputCanvas.height = originalHeight
-
-      // Draw original image at full resolution
-      outputCtx.drawImage(
-        originalImageRef.current,
-        0,
-        0,
-        originalWidth,
-        originalHeight,
-      )
-
-      // Apply all redactions at original scale
-      for (const area of redactionAreas) {
-        const scaledX = area.x * scaleFactor.x
-        const scaledY = area.y * scaleFactor.y
-        const scaledWidth = area.width * scaleFactor.x
-        const scaledHeight = area.height * scaleFactor.y
-
-        if (area.mode === 'box') {
-          outputCtx.fillStyle = area.color ?? '#000000'
-          outputCtx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight)
-        } else if (area.mode === 'blur') {
-          // For blur, get the image data and apply blur filter
-          const imageData = outputCtx.getImageData(
-            scaledX,
-            scaledY,
-            scaledWidth,
-            scaledHeight,
-          )
-          const tempCanvas = document.createElement('canvas')
-          const tempCtx = tempCanvas.getContext('2d')
-
-          if (tempCtx) {
-            tempCanvas.width = scaledWidth
-            tempCanvas.height = scaledHeight
-            tempCtx.putImageData(imageData, 0, 0)
-
-            // Scale the blur radius to match the visual effect of the preview
-            const scaledBlurRadius =
-              (area.blurRadius ?? 10) * Math.max(scaleFactor.x, scaleFactor.y)
-
-            outputCtx.save()
-            outputCtx.filter = `blur(${scaledBlurRadius}px)`
-            outputCtx.drawImage(tempCanvas, scaledX, scaledY)
-            outputCtx.restore()
-          }
-        } else if (area.mode === 'pixelate') {
-          // For pixelate, apply pixelation at preview scale then scale up
-          // This maintains the exact same visual effect as the preview
-
-          // Scale it down to preview resolution for pixelation
-          const previewCanvas = document.createElement('canvas')
-          const previewCtx = previewCanvas.getContext('2d')
-          if (previewCtx) {
-            previewCanvas.width = area.width
-            previewCanvas.height = area.height
-
-            // Draw the full-res area scaled down to preview size
-            previewCtx.drawImage(
-              outputCanvas,
-              scaledX,
-              scaledY,
-              scaledWidth,
-              scaledHeight,
-              0,
-              0,
-              area.width,
-              area.height,
-            )
-
-            // Apply pixelation at preview scale
-            const previewAreaData = previewCtx.getImageData(
-              0,
-              0,
-              area.width,
-              area.height,
-            )
-            const pixelatedPreviewData = pixelateImageData(
-              previewAreaData,
-              area.pixelSize ?? 10,
-            )
-            previewCtx.putImageData(pixelatedPreviewData, 0, 0)
-
-            // Scale it back up to full resolution
-            outputCtx.drawImage(
-              previewCanvas,
-              0,
-              0,
-              area.width,
-              area.height,
-              scaledX,
-              scaledY,
-              scaledWidth,
-              scaledHeight,
-            )
-          }
-        }
-      }
-
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        outputCanvas.toBlob((resultBlob) => {
-          if (resultBlob) {
-            resolve(resultBlob)
-          } else {
-            reject(new Error('Failed to create blob from canvas'))
-          }
-        }, 'image/png')
-      })
+      const blob = await createRedactedImageBlob()
 
       console.log('🖼️ RedactionTool: Download completed', {
         originalSize: selectedFile.size,
@@ -559,6 +578,68 @@ function RedactPage() {
       console.error('🖼️ RedactionTool: Error during download:', error)
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const downloadRedactedImageWithMetadataStripped = async () => {
+    if (!selectedFile) return
+
+    console.log(
+      '🖼️ RedactionTool: Starting redacted image download with metadata stripping',
+      {
+        fileName: selectedFile.name,
+        redactionCount: redactionAreas.length,
+      },
+    )
+
+    setIsProcessing(true)
+    setIsStrippingMetadata(true)
+
+    try {
+      // Create redacted image using common function
+      const redactedBlob = await createRedactedImageBlob()
+
+      console.log(
+        '🖼️ RedactionTool: Redacted image created, now stripping metadata',
+      )
+
+      // Convert blob to File for metadata stripping
+      const redactedFile = new File(
+        [redactedBlob],
+        `redacted_${selectedFile.name}`,
+        {
+          type: 'image/png',
+        },
+      )
+
+      // Strip metadata from the redacted image
+      const strippedBlob = await stripFileMetadata(redactedFile)
+
+      console.log(
+        '🖼️ RedactionTool: Download with metadata stripping completed',
+        {
+          originalSize: selectedFile.size,
+          redactedSize: redactedBlob.size,
+          finalSize: strippedBlob.size,
+        },
+      )
+
+      downloadBlob(strippedBlob, `redacted_no-metadata_${selectedFile.name}`)
+
+      console.log(
+        '🖼️ RedactionTool: Download with metadata stripping successful',
+      )
+    } catch (error) {
+      console.error(
+        '🖼️ RedactionTool: Error during download with metadata stripping:',
+        error,
+      )
+      alert(
+        'Failed to download redacted image with metadata stripped. Please try again.',
+      )
+    } finally {
+      setIsProcessing(false)
+      setIsStrippingMetadata(false)
     }
   }
 
@@ -740,16 +821,34 @@ function RedactPage() {
           >
             Clear All
           </Button>
-          <Button
-            onClick={() => void downloadRedactedImage()}
-            disabled={isProcessing || redactionAreas.length === 0}
-            className="bg-red-500 hover:bg-red-600"
-          >
-            {isProcessing ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Download
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => void downloadRedactedImage()}
+              disabled={isProcessing || redactionAreas.length === 0}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Download
+            </Button>
+            <Button
+              onClick={() => void downloadRedactedImageWithMetadataStripped()}
+              disabled={isProcessing || redactionAreas.length === 0}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {isStrippingMetadata ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldOff className="h-4 w-4" />
+              )}
+              <Download className="h-4 w-4" />
+              {isStrippingMetadata
+                ? 'Stripping...'
+                : 'Download Without Metadata'}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
