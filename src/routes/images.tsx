@@ -11,10 +11,10 @@ import { FileUpload } from '@/components/FileUpload'
 import { useInitImageMagick } from '@/hooks/useInitImageMagick'
 import {
   ImageMagickProcessor,
-  type ImageFile,
   type ImageMetadata,
   formatFileSize,
 } from '@/lib/imagemagick'
+import { type ImageFile } from '@/lib/shared'
 import { extractExifMetadata, type ExifMetadata } from '@/lib/metadata'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {

@@ -5,6 +5,8 @@ import type {
   ColorSpace,
   QuantizeSettings,
 } from '@imagemagick/magick-wasm'
+import { LibImageQuantProcessor } from './libimagequant'
+import type { ImageFile } from './shared'
 
 // Dynamic imports for ImageMagick
 let _ImageMagick: typeof ImageMagick | null = null
@@ -55,15 +57,6 @@ export interface ImageMetadata {
   compression: string
 }
 
-export interface ImageFile {
-  file: File
-  preview: string
-  name: string
-  size: number
-  type: string
-  dimensions?: { width: number; height: number }
-}
-
 export interface ResizeOptions {
   width: number
   height: number
@@ -79,6 +72,12 @@ export interface ImageCompressOptions {
 }
 
 export class ImageMagickProcessor {
+  private libImageQuantProcessor: LibImageQuantProcessor
+
+  constructor() {
+    this.libImageQuantProcessor = new LibImageQuantProcessor()
+  }
+
   private getMagickFormat(format: string): MagickFormat {
     switch (format.toLowerCase()) {
       case 'webp':
@@ -226,7 +225,9 @@ export class ImageMagickProcessor {
           format: format.toString(),
         })
         img.write(format, (data: Uint8Array) => {
-          const blob = new Blob([data], { type: imageFile.type })
+          const arrayBuffer = new ArrayBuffer(data.length)
+          new Uint8Array(arrayBuffer).set(data)
+          const blob = new Blob([arrayBuffer], { type: imageFile.type })
           console.log(
             '🖼️ ImageMagick: Resize operation completed successfully',
             {
@@ -269,7 +270,9 @@ export class ImageMagickProcessor {
         })
 
         img.write(format, (data: Uint8Array) => {
-          const blob = new Blob([data], { type: mimeType })
+          const arrayBuffer = new ArrayBuffer(data.length)
+          new Uint8Array(arrayBuffer).set(data)
+          const blob = new Blob([arrayBuffer], { type: mimeType })
           console.log('🖼️ ImageMagick: Conversion completed successfully', {
             originalSize: imageFile.size,
             newSize: blob.size,
@@ -289,74 +292,25 @@ export class ImageMagickProcessor {
       options,
     })
 
-    // Check if this is a PNG file and use specialized PNG compression
+    // Check if this is a PNG file and use libimagequant for better compression
     if (
       imageFile.type.includes('png') ||
       imageFile.name.toLowerCase().endsWith('.png')
     ) {
       console.log(
-        '🖼️ ImageMagick: PNG detected, using specialized PNG compression',
+        '🖼️ ImageMagick: PNG detected, using libimagequant for optimal compression',
       )
       try {
-        const {
-          ImageMagick,
-          MagickFormat,
-          DitherMethod,
-          ColorSpace,
-          QuantizeSettings,
-        } = await initImageMagick()
-
-        const arrayBuffer = await imageFile.file.arrayBuffer()
-        const uint8Array = new Uint8Array(arrayBuffer)
-
-        return new Promise((resolve) => {
-          ImageMagick.read(uint8Array, (img) => {
-            // Calculate number of colors based on quality for palette quantization
-            const colors = Math.max(
-              2,
-              Math.min(256, Math.round((options.quality / 100) * 256)),
-            )
-
-            console.log('🖼️ ImageMagick: Setting PNG compression quality', {
-              quality: options.quality,
-              colors: colors,
-            })
-
-            // Use PNG format with quality settings and color quantization
-            img.strip()
-            img.quality = options.quality
-            const quantizeSettings = new QuantizeSettings()
-            quantizeSettings.colors = colors
-            quantizeSettings.ditherMethod = DitherMethod.FloydSteinberg
-            quantizeSettings.colorSpace = ColorSpace.Undefined
-            quantizeSettings.measureErrors = false
-            quantizeSettings.treeDepth = 0
-            img.quantize(quantizeSettings)
-            img.write(MagickFormat.Png, (data: Uint8Array) => {
-              const blob = new Blob([data], { type: 'image/png' })
-              console.log(
-                '🖼️ ImageMagick: PNG compression completed successfully',
-                {
-                  originalSize: imageFile.size,
-                  newSize: blob.size,
-                  compressionRatio:
-                    (
-                      ((imageFile.size - blob.size) / imageFile.size) *
-                      100
-                    ).toFixed(1) + '%',
-                  colors: colors,
-                },
-              )
-              resolve(blob)
-            })
-          })
-        })
+        return await this.libImageQuantProcessor.compressPNG(
+          imageFile,
+          options.quality,
+        )
       } catch (error) {
         console.warn(
-          '🖼️ ImageMagick: PNG compression failed, falling back to standard compression:',
+          '🖼️ ImageMagick: libimagequant compression failed, falling back to ImageMagick:',
           error,
         )
-        // Fall back to standard ImageMagick compression
+        // Fall back to standard ImageMagick compression below
       }
     }
 
@@ -393,7 +347,9 @@ export class ImageMagickProcessor {
           format: format.toString(),
         })
         img.write(format, (data: Uint8Array) => {
-          const blob = new Blob([data], { type: imageFile.type })
+          const arrayBuffer = new ArrayBuffer(data.length)
+          new Uint8Array(arrayBuffer).set(data)
+          const blob = new Blob([arrayBuffer], { type: imageFile.type })
           console.log('🖼️ ImageMagick: Compression completed successfully', {
             originalSize: imageFile.size,
             newSize: blob.size,
@@ -406,6 +362,13 @@ export class ImageMagickProcessor {
         })
       })
     })
+  }
+
+  /**
+   * Clean up resources, especially for libimagequant
+   */
+  dispose(): void {
+    this.libImageQuantProcessor.dispose()
   }
 }
 

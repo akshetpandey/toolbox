@@ -3,14 +3,9 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { Loader2 } from 'lucide-react'
-import {
-  type ImageConvertOptions,
-  createObjectURL,
-  revokeObjectURL,
-  downloadFile,
-} from '@/lib/imagemagick'
+import { type ImageConvertOptions } from '@/lib/imagemagick'
+import { createObjectURL, revokeObjectURL, downloadFile } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
@@ -22,7 +17,6 @@ function ConvertPage() {
   const { selectedFile, imageMagickProcessor } = useImageTools()
   const { isProcessing, setIsProcessing } = useProcessing()
   const [targetFormat, setTargetFormat] = useState('webp')
-  const [progress, setProgress] = useState(0)
 
   const convertImage = async (imageFile: typeof selectedFile) => {
     if (!imageFile) {
@@ -36,18 +30,6 @@ function ConvertPage() {
     })
 
     setIsProcessing(true)
-    setProgress(0)
-
-    // Simulate progress
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval)
-          return 90
-        }
-        return prev + 10
-      })
-    }, 100)
 
     try {
       const options: ImageConvertOptions = {
@@ -68,18 +50,11 @@ function ConvertPage() {
       downloadFile(url, `${imageFile.name.split('.')[0]}.${targetFormat}`)
       revokeObjectURL(url)
 
-      clearInterval(progressInterval)
-      setProgress(100)
       console.log('🖼️ ConvertTool: Conversion successful - file downloaded')
-      setTimeout(() => {
-        setIsProcessing(false)
-        setProgress(0)
-      }, 500)
+      setIsProcessing(false)
     } catch (error) {
       console.error('🖼️ ConvertTool: Error during conversion:', error)
-      clearInterval(progressInterval)
       setIsProcessing(false)
-      setProgress(0)
     }
   }
 
@@ -142,16 +117,6 @@ function ConvertPage() {
             </div>
           </div>
         </div>
-
-        {progress > 0 && (
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between text-sm">
-              <span>Converting...</span>
-              <span>{progress}%</span>
-            </div>
-            <Progress value={progress} className="w-full h-2" />
-          </div>
-        )}
 
         <div className="flex justify-end">
           <Button

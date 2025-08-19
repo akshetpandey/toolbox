@@ -4,14 +4,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { Loader2 } from 'lucide-react'
-import {
-  type ImageCompressOptions,
-  createObjectURL,
-  revokeObjectURL,
-  downloadFile,
-} from '@/lib/imagemagick'
+import { type ImageCompressOptions } from '@/lib/imagemagick'
+import { createObjectURL, revokeObjectURL, downloadFile } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
@@ -23,7 +18,6 @@ function CompressPage() {
   const { selectedFile, imageMagickProcessor } = useImageTools()
   const { isProcessing, setIsProcessing } = useProcessing()
   const [quality, setQuality] = useState(85)
-  const [progress, setProgress] = useState(0)
 
   const compressImage = async (imageFile: typeof selectedFile) => {
     if (!imageFile) {
@@ -37,18 +31,6 @@ function CompressPage() {
     })
 
     setIsProcessing(true)
-    setProgress(0)
-
-    // Simulate progress
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval)
-          return 90
-        }
-        return prev + 10
-      })
-    }, 100)
 
     try {
       const options: ImageCompressOptions = {
@@ -72,18 +54,11 @@ function CompressPage() {
       downloadFile(url, `compressed_${imageFile.name}`)
       revokeObjectURL(url)
 
-      clearInterval(progressInterval)
-      setProgress(100)
       console.log('🖼️ CompressTool: Compression successful - file downloaded')
-      setTimeout(() => {
-        setIsProcessing(false)
-        setProgress(0)
-      }, 500)
+      setIsProcessing(false)
     } catch (error) {
       console.error('🖼️ CompressTool: Error during compression:', error)
-      clearInterval(progressInterval)
       setIsProcessing(false)
-      setProgress(0)
     }
   }
 
@@ -95,18 +70,6 @@ function CompressPage() {
             <Label htmlFor="quality" className="text-sm font-medium">
               Quality: {quality}%
             </Label>
-            {selectedFile && (
-              <div className="text-xs text-muted-foreground">
-                {selectedFile.type.includes('png') ||
-                selectedFile.name.toLowerCase().endsWith('.png') ? (
-                  <span className="text-green-600">
-                    ✨ PNG detected - Using optimized ImageMagick compression
-                  </span>
-                ) : (
-                  <span>Using ImageMagick for compression</span>
-                )}
-              </div>
-            )}
           </div>
           <Input
             id="quality"
@@ -122,16 +85,6 @@ function CompressPage() {
             <span>Better quality</span>
           </div>
         </div>
-
-        {progress > 0 && (
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between text-sm">
-              <span>Compressing...</span>
-              <span>{progress}%</span>
-            </div>
-            <Progress value={progress} className="w-full h-2" />
-          </div>
-        )}
 
         <div className="flex justify-end">
           <Button

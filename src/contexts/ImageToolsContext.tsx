@@ -1,9 +1,6 @@
 import { createContext, useContext } from 'react'
-import type {
-  ImageFile,
-  ImageMetadata,
-  ImageMagickProcessor,
-} from '@/lib/imagemagick'
+import type { ImageMetadata, ImageMagickProcessor } from '@/lib/imagemagick'
+import type { ImageFile } from '@/lib/shared'
 import type { ExifMetadata } from '@/lib/metadata'
 
 export interface ImageToolsContextType {

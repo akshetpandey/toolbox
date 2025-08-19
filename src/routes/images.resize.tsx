@@ -5,14 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Progress } from '@/components/ui/progress'
 import { Loader2 } from 'lucide-react'
-import {
-  type ResizeOptions,
-  createObjectURL,
-  revokeObjectURL,
-  downloadFile,
-} from '@/lib/imagemagick'
+import { type ResizeOptions } from '@/lib/imagemagick'
+import { createObjectURL, revokeObjectURL, downloadFile } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
@@ -26,7 +21,6 @@ function ResizePage() {
   const [resizeWidth, setResizeWidth] = useState('')
   const [resizeHeight, setResizeHeight] = useState('')
   const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
-  const [progress, setProgress] = useState(0)
 
   const handleWidthChange = (value: string) => {
     setResizeWidth(value)
@@ -73,18 +67,6 @@ function ResizePage() {
     })
 
     setIsProcessing(true)
-    setProgress(0)
-
-    // Simulate progress
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval)
-          return 90
-        }
-        return prev + 10
-      })
-    }, 100)
 
     try {
       const options: ResizeOptions = {
@@ -107,20 +89,13 @@ function ResizePage() {
       downloadFile(url, `resized_${imageFile.name}`)
       revokeObjectURL(url)
 
-      clearInterval(progressInterval)
-      setProgress(100)
       console.log(
         '🖼️ ResizeTool: Resize operation successful - file downloaded',
       )
-      setTimeout(() => {
-        setIsProcessing(false)
-        setProgress(0)
-      }, 500)
+      setIsProcessing(false)
     } catch (error) {
       console.error('🖼️ ResizeTool: Error during resize operation:', error)
-      clearInterval(progressInterval)
       setIsProcessing(false)
-      setProgress(0)
     }
   }
 
@@ -171,16 +146,6 @@ function ResizePage() {
             Keep aspect ratio
           </Label>
         </div>
-
-        {progress > 0 && (
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between text-sm">
-              <span>Processing...</span>
-              <span>{progress}%</span>
-            </div>
-            <Progress value={progress} className="w-full h-2" />
-          </div>
-        )}
 
         <div className="flex justify-end">
           <Button

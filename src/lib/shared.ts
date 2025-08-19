@@ -97,3 +97,15 @@ export function isValidImageFile(file: File): boolean {
 export function isValidVideoFile(file: File): boolean {
   return file.type.startsWith('video/')
 }
+
+/**
+ * Shared image file interface used across image processing tools
+ */
+export interface ImageFile {
+  file: File
+  preview: string
+  name: string
+  size: number
+  type: string
+  dimensions?: { width: number; height: number }
+}

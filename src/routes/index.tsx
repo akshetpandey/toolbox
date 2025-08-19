@@ -30,11 +30,15 @@ const features = [
     icon: Shield,
     title: 'Built on Open Source',
     description:
-      'Powered by FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, libmagic, Pandoc, and, more',
+      'Powered by FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, libmagic, Pandoc, libimagequant, and, more',
   },
 ]
 
 const changelog = [
+  {
+    date: 'Aug 19',
+    entries: ['Added libimagequant to compress png'],
+  },
   {
     date: 'Aug 7',
     entries: ['Added metadata stripping for enhanced privacy'],

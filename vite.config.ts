@@ -27,6 +27,8 @@ export default defineConfig({
               return 'wasmagic'
             } else if (id.includes('hash-wasm')) {
               return 'hash-wasm'
+            } else if (id.includes('libimagequant-wasm')) {
+              return 'libimagequant'
             } else if (id.includes('@bjorn3')) {
               return 'wasi-shim'
             } else if (id.includes('ffmpeg')) {
@@ -41,7 +43,20 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@ffmpeg/core-mt', '@ffmpeg/ffmpeg', '@ffmpeg/util', '7z-wasm'],
+    exclude: [
+      '@ffmpeg/core-mt',
+      '@ffmpeg/ffmpeg',
+      '@ffmpeg/util',
+      '7z-wasm',
+      '@imagemagick/magick-wasm',
+      'libimagequant-wasm',
+      '@bjorn3/browser_wasi_shim',
+      '@pdf-lib/fontkit',
+      '@uswriting/exiftool',
+      'hash-wasm',
+      'wasm-pandoc',
+      'wasmagic',
+    ],
   },
   plugins: [
     // this is the plugin that enables path aliases
