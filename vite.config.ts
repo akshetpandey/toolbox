@@ -28,7 +28,7 @@ export default defineConfig({
             } else if (id.includes('hash-wasm')) {
               return 'hash-wasm'
             } else if (id.includes('libimagequant-wasm')) {
-              return 'libimagequant'
+              return 'libimagequant-wasm'
             } else if (id.includes('@bjorn3')) {
               return 'wasi-shim'
             } else if (id.includes('ffmpeg')) {

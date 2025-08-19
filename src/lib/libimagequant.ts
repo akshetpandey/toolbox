@@ -1,7 +1,7 @@
 import LibImageQuant, { type QuantizationOptions } from 'libimagequant-wasm'
 import type { ImageFile } from './shared'
-import workerUrl from 'libimagequant-wasm/worker?url'
-import wasmUrl from 'libimagequant-wasm/wasm?url'
+import workerUrl from 'libimagequant-wasm/worker?worker&url'
+import wasmUrl from 'libimagequant-wasm/wasm/libimagequant_wasm_bg.wasm?url'
 
 export class LibImageQuantProcessor {
   private quantizer: LibImageQuant | null = null
