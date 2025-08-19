@@ -1,5 +1,7 @@
 import LibImageQuant, { type QuantizationOptions } from 'libimagequant-wasm'
 import type { ImageFile } from './shared'
+import workerUrl from 'libimagequant-wasm/worker?url'
+import wasmUrl from 'libimagequant-wasm/wasm?url'
 
 export class LibImageQuantProcessor {
   private quantizer: LibImageQuant | null = null
@@ -8,11 +10,8 @@ export class LibImageQuantProcessor {
     if (!this.quantizer) {
       console.log('🎨 LibImageQuant: Initializing quantizer...')
       this.quantizer = new LibImageQuant({
-        workerUrl: new URL(
-          'libimagequant-wasm/worker',
-          import.meta.url,
-        ).toString(),
-        wasmUrl: new URL('libimagequant-wasm/wasm', import.meta.url).toString(),
+        workerUrl: workerUrl,
+        wasmUrl: wasmUrl,
         initTimeout: 30 * 1000, // 30 seconds init timeout
         operationTimeout: 3 * 60 * 1000, // 3 minutes operation timeout
       })
