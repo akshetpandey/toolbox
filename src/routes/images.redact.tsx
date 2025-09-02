@@ -29,6 +29,33 @@ interface RedactionArea {
 
 export const Route = createFileRoute('/images/redact')({
   component: RedactPage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Image Redaction Tool - Free Browser-Based Privacy Protection | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based image redaction tool. Blur, pixelate, or blackout sensitive information in images. Process images entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'image redaction, blur sensitive info, pixelate images, privacy protection, browser image editor',
+      },
+      {
+        property: 'og:title',
+        content: 'Image Redaction Tool - Free Browser-Based Privacy Protection',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based image redaction. Protect sensitive information with blur, pixelate, or blackout effects.',
+      },
+    ],
+  }),
 })
 
 function RedactPage() {

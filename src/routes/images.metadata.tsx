@@ -17,6 +17,32 @@ import { useState } from 'react'
 
 export const Route = createFileRoute('/images/metadata')({
   component: MetadataPage,
+  head: () => ({
+    meta: [
+      {
+        title: 'Image Metadata Viewer - Free Browser-Based EXIF Tool | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based image metadata and EXIF viewer. Extract image metadata and strip metadata for privacy. Process images entirely in your browser.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'EXIF viewer, image metadata, strip metadata, privacy protection, browser EXIF reader',
+      },
+      {
+        property: 'og:title',
+        content: 'Image Metadata Viewer - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based image metadata and EXIF viewer with privacy protection features.',
+      },
+    ],
+  }),
 })
 
 function MetadataPage() {

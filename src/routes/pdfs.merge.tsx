@@ -16,6 +16,32 @@ import { downloadBlob } from '@/lib/shared'
 
 export const Route = createFileRoute('/pdfs/merge')({
   component: PDFMergeRoute,
+  head: () => ({
+    meta: [
+      {
+        title: 'PDF Merger - Free Browser-Based PDF Combining Tool | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based PDF merger. Combine multiple PDF files into one document with drag-and-drop reordering. Process PDFs entirely in your browser.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free PDF merger, combine PDFs, merge PDF files, browser PDF editor, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'PDF Merger - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based PDF merger. Combine multiple PDFs into one document.',
+      },
+    ],
+  }),
 })
 
 function PDFMergeRoute() {

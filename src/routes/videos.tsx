@@ -44,6 +44,32 @@ const videoTabs = [
 
 export const Route = createFileRoute('/videos')({
   component: VideoToolsLayout,
+  head: () => ({
+    meta: [
+      {
+        title: 'Video Tools - Free Browser-Based Video Processing | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based video processing tools. Convert, compress, trim, extract audio, and view metadata of videos entirely in your browser. No uploads required.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free video tools, video converter, video compressor, video editor, browser video processing, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Video Tools - Free Browser-Based Video Processing',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based video processing tools. Process videos entirely in your browser with complete privacy.',
+      },
+    ],
+  }),
 })
 
 // Helper function to format time in seconds to human-readable format

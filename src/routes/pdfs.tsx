@@ -118,6 +118,32 @@ function SortableFileItem({
 
 export const Route = createFileRoute('/pdfs')({
   component: PDFToolsLayout,
+  head: () => ({
+    meta: [
+      {
+        title: 'PDF Tools - Free Browser-Based PDF Processing | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based PDF processing tools. Merge, split, and compress PDF files entirely in your browser. No uploads required, complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free PDF tools, PDF merger, PDF splitter, PDF compressor, browser PDF editor, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'PDF Tools - Free Browser-Based PDF Processing',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based PDF processing tools. Process PDFs entirely in your browser with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function PDFToolsLayout() {

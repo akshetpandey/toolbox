@@ -42,6 +42,32 @@ const imageTabs = [
 
 export const Route = createFileRoute('/images')({
   component: ImageToolsLayout,
+  head: () => ({
+    meta: [
+      {
+        title: 'Image Tools - Free Browser-Based Image Processing | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based image processing tools. Compress, convert, resize, redact, and view metadata of images entirely in your browser. No uploads required.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free image tools, image converter, image compressor, image resizer, browser image editor, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Image Tools - Free Browser-Based Image Processing',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based image processing tools. Process images entirely in your browser with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function ImageToolsLayout() {

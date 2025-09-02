@@ -16,6 +16,33 @@ import { useState } from 'react'
 
 export const Route = createFileRoute('/videos/metadata')({
   component: VideoMetadataComponent,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Video Metadata Viewer - Free Browser-Based Video Info Tool | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based video metadata viewer. View video file information, codecs, streams, and strip metadata for privacy. Process videos entirely in your browser.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'video metadata viewer, video file info, codec information, strip video metadata, privacy protection',
+      },
+      {
+        property: 'og:title',
+        content: 'Video Metadata Viewer - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based video metadata viewer with privacy protection features.',
+      },
+    ],
+  }),
 })
 
 function VideoMetadataComponent() {

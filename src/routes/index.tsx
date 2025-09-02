@@ -72,6 +72,37 @@ const changelog = [
 
 export const Route = createFileRoute('/')({
   component: App,
+  head: () => ({
+    meta: [
+      {
+        title: 'Toolbox - Free Open Source Browser-Based File Processing Tools',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based file processing tools. Convert, compress, and edit images, videos, PDFs, archives, and office documents entirely in your browser. No uploads, privacy-focused.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free file tools, browser file processing, open source, image converter, video compressor, PDF editor, privacy-focused, no upload',
+      },
+      {
+        property: 'og:title',
+        content:
+          'Toolbox - Free Open Source Browser-Based File Processing Tools',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based file processing tools. Process files entirely in your browser with complete privacy.',
+      },
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+    ],
+  }),
 })
 
 function App() {

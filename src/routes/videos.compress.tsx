@@ -19,6 +19,33 @@ import { AlertTriangle, X, Zap, Pause, Square } from 'lucide-react'
 
 export const Route = createFileRoute('/videos/compress')({
   component: VideoCompressComponent,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Video Compressor - Free Browser-Based Video Compression | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based video compression tool. Reduce video file sizes with customizable quality settings. Process videos entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free video compressor, reduce video size, video compression, browser video editor, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Video Compressor - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based video compression. Reduce file sizes with customizable quality settings.',
+      },
+    ],
+  }),
 })
 
 function VideoCompressComponent() {

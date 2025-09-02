@@ -31,6 +31,33 @@ const archiveTabs = [
 
 export const Route = createFileRoute('/archives')({
   component: ArchiveToolsLayout,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Archive Tools - Free Browser-Based Archive Processing | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based archive processing tools. Compress files into archives and extract from ZIP, 7Z, TAR, RAR formats entirely in your browser. No uploads required.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free archive tools, ZIP extractor, 7Z compressor, file compression, browser archive manager, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Archive Tools - Free Browser-Based Archive Processing',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based archive tools. Compress and extract files with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function ArchiveToolsLayout() {

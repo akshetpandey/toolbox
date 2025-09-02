@@ -20,6 +20,33 @@ import {
 
 export const Route = createFileRoute('/videos/extract')({
   component: VideoExtractComponent,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Audio Extractor - Free Browser-Based Audio Extraction | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based audio extraction tool. Extract audio from videos in MP3, WAV, AAC, or FLAC formats. Process videos entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'extract audio from video, video to MP3, audio extraction, browser audio converter, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Audio Extractor - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based audio extraction. Extract audio from videos in multiple formats.',
+      },
+    ],
+  }),
 })
 
 function VideoExtractComponent() {

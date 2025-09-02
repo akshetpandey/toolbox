@@ -14,6 +14,33 @@ import { formatFileSize } from '@/lib/archive'
 
 export const Route = createFileRoute('/archives/extract')({
   component: ExtractPage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Archive Extractor - Free Browser-Based File Extraction | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based archive extraction tool. Extract files from ZIP, 7Z, TAR, RAR, and GZIP archives entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'extract ZIP files, 7Z extractor, RAR extractor, TAR extractor, browser archive manager, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Archive Extractor - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based archive extraction. Extract files from multiple archive formats.',
+      },
+    ],
+  }),
 })
 
 function ExtractPage() {

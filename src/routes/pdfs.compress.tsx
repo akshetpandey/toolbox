@@ -4,6 +4,32 @@ import { Minimize } from 'lucide-react'
 
 export const Route = createFileRoute('/pdfs/compress')({
   component: PDFCompressRoute,
+  head: () => ({
+    meta: [
+      {
+        title: 'PDF Compressor - Free Browser-Based PDF Compression | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based PDF compression tool. Reduce PDF file sizes while maintaining quality. Process PDFs entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free PDF compressor, reduce PDF size, PDF compression, browser PDF editor, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'PDF Compressor - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based PDF compression. Reduce file sizes while maintaining quality.',
+      },
+    ],
+  }),
 })
 
 function PDFCompressRoute() {

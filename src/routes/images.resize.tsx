@@ -13,6 +13,33 @@ import { useImageTools } from '@/contexts/ImageToolsContext'
 
 export const Route = createFileRoute('/images/resize')({
   component: ResizePage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Image Resizer - Free Browser-Based Image Resizing Tool | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based image resizing tool. Resize images to custom dimensions while maintaining aspect ratio. Process images entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free image resizer, resize images, change image dimensions, browser image editor, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Image Resizer - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based image resizing. Resize images to custom dimensions with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function ResizePage() {

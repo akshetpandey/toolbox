@@ -9,6 +9,33 @@ import { Shield, Check, X, Loader2 } from 'lucide-react'
 
 export const Route = createFileRoute('/utilities/hash')({
   component: HashGenerationPage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'File Hash Generator - Free Browser-Based MD5 SHA256 Calculator | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based file hash generator. Calculate MD5, SHA1, and SHA256 hashes for file verification entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'MD5 hash generator, SHA256 calculator, file checksum, hash verification, browser hash tool, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'File Hash Generator - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based hash generator. Calculate MD5, SHA1, and SHA256 with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function HashGenerationPage() {

@@ -10,6 +10,33 @@ import { useState } from 'react'
 
 export const Route = createFileRoute('/utilities/metadata')({
   component: MetadataExtractionPage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'File Metadata Tool - Free Browser-Based Metadata Viewer | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based file metadata viewer and stripper. View file information and strip metadata for privacy protection entirely in your browser.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'file metadata viewer, strip metadata, privacy protection, file information, browser metadata tool',
+      },
+      {
+        property: 'og:title',
+        content: 'File Metadata Tool - Free Browser-Based Viewer',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based metadata viewer with privacy protection features.',
+      },
+    ],
+  }),
 })
 
 function MetadataExtractionPage() {

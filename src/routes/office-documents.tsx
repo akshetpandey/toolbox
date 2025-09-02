@@ -29,6 +29,33 @@ const officeTabs = [{ value: 'convert', label: 'Convert', icon: FileText }]
 
 export const Route = createFileRoute('/office-documents')({
   component: OfficeDocumentsLayout,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Office Document Tools - Free Browser-Based Document Conversion | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based office document converter. Convert Word, PowerPoint, and Excel files to PDF entirely in your browser. No uploads required, complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'Word to PDF, PowerPoint to PDF, Excel to PDF, office document converter, browser document tools, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Office Document Tools - Free Browser-Based Conversion',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based office document converter. Convert documents to PDF with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function OfficeDocumentsLayout() {

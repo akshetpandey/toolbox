@@ -11,6 +11,33 @@ import { useImageTools } from '@/contexts/ImageToolsContext'
 
 export const Route = createFileRoute('/images/convert')({
   component: ConvertPage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Image Converter - Free Browser-Based Image Format Conversion | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based image format converter. Convert between JPG, PNG, WebP, GIF, and more. Process images entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free image converter, JPG to PNG, WebP converter, browser image format conversion, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'Image Converter - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based image format converter. Convert between multiple formats with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function ConvertPage() {

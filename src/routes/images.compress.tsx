@@ -12,6 +12,33 @@ import { useImageTools } from '@/contexts/ImageToolsContext'
 
 export const Route = createFileRoute('/images/compress')({
   component: CompressPage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Image Compressor - Free Browser-Based Image Compression | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based image compression tool. Reduce image file sizes while maintaining quality. Process images entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'free image compressor, reduce image size, browser image compression, privacy-focused, no upload',
+      },
+      {
+        property: 'og:title',
+        content: 'Image Compressor - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based image compression. Reduce file sizes while maintaining quality.',
+      },
+    ],
+  }),
 })
 
 function CompressPage() {

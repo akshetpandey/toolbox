@@ -17,6 +17,33 @@ import { type CompressionFormat } from '@/lib/archive'
 
 export const Route = createFileRoute('/archives/compress')({
   component: CompressPage,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'File Compressor - Free Browser-Based Archive Creation | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based file compression tool. Create ZIP, 7Z, TAR, and GZIP archives from multiple files. Process files entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'create ZIP archive, compress files, 7Z creator, TAR compressor, browser file archiver, privacy-focused',
+      },
+      {
+        property: 'og:title',
+        content: 'File Compressor - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based file compression. Create archives in multiple formats with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function CompressPage() {

@@ -9,6 +9,33 @@ import { convertOfficeToPDF } from '@/lib/pandoc'
 
 export const Route = createFileRoute('/office-documents/convert')({
   component: ConvertTool,
+  head: () => ({
+    meta: [
+      {
+        title:
+          'Office to PDF Converter - Free Browser-Based Document Conversion | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based office document to PDF converter. Convert Word, PowerPoint, and Excel files to PDF format entirely in your browser with complete privacy.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'Word to PDF converter, PowerPoint to PDF, Excel to PDF, document converter, browser PDF creator',
+      },
+      {
+        property: 'og:title',
+        content: 'Office to PDF Converter - Free Browser-Based Tool',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based office document to PDF converter with complete privacy.',
+      },
+    ],
+  }),
 })
 
 function ConvertTool() {

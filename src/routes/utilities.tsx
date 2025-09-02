@@ -33,6 +33,32 @@ const utilityTabs = [
 
 export const Route = createFileRoute('/utilities')({
   component: UtilitiesLayout,
+  head: () => ({
+    meta: [
+      {
+        title: 'Utility Tools - Free Browser-Based File Utilities | Toolbox',
+      },
+      {
+        name: 'description',
+        content:
+          'Free, open-source browser-based file utility tools. Generate file hashes, view metadata, and strip metadata for privacy protection entirely in your browser.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'file hash generator, MD5 SHA256 calculator, file metadata viewer, privacy tools, browser utilities',
+      },
+      {
+        property: 'og:title',
+        content: 'Utility Tools - Free Browser-Based File Utilities',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Free, open-source browser-based file utilities. Hash generation, metadata viewing, and privacy tools.',
+      },
+    ],
+  }),
 })
 
 function UtilitiesLayout() {
