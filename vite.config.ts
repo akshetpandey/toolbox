@@ -11,10 +11,37 @@ export default defineConfig({
     sourcemap: true,
     minify: false, // Keep readable output for debugging user-reported issues
     modulePreload: false, // Disable entirely — modern browsers handle module loading; avoids __vitePreload helper polluting chunks
-    // No manualChunks — let TanStack Router's auto code-splitting and
-    // Rolldown's natural chunking handle everything. WASM libraries are
-    // already dynamically imported in their respective lib files, so they
-    // become separate chunks automatically.
+    rolldownOptions: {
+      output: {
+        manualChunks: function (id) {
+          if (id.includes('node_modules')) {
+            // Heavy WASM packages are dynamically imported in their
+            // respective lib files — don't assign them to a named chunk
+            // so the bundler creates separate lazy chunks automatically.
+            const wasmPackages = [
+              '7z-wasm',
+              '@imagemagick',
+              'libimagequant-wasm',
+              'pdf-lib',
+              '@uswriting/exiftool',
+              'pandoc-wasm',
+              '@myriaddreamin',
+              'typst',
+              'wasmagic',
+              'hash-wasm',
+              '@bjorn3',
+              '@ffmpeg',
+            ]
+            if (wasmPackages.some((pkg) => id.includes(pkg))) {
+              return undefined // let bundler handle naturally
+            }
+            return 'vendor'
+          } else {
+            return 'app'
+          }
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: [
@@ -38,7 +65,7 @@ export default defineConfig({
   plugins: [
     ffmpegCorePlugin(),
     tailwindcss(),
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({ target: 'react', autoCodeSplitting: false }),
     react(),
     sentryVitePlugin({
       authToken: process.env.SENTRY_AUTH_TOKEN,
