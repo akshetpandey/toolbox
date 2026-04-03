@@ -224,11 +224,11 @@ export class FFmpegProcessor {
   ): Blob {
     // Handle different data types from FFmpeg
     if (data instanceof Uint8Array) {
-      return new Blob([data], { type: mimeType })
+      return new Blob([data.buffer as ArrayBuffer], { type: mimeType })
     } else if (typeof data === 'string') {
       return new Blob([data], { type: mimeType })
     } else if (data?.buffer) {
-      return new Blob([data.buffer], { type: mimeType })
+      return new Blob([data.buffer.buffer as ArrayBuffer], { type: mimeType })
     } else {
       throw new Error('Unsupported data format from FFmpeg')
     }

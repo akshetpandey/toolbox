@@ -11,7 +11,7 @@ This is an open-source SPA web application that provides browser-based file proc
 ### Development
 
 ```bash
-pnpm dev            # Start development server on port 3000
+pnpm dev            # Start development server on port 5050
 pnpm build          # Build for production
 pnpm serve          # Preview production build locally
 ```
@@ -42,67 +42,102 @@ pnpx shadcn@latest add button    # Add new Shadcn components
 
 ### Tech Stack
 
-- **Framework**: React 19 with TypeScript
-- **Routing**: TanStack Router with file-based routing
-- **Styling**: Tailwind CSS v4 with Shadcn/ui components
-- **Build Tool**: Vite
-- **Deployment**: Cloudflare Workers
-- **Processing Libraries**: FFmpeg, ImageMagick, pdf-lib, 7z-wasm, Pandoc (all via WASM)
-- **Error Tracking**: Sentry (currently commented out)
+- **Framework**: React 19 with TypeScript (strict mode)
+- **Routing**: TanStack Router with file-based routing and auto code-splitting
+- **Styling**: Tailwind CSS v4 with Shadcn/ui components (Radix UI primitives)
+- **Build Tool**: Vite 7 (target: Chrome 130+, Safari 18+, Firefox 102+)
+- **Deployment**: Cloudflare Workers with static assets
+- **Icons**: Lucide React
+- **Drag & Drop**: @dnd-kit (used for PDF page reordering)
+- **Processing Libraries** (all WASM, all client-side):
+  - `@ffmpeg/ffmpeg` + `@ffmpeg/core-mt` - Video processing (loaded from CDN)
+  - `@imagemagick/magick-wasm` - Image processing
+  - `pdf-lib` - PDF manipulation
+  - `7z-wasm` - Archive compression/extraction
+  - `wasm-pandoc` + `@bjorn3/browser_wasi_shim` - Document conversion via WASI
+  - `libimagequant-wasm` - PNG compression/quantization
+  - `@uswriting/exiftool` - EXIF metadata extraction
+  - `hash-wasm` - File hashing (MD5, SHA1, SHA256)
+  - `wasmagic` - MIME type detection
 
 ### Directory Structure
 
-- `src/routes/` - File-based routing with TanStack Router
-- `src/contexts/` - React contexts for tool-specific state management
-- `src/lib/` - Core processing libraries and utilities
-- `src/components/` - Reusable UI components
-- `src/hooks/` - Custom React hooks for WASM library initialization
+```
+src/
+├── routes/           # File-based routing with TanStack Router (33 route files)
+├── contexts/         # React contexts for tool-specific state management (8 contexts)
+├── lib/              # Core processing libraries and utilities (14 files)
+├── components/       # Reusable UI components
+│   └── ui/           # Shadcn/ui components (13 primitives)
+├── hooks/            # Custom React hooks for WASM library initialization
+├── main.tsx          # Application entry point
+├── routeTree.gen.ts  # Auto-generated route tree (do not edit manually)
+└── styles.css        # Global styles
+```
 
 ### Key Architecture Patterns
 
-**Tool Categories**: The app is organized into tool categories (Images, Videos, PDFs, Archives, Office Documents, Utilities), each with their own:
+**Tool Categories**: The app is organized into 6 tool categories, each with their own:
 
 - Route group in `src/routes/[category]/`
 - Context provider in `src/contexts/[Category]ToolsContext.tsx`
 - Processing functions in `src/lib/`
 
-**WASM Integration**: Heavy processing is handled by WebAssembly libraries:
+| Category             | Tools                                            | Context               | Lib files                            |
+| -------------------- | ------------------------------------------------ | --------------------- | ------------------------------------ |
+| **Images**           | resize, convert, compress, metadata, redact      | `ImageToolsContext`   | `imagemagick.ts`, `libimagequant.ts` |
+| **Videos**           | convert, compress, trim, extract audio, metadata | `VideoToolsContext`   | `ffmpeg.ts`, `videoToolsUtils.tsx`   |
+| **PDFs**             | merge, split (WIP), compress (WIP)               | `PDFToolsContext`     | `pdf.ts`                             |
+| **Archives**         | compress (zip/7z/tar/gzip), extract              | `ArchiveToolsContext` | `archive.ts`                         |
+| **Office Documents** | convert to PDF                                   | `OfficeToolsContext`  | `pandoc.ts`, `pandoc-cdn.ts`         |
+| **Utilities**        | file hashes, file metadata                       | `UtilitiesContext`    | `metadata.ts`                        |
 
-- FFmpeg for video processing (`src/lib/ffmpeg.ts`)
-- ImageMagick for image processing (`src/lib/imagemagick.ts`)
-- pdf-lib for PDF manipulation (`src/lib/pdf.ts`)
-- 7z-wasm for archive handling (`src/lib/archive.ts`)
-- Pandoc for document conversion (`src/lib/pandoc.ts`)
+**WASM Lazy Loading Pattern**: Heavy WASM libraries use a singleton pattern with module-level promises to prevent duplicate initialization:
 
-**State Management**: Uses React Context API with specific providers:
+- `useInitFFmpeg` hook - loads FFmpeg from unpkg CDN with progress callback
+- `useInitImageMagick` hook - loads ImageMagick WASM
+- `metadata.ts`, `pandoc-cdn.ts` - inline lazy loading with cached instances
 
-- `ProcessingContext` - Global processing state and progress tracking
-- `ThemeContext` - Dark/light theme management
-- Tool-specific contexts for each category
+**State Management**: React Context API with typed hooks:
+
+- `ProcessingContext` - Global `isProcessing` flag and `processingMessage` for progress UI
+- `ThemeContext` - Dark/light/system theme management
+- Per-category contexts manage file selection, processing state, and results
 
 **File Processing Flow**:
 
-1. File upload via `FileUpload` component
-2. Context provider manages tool state
+1. File upload via `FileUpload` component (drag-and-drop supported)
+2. Category context provider manages tool state
 3. Processing functions in `src/lib/` handle WASM operations
-4. Progress tracked via `ProcessingContext`
+4. Progress tracked via `ProcessingContext` (videos also track time estimates)
 5. Results downloaded to user's device
 
 ### Route Structure
 
 Routes follow TanStack Router file-based conventions:
 
-- `routes/index.tsx` - Landing page
-- `routes/[category].tsx` - Category layout
-- `routes/[category].[tool].tsx` - Individual tool pages
-- `routes/__root.tsx` - Root layout with sidebar
+- `__root.tsx` - Root layout with `ToolSidebar`
+- `index.tsx` - Landing page with feature list and changelog
+- `[category].tsx` - Category layout (wraps child routes in context provider)
+- `[category].index.tsx` - Category overview page
+- `[category].[tool].tsx` - Individual tool page
+- Each route exports a `head()` function for SEO metadata
 
 ### Component Patterns
 
-- All UI components use Shadcn/ui with Tailwind CSS
-- Tool layouts use `ToolLayout` wrapper component
-- File uploads handled by reusable `FileUpload` component
-- Responsive design with mobile-first approach
+- **ToolLayout** - Wraps tool pages with header and responsive split layout (1/3 upload + 2/3 tools on desktop, stacked on mobile)
+- **FileUpload** - Reusable file upload with drag-and-drop, file preview, badges
+- **ToolSidebar** - Collapsible navigation sidebar with tool categories
+- **ThemeToggle** - Light/dark/system theme switcher
+- All UI primitives are Shadcn/ui in `src/components/ui/`
+
+### Shared Utilities (`src/lib/shared.ts`)
+
+- `formatFileSize()` - Bytes to human-readable (KB, MB, GB, TB)
+- `formatDuration()` - Seconds to HH:MM:SS
+- `truncateFilename()` - Smart truncation preserving file extension
+- `downloadBlob()` / `downloadMultipleFiles()` - Trigger file downloads
+- File validation helpers
 
 ## Important Notes
 
@@ -110,20 +145,23 @@ Routes follow TanStack Router file-based conventions:
 
 - Always prefer WASM packages over server-side processing
 - Process files entirely in the browser for privacy
-- Use existing tool contexts and processing patterns
+- Use existing tool contexts and processing patterns when adding new tools
 - Follow Shadcn component patterns and Tailwind styling
 - Maintain responsive design with mobile support
+- `routeTree.gen.ts` is auto-generated by TanStack Router plugin - do not edit manually
 
 ### Build Configuration
 
-- Vite config includes manual chunk splitting for WASM libraries
-- COOP/COEP headers required for SharedArrayBuffer support
-- Source maps enabled for debugging
-- Optimized build excludes FFmpeg and other WASM from pre-bundling
+- Vite config includes manual chunk splitting for each WASM library into separate bundles
+- All WASM packages are excluded from Vite's `optimizeDeps` pre-bundling
+- COOP/COEP headers required for SharedArrayBuffer support (needed by FFmpeg multi-threading)
+- Source maps enabled for production debugging
+- WASM files included via `assetsInclude: ['**/*.wasm']`
+- Web workers use ES module format
 
 ### Testing
 
-- Tests run with Vitest and JSDOM
+- Tests run with Vitest and JSDOM environment
 - Uses Testing Library for React component testing
 - Test files should follow the pattern `*.test.ts` or `*.test.tsx`
 
@@ -133,3 +171,15 @@ Development server includes required headers for WASM:
 
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
+
+These headers enable SharedArrayBuffer, required by FFmpeg's multi-threaded WASM core.
+
+### Adding a New Tool
+
+To add a new tool to an existing category:
+
+1. Create route file: `src/routes/[category].[tool].tsx`
+2. Add processing logic to the appropriate `src/lib/` file
+3. Add state management to the category's context in `src/contexts/`
+4. Add the tool to the sidebar navigation in `src/components/ToolSidebar.tsx`
+5. Use `ToolLayout` and `FileUpload` components for consistent UI

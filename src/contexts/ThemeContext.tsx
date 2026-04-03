@@ -32,15 +32,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Determine the actual theme to apply
-    let resolvedTheme: 'light' | 'dark' = 'light'
-
-    if (theme === 'system') {
-      resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-    } else {
-      resolvedTheme = theme
-    }
+    const resolvedTheme: 'light' | 'dark' =
+      theme === 'system'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
+        : theme
 
     setActualTheme(resolvedTheme)
 

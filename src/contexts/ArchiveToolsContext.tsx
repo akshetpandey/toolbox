@@ -133,7 +133,7 @@ export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
       const filename = `${archiveName}.${extension}`
 
       // Create download
-      const blob = new Blob([compressedData], {
+      const blob = new Blob([compressedData.buffer as ArrayBuffer], {
         type: 'application/octet-stream',
       })
       const url = URL.createObjectURL(blob)
@@ -192,7 +192,7 @@ export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
     const mimeType = file.name.endsWith('.txt')
       ? 'text/plain'
       : 'application/octet-stream'
-    const blob = new Blob([file.data], { type: mimeType })
+    const blob = new Blob([file.data.buffer as ArrayBuffer], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -210,7 +210,7 @@ export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
     try {
       const nonDirectoryFiles = extractedFiles.filter((f) => !f.isDirectory)
       const archiveFiles: ArchiveFile[] = nonDirectoryFiles.map((f) => ({
-        file: new File([f.data], f.name, { type: 'application/octet-stream' }),
+        file: new File([f.data.buffer as ArrayBuffer], f.name, { type: 'application/octet-stream' }),
         name: f.name,
         size: f.size,
         type: 'application/octet-stream',
@@ -222,7 +222,7 @@ export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
         'extracted_files',
       )
 
-      const blob = new Blob([compressedData], { type: 'application/zip' })
+      const blob = new Blob([compressedData.buffer as ArrayBuffer], { type: 'application/zip' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

@@ -3,14 +3,14 @@ import eslint from '@eslint/js'
 import pluginReact from 'eslint-plugin-react'
 import pluginRouter from '@tanstack/eslint-plugin-router'
 import tseslint from 'typescript-eslint'
-import { globalIgnores } from 'eslint/config'
+import { defineConfig, globalIgnores } from 'eslint/config'
 
-export default tseslint.config(
+export default defineConfig(
   globalIgnores(['dist/*']),
   ...pluginRouter.configs['flat/recommended'],
   eslint.configs.recommended,
-  tseslint.configs.recommendedTypeChecked,
-  tseslint.configs.stylisticTypeChecked,
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
   pluginReact.configs.flat['jsx-runtime'],
   {
     languageOptions: {
@@ -23,6 +23,13 @@ export default tseslint.config(
       },
       globals: {
         ...globals.browser,
+      },
+    },
+    settings: {
+      react: {
+        // Workaround for eslint-plugin-react compat with eslint 10
+        // Change to 'detect' after eslint-plugin-react supports eslint 10+
+        version: '19',
       },
     },
   },

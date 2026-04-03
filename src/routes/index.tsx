@@ -3,7 +3,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
-  Github,
   Zap,
   Shield,
   Globe,
@@ -13,6 +12,7 @@ import {
   Heart,
   Calendar,
 } from 'lucide-react'
+import { SiGithub } from '@icons-pack/react-simple-icons'
 
 const features = [
   {
@@ -140,7 +140,7 @@ function App() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Github className="w-4 h-4 mr-2" />
+                  <SiGithub className="w-4 h-4 mr-2" />
                   View on GitHub
                 </a>
               </Button>

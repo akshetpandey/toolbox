@@ -9,7 +9,7 @@ export default defineConfig({
   build: {
     target: ['chrome130', 'safari18', 'firefox102'],
     sourcemap: true, // Source map generation must be turned on
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         manualChunks: function (id) {
           if (id.includes('node_modules')) {
@@ -21,8 +21,8 @@ export default defineConfig({
               return 'pdf-lib'
             } else if (id.includes('exiftool')) {
               return 'exiftool'
-            } else if (id.includes('wasm-pandoc')) {
-              return 'wasm-pandoc'
+            } else if (id.includes('pandoc-wasm')) {
+              return 'pandoc-wasm'
             } else if (id.includes('wasmagic')) {
               return 'wasmagic'
             } else if (id.includes('hash-wasm')) {
@@ -50,11 +50,10 @@ export default defineConfig({
       '7z-wasm',
       '@imagemagick/magick-wasm',
       'libimagequant-wasm',
-      '@bjorn3/browser_wasi_shim',
       '@pdf-lib/fontkit',
       '@uswriting/exiftool',
       'hash-wasm',
-      'wasm-pandoc',
+      'pandoc-wasm',
       'wasmagic',
     ],
   },

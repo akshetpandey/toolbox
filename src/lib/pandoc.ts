@@ -1,9 +1,4 @@
-import { pandoc } from './pandoc-cdn'
-
-interface PandocResult {
-  out: Blob | string
-  mediaFiles: Map<string, Map<string, Blob>>
-}
+import { convert } from 'pandoc-wasm'
 
 export interface ConversionOptions {
   from: string
@@ -16,7 +11,6 @@ export interface ConversionResult {
   success: boolean
   output?: Blob | string
   error?: string
-  mediaFiles?: Map<string, Map<string, Blob>>
 }
 
 export interface OfficeFile {
@@ -28,8 +22,8 @@ export interface OfficeFile {
 }
 
 /**
- * Convert an office document to PDF using wasm-pandoc
- * Uses HTML as intermediate format to avoid LaTeX dependency issues in WASI
+ * Convert an office document to PDF using pandoc-wasm
+ * Uses HTML as intermediate format since WASM pandoc cannot produce PDF directly
  */
 export async function convertOfficeToPDF(
   file: File,
@@ -37,71 +31,37 @@ export async function convertOfficeToPDF(
   try {
     console.log('Starting PDF conversion for:', file.name, 'Size:', file.size)
 
-    // Read file as ArrayBuffer
     const fileContent = await file.arrayBuffer()
     console.log('File content loaded, size:', fileContent.byteLength)
 
-    // Determine input format based on file extension
-    const fileExtension = file.name.toLowerCase().split('.').pop()
-    let inputFormat = 'docx'
-
-    switch (fileExtension) {
-      case 'docx':
-        inputFormat = 'docx'
-        break
-      case 'doc':
-        inputFormat = 'doc'
-        break
-      case 'pptx':
-        inputFormat = 'pptx'
-        break
-      case 'ppt':
-        inputFormat = 'ppt'
-        break
-      case 'xlsx':
-        inputFormat = 'xlsx'
-        break
-      case 'xls':
-        inputFormat = 'xls'
-        break
-      default:
-        throw new Error(`Unsupported file format: ${fileExtension}`)
-    }
-
+    const inputFormat = getInputFormat(file.name)
     console.log('Detected input format:', inputFormat)
 
-    // First convert to HTML to avoid LaTeX/PDF generation issues in WASI
-    console.log('Converting to HTML first...')
-    const htmlArgs = `-f ${inputFormat} -t html --standalone --embed-resources`
-    console.log('Pandoc HTML args:', htmlArgs)
+    // Convert to HTML first since WASM pandoc cannot produce PDF directly
+    console.log('Converting to HTML...')
+    const result = await convert(
+      {
+        from: inputFormat,
+        to: 'html',
+        standalone: true,
+        'embed-resources': true,
+      },
+      null,
+      { [file.name]: new Blob([fileContent]) },
+    )
 
-    const htmlResult = (await pandoc(
-      htmlArgs,
-      new Blob([fileContent]),
-      [], // No additional files needed for basic conversion
-    )) as PandocResult
+    console.log('HTML conversion result, stderr:', result.stderr)
 
-    console.log('HTML conversion result:', htmlResult)
-
-    if (!htmlResult.out) {
+    if (!result.stdout) {
       throw new Error('HTML conversion failed - no output received')
     }
 
-    // Open HTML in print dialog for PDF generation
-    console.log('Opening HTML in print dialog for PDF generation...')
-    const htmlContent =
-      htmlResult.out instanceof Blob
-        ? await htmlResult.out.text()
-        : htmlResult.out
-    console.log('HTML content length:', htmlContent.length)
+    console.log('HTML content length:', result.stdout.length)
+    await openHTMLInPrintDialog(result.stdout, file.name)
 
-    await openHTMLInPrintDialog(htmlContent, file.name)
-
-    // Return success without file - PDF generation is handled by user through print dialog
     return {
       success: true,
       output: undefined, // No file download - user generates PDF via print dialog
-      mediaFiles: htmlResult.mediaFiles,
     }
   } catch (error) {
     console.error('Office to PDF conversion error:', error)
@@ -121,13 +81,11 @@ async function openHTMLInPrintDialog(
   originalFileName: string,
 ): Promise<void> {
   return new Promise((resolve) => {
-    // Store the original title at the start
     const originalTitle = document.title
 
     try {
       console.log('Creating print iframe...')
 
-      // Create a hidden iframe for printing
       const iframe = document.createElement('iframe')
       iframe.style.position = 'absolute'
       iframe.style.left = '-9999px'
@@ -137,7 +95,6 @@ async function openHTMLInPrintDialog(
 
       document.body.appendChild(iframe)
 
-      // Get the iframe document
       const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document
       if (!iframeDoc) {
         console.error('Could not access iframe document')
@@ -145,7 +102,6 @@ async function openHTMLInPrintDialog(
         return
       }
 
-      // Create well-formatted HTML with print styles
       const printableHtml = `
         <!DOCTYPE html>
         <html>
@@ -157,7 +113,7 @@ async function openHTMLInPrintDialog(
               size: A4;
               margin: 0.75in;
             }
-            
+
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
               line-height: 1.6;
@@ -167,68 +123,63 @@ async function openHTMLInPrintDialog(
               padding: 0;
               background: white;
             }
-            
-            /* Typography */
+
             h1, h2, h3, h4, h5, h6 {
               color: #2c3e50;
               margin: 1.5em 0 0.5em 0;
               font-weight: 600;
               line-height: 1.3;
             }
-            
+
             h1 { font-size: 2em; }
             h2 { font-size: 1.5em; }
             h3 { font-size: 1.25em; }
-            
+
             p {
               margin: 0.75em 0;
               text-align: justify;
             }
-            
-            /* Lists */
+
             ul, ol {
               margin: 0.75em 0;
               padding-left: 2em;
             }
-            
+
             li {
               margin: 0.25em 0;
             }
-            
-            /* Tables */
+
             table {
               border-collapse: collapse;
               width: 100%;
               margin: 1em 0;
               font-size: 0.9em;
             }
-            
+
             table, th, td {
               border: 1px solid #ddd;
             }
-            
+
             th {
               background-color: #f8f9fa;
               font-weight: 600;
               text-align: left;
               padding: 12px 8px;
             }
-            
+
             td {
               padding: 8px;
               text-align: left;
               vertical-align: top;
             }
-            
-            /* Images */
+
             img {
               max-width: 100%;
               height: auto;
               display: block;
               margin: 1em auto;
             }
-            
-            /* Code and preformatted text */
+
             code {
               background-color: #f8f9fa;
               padding: 2px 4px;
@@ -236,7 +187,7 @@ async function openHTMLInPrintDialog(
               font-family: 'Courier New', Courier, monospace;
               font-size: 0.9em;
             }
-            
+
             pre {
               background-color: #f8f9fa;
               padding: 1em;
@@ -244,43 +195,38 @@ async function openHTMLInPrintDialog(
               overflow-x: auto;
               border-left: 4px solid #007acc;
             }
-            
-            /* Links */
+
             a {
               color: #007acc;
               text-decoration: none;
             }
-            
+
             a:hover {
               text-decoration: underline;
             }
-            
-            /* Print-specific styles */
+
             @media print {
               body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
               }
-              
-              /* Avoid breaking elements across pages */
+
               h1, h2, h3, h4, h5, h6 {
                 break-after: avoid;
                 page-break-after: avoid;
               }
-              
+
               table, img {
                 break-inside: avoid;
                 page-break-inside: avoid;
               }
-              
-              /* Ensure good contrast for printing */
+
               body {
                 color: #000 !important;
                 background: white !important;
               }
             }
-            
-            /* Remove any potential pandoc artifacts */
+
             .sourceCode {
               background-color: #f8f9fa;
               border: 1px solid #e9ecef;
@@ -295,51 +241,35 @@ async function openHTMLInPrintDialog(
         </html>
       `
 
-      // Write the HTML to the iframe
       iframeDoc.open()
       iframeDoc.write(printableHtml)
       iframeDoc.close()
 
-      // Wait for content to load, then open print dialog
       iframe.onload = () => {
         try {
           console.log('Content loaded, opening print dialog...')
 
-          // Temporarily change the document title for the print dialog
           const baseFileName = originalFileName.replace(/\.[^/.]+$/, '')
           const pdfFileName = baseFileName + '.pdf'
-          console.log('Original file name:', originalFileName)
-          console.log('Base file name:', baseFileName)
-          console.log('PDF file name:', pdfFileName)
           document.title = pdfFileName
-          console.log('Changed document title to:', pdfFileName)
 
-          // Focus the iframe and trigger print
           iframe.contentWindow?.focus()
           iframe.contentWindow?.print()
 
           console.log('Print dialog opened successfully')
 
-          // Restore the original title and clean up after a delay
           setTimeout(() => {
             document.title = originalTitle
-            console.log('Restored original document title:', originalTitle)
 
             if (document.body.contains(iframe)) {
               document.body.removeChild(iframe)
-              console.log('Print iframe cleaned up')
             }
             resolve()
           }, 1000)
         } catch (error) {
           console.error('Error opening print dialog:', error)
 
-          // Make sure to restore the original title even if there's an error
           document.title = originalTitle
-          console.log(
-            'Restored original document title after error:',
-            originalTitle,
-          )
 
           if (document.body.contains(iframe)) {
             document.body.removeChild(iframe)
@@ -348,16 +278,10 @@ async function openHTMLInPrintDialog(
         }
       }
 
-      // Fallback timeout
       setTimeout(() => {
         console.log('Print dialog timeout, cleaning up...')
 
-        // Restore original title
         document.title = originalTitle
-        console.log(
-          'Restored original document title after timeout:',
-          originalTitle,
-        )
 
         if (document.body.contains(iframe)) {
           document.body.removeChild(iframe)
@@ -366,19 +290,14 @@ async function openHTMLInPrintDialog(
       }, 5000)
     } catch (error) {
       console.error('Error creating print dialog:', error)
-      // Restore original title in case of error
       document.title = originalTitle
-      console.log(
-        'Restored original document title after creation error:',
-        originalTitle,
-      )
       resolve()
     }
   })
 }
 
 /**
- * Convert an office document to another format using wasm-pandoc
+ * Convert an office document to another format using pandoc-wasm
  */
 export async function convertOfficeDocument(
   file: File,
@@ -393,38 +312,52 @@ export async function convertOfficeDocument(
     )
     console.log('Conversion options:', options)
 
-    // Read file as ArrayBuffer
     const fileContent = await file.arrayBuffer()
     console.log('File content loaded, size:', fileContent.byteLength)
 
-    // Build pandoc command arguments
-    let args = `-f ${options.from} -t ${options.to}`
+    // Build pandoc options object
+    const pandocOptions: Record<string, unknown> = {
+      from: options.from,
+      to: options.to,
+    }
 
     if (options.standalone) {
-      args += ' --standalone'
+      pandocOptions.standalone = true
     }
 
+    // Parse additional args into options
     if (options.additionalArgs) {
-      args += ' ' + options.additionalArgs.join(' ')
+      for (let i = 0; i < options.additionalArgs.length; i++) {
+        const arg = options.additionalArgs[i]
+        if (arg.startsWith('--')) {
+          const eqIndex = arg.indexOf('=')
+          if (eqIndex !== -1) {
+            pandocOptions[arg.slice(2, eqIndex)] = arg.slice(eqIndex + 1)
+          } else if (
+            i + 1 < options.additionalArgs.length &&
+            !options.additionalArgs[i + 1].startsWith('--')
+          ) {
+            pandocOptions[arg.slice(2)] = options.additionalArgs[++i]
+          } else {
+            pandocOptions[arg.slice(2)] = true
+          }
+        }
+      }
     }
 
-    console.log('Pandoc args:', args)
+    console.log('Pandoc options:', pandocOptions)
 
-    // Convert using pandoc
-    const result = await pandoc(
-      args,
-      new Blob([fileContent]),
-      [], // No additional files for basic conversion
-    )
+    const result = await convert(pandocOptions, null, {
+      [file.name]: new Blob([fileContent]),
+    })
 
-    console.log('Pandoc conversion result:', result)
+    console.log('Pandoc conversion result, stderr:', result.stderr)
 
-    if (result.out) {
-      console.log('Conversion successful, output type:', typeof result.out)
+    if (result.stdout) {
+      console.log('Conversion successful, output length:', result.stdout.length)
       return {
         success: true,
-        output: result.out,
-        mediaFiles: result.mediaFiles,
+        output: result.stdout,
       }
     } else {
       throw new Error('Conversion failed - no output received')
@@ -506,4 +439,21 @@ export function getOutputFilename(
 
   const extension = extensions[outputFormat] || outputFormat
   return `${baseName}.${extension}`
+}
+
+function getInputFormat(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop()
+  switch (ext) {
+    case 'docx':
+    case 'doc':
+      return 'docx'
+    case 'pptx':
+    case 'ppt':
+      return 'pptx'
+    case 'xlsx':
+    case 'xls':
+      return 'xlsx'
+    default:
+      throw new Error(`Unsupported file format: ${ext}`)
+  }
 }

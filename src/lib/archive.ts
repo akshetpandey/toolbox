@@ -244,6 +244,7 @@ export class ArchiveProcessor {
           )
           throw new Error(
             'Failed to extract tar.gz archive - gzip extraction failed',
+            { cause: error },
           )
         }
       }
@@ -257,7 +258,7 @@ export class ArchiveProcessor {
           '🗜️ ArchiveProcessor: Failed to list archive contents:',
           error,
         )
-        throw new Error('Invalid or corrupted archive file')
+        throw new Error('Invalid or corrupted archive file', { cause: error })
       }
 
       if (onProgress) {
@@ -283,7 +284,7 @@ export class ArchiveProcessor {
         ]) // -o to specify output directory, -y to overwrite without prompting
       } catch (error) {
         console.error('🗜️ ArchiveProcessor: Failed to extract files:', error)
-        throw new Error('Failed to extract archive files')
+        throw new Error('Failed to extract archive files', { cause: error })
       }
 
       if (onProgress) {
@@ -297,7 +298,7 @@ export class ArchiveProcessor {
           return
         }
 
-        let entries: string[] = []
+        let entries: string[]
         try {
           entries = this.sevenZip.FS.readdir(path)
         } catch (error) {
@@ -518,7 +519,7 @@ export function downloadFile(
   filename: string,
   mimeType = 'application/octet-stream',
 ) {
-  const blob = new Blob([data], { type: mimeType })
+  const blob = new Blob([data.buffer as ArrayBuffer], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

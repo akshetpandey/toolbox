@@ -14,7 +14,6 @@
     "types": ["vite/client"],
 
     /* Bundler mode */
-    "alwaysStrict": true,
     "isolatedModules": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -28,7 +27,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
