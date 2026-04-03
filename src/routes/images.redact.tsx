@@ -568,15 +568,28 @@ function RedactPage() {
       }
     }
 
-    // Convert canvas to blob
+    // Convert canvas to blob, preserving the original format where possible.
+    // JPEG inputs stay JPEG (with high quality) to avoid massive PNG files.
+    const mimeType =
+      selectedFile.type.includes('jpeg') || selectedFile.type.includes('jpg')
+        ? 'image/jpeg'
+        : selectedFile.type.includes('webp')
+          ? 'image/webp'
+          : 'image/png'
+    const quality = mimeType === 'image/png' ? undefined : 0.92
+
     return new Promise<Blob>((resolve, reject) => {
-      outputCanvas.toBlob((resultBlob) => {
-        if (resultBlob) {
-          resolve(resultBlob)
-        } else {
-          reject(new Error('Failed to create blob from canvas'))
-        }
-      }, 'image/png')
+      outputCanvas.toBlob(
+        (resultBlob) => {
+          if (resultBlob) {
+            resolve(resultBlob)
+          } else {
+            reject(new Error('Failed to create blob from canvas'))
+          }
+        },
+        mimeType,
+        quality,
+      )
     })
   }
 
@@ -635,7 +648,7 @@ function RedactPage() {
         [redactedBlob],
         `redacted_${selectedFile.name}`,
         {
-          type: 'image/png',
+          type: redactedBlob.type,
         },
       )
 

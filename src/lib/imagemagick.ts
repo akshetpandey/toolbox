@@ -177,6 +177,9 @@ export class ImageMagickProcessor {
 
     return new Promise((resolve) => {
       ImageMagick.read(uint8Array, (img) => {
+        // Apply EXIF orientation before resizing so dimensions are correct
+        img.autoOrient()
+
         console.log('🖼️ ImageMagick: Original image dimensions', {
           width: img.width,
           height: img.height,
@@ -260,6 +263,11 @@ export class ImageMagickProcessor {
 
     return new Promise((resolve) => {
       ImageMagick.read(uint8Array, (img) => {
+        // Apply EXIF orientation before converting — prevents rotation
+        // issues when the source has an EXIF Orientation tag (common on
+        // phone photos) and the target format doesn't support it.
+        img.autoOrient()
+
         const format = this.getMagickFormat(options.targetFormat)
         const mimeType = this.getMimeType(options.targetFormat)
 
@@ -325,6 +333,9 @@ export class ImageMagickProcessor {
 
     return new Promise((resolve) => {
       ImageMagick.read(uint8Array, (img) => {
+        // Apply EXIF orientation before compressing
+        img.autoOrient()
+
         // Set quality for compression
         img.quality = options.quality
         console.log('🖼️ ImageMagick: Setting compression quality', {

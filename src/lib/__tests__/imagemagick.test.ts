@@ -7,6 +7,7 @@ const { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose } =
   vi.hoisted(() => {
     const mockResize = vi.fn()
     const mockWrite = vi.fn()
+    const mockAutoOrient = vi.fn()
     const mockImage = {
       width: 1920,
       height: 1080,
@@ -23,6 +24,7 @@ const { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose } =
       },
       resize: mockResize,
       write: mockWrite,
+      autoOrient: mockAutoOrient,
     }
     const mockCompressPNG = vi.fn()
     const mockDispose = vi.fn()
