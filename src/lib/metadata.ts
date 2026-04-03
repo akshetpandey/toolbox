@@ -209,13 +209,16 @@ export const stripFileMetadata = async (file: File): Promise<Blob> => {
   try {
     const { writeMetadata } = await loadExifTool()
 
-    // Use ExifTool to strip all metadata
-    // The -all= tag removes all metadata from the file
+    // Use ExifTool to strip all metadata while preserving ICC color profiles.
+    // The -all= tag removes all metadata; --icc_profile:all preserves ICC
+    // profiles which are needed for correct color rendering. Without this,
+    // exiftool emits "Warning: ICC_Profile deleted" which the WASM wrapper
+    // treats as an error, causing the operation to fail entirely.
     const result = await writeMetadata(
       file,
       {},
       {
-        args: ['-all='],
+        args: ['-all=', '--icc_profile:all'],
         fetch: (...args: unknown[]) => {
           const input = args[0]
           if (typeof input === 'string' && input.endsWith('zeroperl.wasm')) {

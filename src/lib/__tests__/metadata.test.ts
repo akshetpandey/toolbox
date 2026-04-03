@@ -253,7 +253,7 @@ describe('stripFileMetadata', () => {
       file,
       {},
       expect.objectContaining({
-        args: ['-all='],
+        args: ['-all=', '--icc_profile:all'],
         fetch: expect.any(Function),
       }),
     )
