@@ -1,7 +1,3 @@
-import { convert } from 'pandoc-wasm'
-import { compileTypstToPDF } from './typst'
-import { extractZipEntries } from './archive'
-
 export interface ConversionOptions {
   from: string
   to: string
@@ -32,6 +28,10 @@ export async function convertOfficeToPDF(
 ): Promise<ConversionResult> {
   try {
     const inputFormat = getInputFormat(file.name)
+
+    const { convert } = await import('pandoc-wasm')
+    const { compileTypstToPDF } = await import('./typst')
+    const { extractZipEntries } = await import('./archive')
 
     // Step 1: Convert the office document to Typst markup via pandoc.
     // Use extract-media with a .zip extension so pandoc bundles embedded
@@ -113,6 +113,8 @@ export async function convertOfficeDocument(
     if (options.standalone) {
       pandocOptions.standalone = true
     }
+
+    const { convert } = await import('pandoc-wasm')
 
     // Parse additional args into options
     if (options.additionalArgs) {

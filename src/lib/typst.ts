@@ -1,11 +1,7 @@
-import {
-  createTypstCompiler,
-  type TypstCompiler,
-  CompileFormatEnum,
-} from '@myriaddreamin/typst.ts/compiler'
-import { withAccessModel } from '@myriaddreamin/typst.ts/options.init'
+// Type-only imports — fully erased by TypeScript, no runtime cost.
+// The actual modules are loaded dynamically in ensureTypstReady().
+import type { TypstCompiler } from '@myriaddreamin/typst.ts/compiler'
 import type { FsAccessModel } from '@myriaddreamin/typst.ts/internal.types'
-import compilerWasmUrl from '@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url'
 
 /**
  * Virtual project root for typst compilation.
@@ -56,6 +52,9 @@ class InMemoryAccessModel implements FsAccessModel {
 /**
  * Lazy-loading singleton for the Typst compiler.
  * Initializes on first use and reuses the instance for subsequent calls.
+ *
+ * All heavy imports (@myriaddreamin/typst.ts, typst-ts-web-compiler WASM)
+ * are loaded dynamically so this module doesn't pull WASM into the initial bundle.
  */
 let _compiler: TypstCompiler | null = null
 let _initPromise: Promise<void> | null = null
@@ -67,10 +66,20 @@ async function ensureTypstReady(): Promise<TypstCompiler> {
     return _compiler
   }
 
+  const [{ createTypstCompiler }, { withAccessModel }, compilerWasmModule] =
+    await Promise.all([
+      import('@myriaddreamin/typst.ts/compiler'),
+      import('@myriaddreamin/typst.ts/options.init'),
+      import('@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url'),
+    ])
+
+  const compilerWasmUrl = compilerWasmModule.default
+
   _compiler = createTypstCompiler()
   _initPromise = _compiler.init({
     beforeBuild: [withAccessModel(_accessModel)],
-    getModule: () => fetch(compilerWasmUrl).then((r) => r.arrayBuffer()),
+    getModule: () =>
+      fetch(compilerWasmUrl).then((r: Response) => r.arrayBuffer()),
   })
   await _initPromise
   return _compiler
@@ -118,6 +127,7 @@ export async function compileTypstToPDF(
   compiler.mapShadow(mainPath, typstBytes)
 
   // Compile to PDF
+  const { CompileFormatEnum } = await import('@myriaddreamin/typst.ts/compiler')
   const result = await compiler.compile({
     mainFilePath: mainPath,
     root: PROJECT_ROOT,

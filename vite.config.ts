@@ -7,8 +7,9 @@ import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core'
 
 export default defineConfig({
   build: {
-    target: ['chrome130', 'safari18', 'firefox102'],
-    sourcemap: true, // Source map generation must be turned on
+    target: ['chrome135', 'safari26', 'firefox140'],
+    sourcemap: true,
+    minify: false, // Keep readable output for debugging user-reported issues
     rolldownOptions: {
       output: {
         manualChunks: function (id) {

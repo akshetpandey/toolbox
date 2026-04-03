@@ -5,7 +5,9 @@
   "compatibility_date": "2026-04-03",
   "assets": {
     "directory": "./dist/",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
+    "run_worker": "always",
   },
   "observability": {
     "enabled": true,
