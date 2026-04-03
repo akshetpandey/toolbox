@@ -111,7 +111,7 @@ export const extractExifMetadata = async (
     const { parseMetadata } = await loadExifTool()
 
     const exifResult = await parseMetadata(file, {
-      args: ['-json', '-n'],
+      args: ['-json'],
       transform: (data) => JSON.parse(data) as ExifMetadata[],
       fetch: (...args: unknown[]) => {
         const input = args[0]

@@ -108,7 +108,7 @@ describe('extractExifMetadata', () => {
     expect(mockParseMetadata).toHaveBeenCalledWith(
       file,
       expect.objectContaining({
-        args: ['-json', '-n'],
+        args: ['-json'],
         transform: expect.any(Function),
         fetch: expect.any(Function),
       }),
