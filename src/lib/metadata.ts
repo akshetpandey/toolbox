@@ -73,28 +73,30 @@ export interface FileHashes {
   sha256: string
 }
 
-// Initialize wasmagic instance
+// Initialize wasmagic instance (promise singleton to prevent duplicate WASM init)
 let _magicInstance: WASMagic | null = null
+let _magicInitPromise: Promise<WASMagic> | null = null
 
 const initMagic = async (): Promise<WASMagic> => {
   if (_magicInstance) return _magicInstance
 
-  console.log('📋 Metadata: Initializing WASMagic instance')
+  _magicInitPromise ??= (async () => {
+    console.log('📋 Metadata: Initializing WASMagic instance')
+    try {
+      const WASMagicClass = await loadWASMagic()
+      _magicInstance = await WASMagicClass.create({
+        locateFile: (path: string) => `/${path}`,
+      })
+      console.log('📋 Metadata: WASMagic instance created successfully')
+      return _magicInstance
+    } catch (error) {
+      _magicInitPromise = null
+      console.error('📋 Metadata: Failed to initialize WASMagic:', error)
+      throw error
+    }
+  })()
 
-  try {
-    const WASMagicClass = await loadWASMagic()
-
-    // WASMagic.create() will automatically look for the WASM file
-    // in the same directory as the JS file, or we can provide a custom locateFile function
-    _magicInstance = await WASMagicClass.create({
-      locateFile: (path: string) => `/${path}`,
-    })
-    console.log('📋 Metadata: WASMagic instance created successfully')
-    return _magicInstance
-  } catch (error) {
-    console.error('📋 Metadata: Failed to initialize WASMagic:', error)
-    throw error
-  }
+  return _magicInitPromise
 }
 
 // Extract EXIF metadata from a file

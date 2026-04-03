@@ -210,7 +210,9 @@ export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
     try {
       const nonDirectoryFiles = extractedFiles.filter((f) => !f.isDirectory)
       const archiveFiles: ArchiveFile[] = nonDirectoryFiles.map((f) => ({
-        file: new File([f.data.buffer as ArrayBuffer], f.name, { type: 'application/octet-stream' }),
+        file: new File([f.data.buffer as ArrayBuffer], f.name, {
+          type: 'application/octet-stream',
+        }),
         name: f.name,
         size: f.size,
         type: 'application/octet-stream',
@@ -222,7 +224,9 @@ export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
         'extracted_files',
       )
 
-      const blob = new Blob([compressedData.buffer as ArrayBuffer], { type: 'application/zip' })
+      const blob = new Blob([compressedData.buffer as ArrayBuffer], {
+        type: 'application/zip',
+      })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

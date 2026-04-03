@@ -1,16 +1,26 @@
 import type { SevenZipModule } from '7z-wasm'
 
+// Promise singleton to prevent duplicate WASM init from concurrent calls
 let _sevenZip: SevenZipModule | null = null
+let _sevenZipPromise: Promise<SevenZipModule> | null = null
 
 async function loadSevenZip(): Promise<SevenZipModule> {
-  if (_sevenZip) {
-    return _sevenZip
-  }
-  console.log('🗜️ ArchiveProcessor: Loading 7z-wasm library...')
-  const { default: SevenZip } = await import('7z-wasm')
-  _sevenZip = await SevenZip()
-  console.log('🗜️ ArchiveProcessor: 7z-wasm library loaded successfully')
-  return _sevenZip
+  if (_sevenZip) return _sevenZip
+
+  _sevenZipPromise ??= (async () => {
+    console.log('🗜️ ArchiveProcessor: Loading 7z-wasm library...')
+    try {
+      const { default: SevenZip } = await import('7z-wasm')
+      _sevenZip = await SevenZip()
+      console.log('🗜️ ArchiveProcessor: 7z-wasm library loaded successfully')
+      return _sevenZip
+    } catch (error) {
+      _sevenZipPromise = null
+      throw error
+    }
+  })()
+
+  return _sevenZipPromise
 }
 
 export interface ArchiveFile {
