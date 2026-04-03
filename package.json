@@ -44,6 +44,7 @@
     "@uswriting/exiftool": "^1.0.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "emoji-picker-react": "^4.18.0",
     "hash-wasm": "^4.12.0",
     "libimagequant-wasm": "^0.2.4",
     "lucide-react": "^1.7.0",

@@ -10,9 +10,12 @@ import {
   Grid3x3,
   Download,
   ShieldOff,
+  Undo2,
+  Smile,
 } from 'lucide-react'
 import { downloadBlob } from '@/lib/shared'
 import { stripFileMetadata } from '@/lib/metadata'
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
@@ -21,10 +24,129 @@ interface RedactionArea {
   y: number
   width: number
   height: number
-  mode: 'box' | 'blur' | 'pixelate'
+  mode: 'box' | 'blur' | 'pixelate' | 'emoji'
   color?: string
   blurRadius?: number
   pixelSize?: number
+  emoji?: string
+}
+
+type HandleId = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
+
+const HANDLE_SIZE = 8
+const MIN_AREA_SIZE = 10
+
+const CURSOR_MAP: Record<HandleId, string> = {
+  nw: 'nwse-resize',
+  ne: 'nesw-resize',
+  se: 'nwse-resize',
+  sw: 'nesw-resize',
+  n: 'ns-resize',
+  s: 'ns-resize',
+  e: 'ew-resize',
+  w: 'ew-resize',
+}
+
+function getHandlePositions(
+  area: RedactionArea,
+): Record<HandleId, { x: number; y: number }> {
+  return {
+    nw: { x: area.x, y: area.y },
+    n: { x: area.x + area.width / 2, y: area.y },
+    ne: { x: area.x + area.width, y: area.y },
+    e: { x: area.x + area.width, y: area.y + area.height / 2 },
+    se: { x: area.x + area.width, y: area.y + area.height },
+    s: { x: area.x + area.width / 2, y: area.y + area.height },
+    sw: { x: area.x, y: area.y + area.height },
+    w: { x: area.x, y: area.y + area.height / 2 },
+  }
+}
+
+function hitTestHandle(
+  x: number,
+  y: number,
+  area: RedactionArea,
+): HandleId | null {
+  const handles = getHandlePositions(area)
+  for (const [id, pos] of Object.entries(handles)) {
+    if (
+      Math.abs(x - pos.x) <= HANDLE_SIZE &&
+      Math.abs(y - pos.y) <= HANDLE_SIZE
+    ) {
+      return id as HandleId
+    }
+  }
+  return null
+}
+
+function hitTestArea(x: number, y: number, area: RedactionArea): boolean {
+  return (
+    x >= area.x &&
+    x <= area.x + area.width &&
+    y >= area.y &&
+    y <= area.y + area.height
+  )
+}
+
+function applyResize(
+  area: RedactionArea,
+  handle: HandleId,
+  dx: number,
+  dy: number,
+): { x: number; y: number; width: number; height: number } {
+  let { x, y, width, height } = area
+
+  if (handle === 'nw' || handle === 'w' || handle === 'sw') {
+    x += dx
+    width -= dx
+  }
+  if (handle === 'ne' || handle === 'e' || handle === 'se') {
+    width += dx
+  }
+  if (handle === 'nw' || handle === 'n' || handle === 'ne') {
+    y += dy
+    height -= dy
+  }
+  if (handle === 'sw' || handle === 's' || handle === 'se') {
+    height += dy
+  }
+
+  if (width < MIN_AREA_SIZE) {
+    if (handle === 'nw' || handle === 'w' || handle === 'sw')
+      x -= MIN_AREA_SIZE - width
+    width = MIN_AREA_SIZE
+  }
+  if (height < MIN_AREA_SIZE) {
+    if (handle === 'nw' || handle === 'n' || handle === 'ne')
+      y -= MIN_AREA_SIZE - height
+    height = MIN_AREA_SIZE
+  }
+
+  return { x, y, width, height }
+}
+
+// Pixelate function (pure, no component deps)
+function pixelateImageData(imageData: ImageData, pixelSize: number): ImageData {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return imageData
+
+  canvas.width = imageData.width
+  canvas.height = imageData.height
+  ctx.putImageData(imageData, 0, 0)
+
+  const smallCanvas = document.createElement('canvas')
+  const smallCtx = smallCanvas.getContext('2d')
+  if (!smallCtx) return imageData
+
+  smallCanvas.width = Math.max(1, Math.floor(imageData.width / pixelSize))
+  smallCanvas.height = Math.max(1, Math.floor(imageData.height / pixelSize))
+  smallCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height)
+
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(smallCanvas, 0, 0, imageData.width, imageData.height)
+
+  return ctx.getImageData(0, 0, imageData.width, imageData.height)
 }
 
 export const Route = createFileRoute('/images/redact')({
@@ -64,11 +186,13 @@ function RedactPage() {
 
   // Redaction settings
   const [redactionMode, setRedactionMode] = useState<
-    'box' | 'blur' | 'pixelate'
+    'box' | 'blur' | 'pixelate' | 'emoji'
   >('box')
   const [redactionColor, setRedactionColor] = useState('#000000')
   const [blurRadius, setBlurRadius] = useState(10)
   const [pixelSize, setPixelSize] = useState(10)
+  const [selectedEmoji, setSelectedEmoji] = useState('\u{1F600}')
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [isDrawing, setIsDrawing] = useState(false)
   const [drawingStart, setDrawingStart] = useState<{
     x: number
@@ -86,37 +210,43 @@ function RedactPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const originalImageRef = useRef<HTMLImageElement | null>(null)
 
-  // Pixelate function
-  const pixelateImageData = (
-    imageData: ImageData,
-    pixelSize: number,
-  ): ImageData => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return imageData
+  // Selection & resize state
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [resizeState, setResizeState] = useState<{
+    index: number
+    handle: HandleId
+    startX: number
+    startY: number
+    originalArea: RedactionArea
+  } | null>(null)
+  const [dragState, setDragState] = useState<{
+    index: number
+    startX: number
+    startY: number
+    originalArea: RedactionArea
+  } | null>(null)
+  const [canvasCursor, setCanvasCursor] = useState('crosshair')
 
-    canvas.width = imageData.width
-    canvas.height = imageData.height
+  // Helper to get canvas coordinates from client coordinates
+  const getCanvasCoords = useCallback((clientX: number, clientY: number) => {
+    if (!canvasRef.current) return null
+    const rect = canvasRef.current.getBoundingClientRect()
+    const scaleX = canvasRef.current.width / rect.width
+    const scaleY = canvasRef.current.height / rect.height
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    }
+  }, [])
 
-    // Put original image data
-    ctx.putImageData(imageData, 0, 0)
-
-    // Scale down
-    const smallCanvas = document.createElement('canvas')
-    const smallCtx = smallCanvas.getContext('2d')
-    if (!smallCtx) return imageData
-
-    smallCanvas.width = Math.max(1, Math.floor(imageData.width / pixelSize))
-    smallCanvas.height = Math.max(1, Math.floor(imageData.height / pixelSize))
-
-    smallCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height)
-
-    // Scale back up with pixelated effect
-    ctx.imageSmoothingEnabled = false
-    ctx.drawImage(smallCanvas, 0, 0, imageData.width, imageData.height)
-
-    return ctx.getImageData(0, 0, imageData.width, imageData.height)
-  }
+  // Undo last redaction
+  const undoLastRedaction = useCallback(() => {
+    setRedactionAreas((prev) => {
+      if (prev.length === 0) return prev
+      return prev.slice(0, -1)
+    })
+    setSelectedIndex(null)
+  }, [])
 
   // Canvas setup and drawing
   useEffect(() => {
@@ -129,7 +259,6 @@ function RedactPage() {
     const img = new Image()
 
     img.onload = () => {
-      // Set canvas size to match image aspect ratio
       const maxWidth = 800
       const maxHeight = 600
       let { width, height } = img
@@ -148,26 +277,35 @@ function RedactPage() {
       canvas.width = width
       canvas.height = height
 
-      // Calculate scale factor between display canvas and original image
       setScaleFactor({
         x: originalWidth / width,
         y: originalHeight / height,
       })
 
-      // Clear canvas and draw image
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(img, 0, 0, width, height)
 
-      // Store reference to original image for redaction operations
       originalImageRef.current = img
 
-      // Redraw all existing redaction areas
-      redactionAreas.forEach((area) => {
+      // Compute effective areas (applying resize in progress)
+      const effectiveAreas = redactionAreas.map((area, i) => {
+        if (resizeState?.index === i) {
+          const dx =
+            resizeState.startX !== undefined
+              ? 0
+              : 0 /* dx/dy come from mouse move */
+          void dx
+          return area // During resize, area is updated via setRedactionAreas
+        }
+        return area
+      })
+
+      // Redraw all redaction areas
+      effectiveAreas.forEach((area) => {
         if (area.mode === 'box') {
           ctx.fillStyle = area.color ?? '#000000'
           ctx.fillRect(area.x, area.y, area.width, area.height)
         } else if (area.mode === 'blur') {
-          // For blur, we need to apply the blur effect
           const imageData = ctx.getImageData(
             area.x,
             area.y,
@@ -188,7 +326,6 @@ function RedactPage() {
             ctx.restore()
           }
         } else if (area.mode === 'pixelate') {
-          // For pixelate, apply pixelation effect
           const imageData = ctx.getImageData(
             area.x,
             area.y,
@@ -200,13 +337,56 @@ function RedactPage() {
             area.pixelSize ?? 10,
           )
           ctx.putImageData(pixelatedData, area.x, area.y)
+        } else if (area.mode === 'emoji') {
+          const fontSize = Math.min(area.width, area.height) * 0.85
+          if (fontSize > 2) {
+            ctx.font = `${fontSize}px sans-serif`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = '#000000'
+            ctx.fillText(
+              area.emoji ?? '\u{1F600}',
+              area.x + area.width / 2,
+              area.y + area.height / 2,
+            )
+          }
         }
       })
 
+      // Draw selection handles on selected redaction
+      if (selectedIndex !== null && selectedIndex < effectiveAreas.length) {
+        const sel = effectiveAreas[selectedIndex]
+        ctx.strokeStyle = '#3b82f6'
+        ctx.lineWidth = 2
+        ctx.setLineDash([4, 4])
+        ctx.strokeRect(sel.x, sel.y, sel.width, sel.height)
+        ctx.setLineDash([])
+
+        const handles = getHandlePositions(sel)
+        ctx.fillStyle = '#3b82f6'
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 1.5
+        for (const pos of Object.values(handles)) {
+          ctx.fillRect(
+            pos.x - HANDLE_SIZE / 2,
+            pos.y - HANDLE_SIZE / 2,
+            HANDLE_SIZE,
+            HANDLE_SIZE,
+          )
+          ctx.strokeRect(
+            pos.x - HANDLE_SIZE / 2,
+            pos.y - HANDLE_SIZE / 2,
+            HANDLE_SIZE,
+            HANDLE_SIZE,
+          )
+        }
+      }
+
       // Draw current drawing area preview
       if (currentArea) {
-        ctx.strokeStyle = redactionMode === 'box' ? redactionColor : 'blue'
+        ctx.strokeStyle = redactionMode === 'box' ? redactionColor : '#3b82f6'
         ctx.lineWidth = 2
+        ctx.setLineDash([])
         ctx.strokeRect(
           currentArea.x,
           currentArea.y,
@@ -215,13 +395,27 @@ function RedactPage() {
         )
 
         if (redactionMode === 'box') {
-          ctx.fillStyle = redactionColor + '40' // Semi-transparent
+          ctx.fillStyle = redactionColor + '40'
           ctx.fillRect(
             currentArea.x,
             currentArea.y,
             currentArea.width,
             currentArea.height,
           )
+        } else if (redactionMode === 'emoji') {
+          const previewFontSize =
+            Math.min(currentArea.width, currentArea.height) * 0.85
+          if (previewFontSize > 8) {
+            ctx.font = `${previewFontSize}px sans-serif`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = '#000000'
+            ctx.fillText(
+              selectedEmoji,
+              currentArea.x + currentArea.width / 2,
+              currentArea.y + currentArea.height / 2,
+            )
+          }
         }
       }
     }
@@ -235,21 +429,26 @@ function RedactPage() {
     redactionAreas,
     blurRadius,
     pixelSize,
+    selectedIndex,
+    resizeState,
+    selectedEmoji,
   ])
 
   // Reset redaction areas when file changes
   useEffect(() => {
     setRedactionAreas([])
     setCurrentArea(null)
+    setSelectedIndex(null)
+    setResizeState(null)
+    setDragState(null)
   }, [selectedFile])
 
-  // Prevent document scrolling when drawing
+  // Prevent document scrolling when drawing or resizing
   useEffect(() => {
-    if (isDrawing) {
+    if (isDrawing || resizeState || dragState) {
       const preventScroll = (e: TouchEvent) => {
         e.preventDefault()
       }
-
       const preventScrollWheel = (e: WheelEvent) => {
         e.preventDefault()
       }
@@ -264,57 +463,188 @@ function RedactPage() {
         document.removeEventListener('wheel', preventScrollWheel)
       }
     }
-  }, [isDrawing])
+  }, [isDrawing, resizeState, dragState])
 
-  // Canvas drawing handlers
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault()
+        undoLastRedaction()
+      }
+      if (
+        (e.key === 'Delete' || e.key === 'Backspace') &&
+        selectedIndex !== null
+      ) {
+        // Don't capture if user is typing in an input
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        )
+          return
+        e.preventDefault()
+        setRedactionAreas((prev) => prev.filter((_, i) => i !== selectedIndex))
+        setSelectedIndex(null)
+      }
+      if (e.key === 'Escape') {
+        setSelectedIndex(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedIndex, undoLastRedaction])
+
+  // Canvas mouse handlers
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return
+    setShowEmojiPicker(false)
+    const coords = getCanvasCoords(e.clientX, e.clientY)
+    if (!coords) return
 
-    const rect = canvasRef.current.getBoundingClientRect()
-    const canvas = canvasRef.current
+    // 1. Check resize handle on selected redaction
+    if (selectedIndex !== null && selectedIndex < redactionAreas.length) {
+      const handle = hitTestHandle(
+        coords.x,
+        coords.y,
+        redactionAreas[selectedIndex],
+      )
+      if (handle) {
+        setResizeState({
+          index: selectedIndex,
+          handle,
+          startX: coords.x,
+          startY: coords.y,
+          originalArea: { ...redactionAreas[selectedIndex] },
+        })
+        return
+      }
+    }
 
-    // Calculate the scale factor between displayed canvas and actual canvas
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
+    // 2. Check if clicking on any redaction (top-most first)
+    for (let i = redactionAreas.length - 1; i >= 0; i--) {
+      if (hitTestArea(coords.x, coords.y, redactionAreas[i])) {
+        if (i === selectedIndex) {
+          // Already selected - start dragging
+          setDragState({
+            index: i,
+            startX: coords.x,
+            startY: coords.y,
+            originalArea: { ...redactionAreas[i] },
+          })
+        } else {
+          setSelectedIndex(i)
+        }
+        return
+      }
+    }
 
-    const x = (e.clientX - rect.left) * scaleX
-    const y = (e.clientY - rect.top) * scaleY
-
+    // 3. Empty space - deselect and start drawing
+    setSelectedIndex(null)
     setIsDrawing(true)
-    setDrawingStart({ x, y })
+    setDrawingStart(coords)
   }
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !drawingStart || !canvasRef.current) return
+    const coords = getCanvasCoords(e.clientX, e.clientY)
+    if (!coords) return
 
-    const rect = canvasRef.current.getBoundingClientRect()
-    const canvas = canvasRef.current
+    // Resize in progress
+    if (resizeState) {
+      const dx = coords.x - resizeState.startX
+      const dy = coords.y - resizeState.startY
+      const newBounds = applyResize(
+        resizeState.originalArea,
+        resizeState.handle,
+        dx,
+        dy,
+      )
+      setRedactionAreas((prev) =>
+        prev.map((area, i) =>
+          i === resizeState.index ? { ...area, ...newBounds } : area,
+        ),
+      )
+      return
+    }
 
-    // Calculate the scale factor between displayed canvas and actual canvas
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
+    // Drag in progress
+    if (dragState) {
+      const dx = coords.x - dragState.startX
+      const dy = coords.y - dragState.startY
+      setRedactionAreas((prev) =>
+        prev.map((area, i) =>
+          i === dragState.index
+            ? {
+                ...area,
+                x: dragState.originalArea.x + dx,
+                y: dragState.originalArea.y + dy,
+              }
+            : area,
+        ),
+      )
+      return
+    }
 
-    const x = (e.clientX - rect.left) * scaleX
-    const y = (e.clientY - rect.top) * scaleY
+    // Drawing in progress
+    if (isDrawing && drawingStart) {
+      const width = Math.abs(coords.x - drawingStart.x)
+      const height = Math.abs(coords.y - drawingStart.y)
+      const startX = Math.min(coords.x, drawingStart.x)
+      const startY = Math.min(coords.y, drawingStart.y)
+      setCurrentArea({ x: startX, y: startY, width, height })
+      return
+    }
 
-    const width = Math.abs(x - drawingStart.x)
-    const height = Math.abs(y - drawingStart.y)
-    const startX = Math.min(x, drawingStart.x)
-    const startY = Math.min(y, drawingStart.y)
-
-    setCurrentArea({ x: startX, y: startY, width, height })
+    // Cursor updates when idle
+    if (selectedIndex !== null && selectedIndex < redactionAreas.length) {
+      const handle = hitTestHandle(
+        coords.x,
+        coords.y,
+        redactionAreas[selectedIndex],
+      )
+      if (handle) {
+        setCanvasCursor(CURSOR_MAP[handle])
+        return
+      }
+      if (hitTestArea(coords.x, coords.y, redactionAreas[selectedIndex])) {
+        setCanvasCursor('grab')
+        return
+      }
+    }
+    for (let i = redactionAreas.length - 1; i >= 0; i--) {
+      if (hitTestArea(coords.x, coords.y, redactionAreas[i])) {
+        setCanvasCursor('pointer')
+        return
+      }
+    }
+    setCanvasCursor('crosshair')
   }
 
   const handleCanvasMouseUp = () => {
-    if (!isDrawing || !drawingStart || !currentArea || !canvasRef.current)
+    // Finalize drag
+    if (dragState) {
+      setDragState(null)
       return
+    }
+
+    // Finalize resize
+    if (resizeState) {
+      setResizeState(null)
+      return
+    }
+
+    // Finalize drawing
+    if (!isDrawing || !drawingStart || !currentArea || !canvasRef.current) {
+      setIsDrawing(false)
+      setDrawingStart(null)
+      setCurrentArea(null)
+      return
+    }
 
     if (currentArea.width > 5 && currentArea.height > 5) {
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
 
       if (ctx) {
-        // Store redaction area for high-quality download
         const newRedactionArea: RedactionArea = {
           x: Math.round(currentArea.x),
           y: Math.round(currentArea.y),
@@ -324,12 +654,12 @@ function RedactPage() {
           color: redactionMode === 'box' ? redactionColor : undefined,
           blurRadius: redactionMode === 'blur' ? blurRadius : undefined,
           pixelSize: redactionMode === 'pixelate' ? pixelSize : undefined,
+          emoji: redactionMode === 'emoji' ? selectedEmoji : undefined,
         }
 
         setRedactionAreas((prev) => [...prev, newRedactionArea])
 
         if (redactionMode === 'box') {
-          // Apply redaction box immediately
           ctx.fillStyle = redactionColor
           ctx.fillRect(
             Math.round(currentArea.x),
@@ -337,9 +667,7 @@ function RedactPage() {
             Math.round(currentArea.width),
             Math.round(currentArea.height),
           )
-          console.log('🖼️ Applied redaction box immediately')
         } else if (redactionMode === 'blur') {
-          // Apply blur immediately
           const imageData = ctx.getImageData(
             Math.round(currentArea.x),
             Math.round(currentArea.y),
@@ -347,7 +675,6 @@ function RedactPage() {
             Math.round(currentArea.height),
           )
 
-          // Create temporary canvas for blur effect
           const tempCanvas = document.createElement('canvas')
           const tempCtx = tempCanvas.getContext('2d')
 
@@ -356,7 +683,6 @@ function RedactPage() {
             tempCanvas.height = Math.round(currentArea.height)
             tempCtx.putImageData(imageData, 0, 0)
 
-            // Apply blur using canvas filter
             ctx.save()
             ctx.filter = `blur(${blurRadius}px)`
             ctx.drawImage(
@@ -365,10 +691,8 @@ function RedactPage() {
               Math.round(currentArea.y),
             )
             ctx.restore()
-            console.log('🖼️ Applied blur immediately')
           }
         } else if (redactionMode === 'pixelate') {
-          // Apply pixelate effect immediately
           const imageData = ctx.getImageData(
             Math.round(currentArea.x),
             Math.round(currentArea.y),
@@ -382,7 +706,23 @@ function RedactPage() {
             Math.round(currentArea.x),
             Math.round(currentArea.y),
           )
-          console.log('🖼️ Applied pixelate immediately')
+        } else if (redactionMode === 'emoji') {
+          const fontSize =
+            Math.min(
+              Math.round(currentArea.width),
+              Math.round(currentArea.height),
+            ) * 0.85
+          if (fontSize > 2) {
+            ctx.font = `${fontSize}px sans-serif`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = '#000000'
+            ctx.fillText(
+              selectedEmoji,
+              Math.round(currentArea.x) + Math.round(currentArea.width) / 2,
+              Math.round(currentArea.y) + Math.round(currentArea.height) / 2,
+            )
+          }
         }
       }
     }
@@ -392,61 +732,114 @@ function RedactPage() {
     setCurrentArea(null)
   }
 
-  // Touch event handlers for mobile support
+  // Touch event handlers
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault() // Prevent scrolling
-    e.stopPropagation() // Stop event bubbling
-    if (!canvasRef.current || e.touches.length !== 1) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.touches.length !== 1) return
 
     const touch = e.touches[0]
-    const rect = canvasRef.current.getBoundingClientRect()
-    const canvas = canvasRef.current
+    const coords = getCanvasCoords(touch.clientX, touch.clientY)
+    if (!coords) return
 
-    // Calculate the scale factor between displayed canvas and actual canvas
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
+    // Check resize handle
+    if (selectedIndex !== null && selectedIndex < redactionAreas.length) {
+      const handle = hitTestHandle(
+        coords.x,
+        coords.y,
+        redactionAreas[selectedIndex],
+      )
+      if (handle) {
+        setResizeState({
+          index: selectedIndex,
+          handle,
+          startX: coords.x,
+          startY: coords.y,
+          originalArea: { ...redactionAreas[selectedIndex] },
+        })
+        return
+      }
+    }
 
-    const x = (touch.clientX - rect.left) * scaleX
-    const y = (touch.clientY - rect.top) * scaleY
+    // Check area hit
+    for (let i = redactionAreas.length - 1; i >= 0; i--) {
+      if (hitTestArea(coords.x, coords.y, redactionAreas[i])) {
+        if (i === selectedIndex) {
+          setDragState({
+            index: i,
+            startX: coords.x,
+            startY: coords.y,
+            originalArea: { ...redactionAreas[i] },
+          })
+        } else {
+          setSelectedIndex(i)
+        }
+        return
+      }
+    }
 
+    // Start drawing
+    setSelectedIndex(null)
     setIsDrawing(true)
-    setDrawingStart({ x, y })
+    setDrawingStart(coords)
   }
 
   const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault() // Prevent scrolling
-    e.stopPropagation() // Stop event bubbling
-    if (
-      !isDrawing ||
-      !drawingStart ||
-      !canvasRef.current ||
-      e.touches.length !== 1
-    )
-      return
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.touches.length !== 1) return
 
     const touch = e.touches[0]
-    const rect = canvasRef.current.getBoundingClientRect()
-    const canvas = canvasRef.current
+    const coords = getCanvasCoords(touch.clientX, touch.clientY)
+    if (!coords) return
 
-    // Calculate the scale factor between displayed canvas and actual canvas
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
+    if (resizeState) {
+      const dx = coords.x - resizeState.startX
+      const dy = coords.y - resizeState.startY
+      const newBounds = applyResize(
+        resizeState.originalArea,
+        resizeState.handle,
+        dx,
+        dy,
+      )
+      setRedactionAreas((prev) =>
+        prev.map((area, i) =>
+          i === resizeState.index ? { ...area, ...newBounds } : area,
+        ),
+      )
+      return
+    }
 
-    const x = (touch.clientX - rect.left) * scaleX
-    const y = (touch.clientY - rect.top) * scaleY
+    if (dragState) {
+      const dx = coords.x - dragState.startX
+      const dy = coords.y - dragState.startY
+      setRedactionAreas((prev) =>
+        prev.map((area, i) =>
+          i === dragState.index
+            ? {
+                ...area,
+                x: dragState.originalArea.x + dx,
+                y: dragState.originalArea.y + dy,
+              }
+            : area,
+        ),
+      )
+      return
+    }
 
-    const width = Math.abs(x - drawingStart.x)
-    const height = Math.abs(y - drawingStart.y)
-    const startX = Math.min(x, drawingStart.x)
-    const startY = Math.min(y, drawingStart.y)
+    if (!isDrawing || !drawingStart) return
 
+    const width = Math.abs(coords.x - drawingStart.x)
+    const height = Math.abs(coords.y - drawingStart.y)
+    const startX = Math.min(coords.x, drawingStart.x)
+    const startY = Math.min(coords.y, drawingStart.y)
     setCurrentArea({ x: startX, y: startY, width, height })
   }
 
   const handleCanvasTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault() // Prevent scrolling
-    e.stopPropagation() // Stop event bubbling
-    handleCanvasMouseUp() // Reuse the same logic as mouse up
+    e.preventDefault()
+    e.stopPropagation()
+    handleCanvasMouseUp()
   }
 
   // Common function to create redacted image blob
@@ -455,7 +848,6 @@ function RedactPage() {
       throw new Error('No file selected or original image not available')
     }
 
-    // Create full-resolution canvas with original image
     const originalWidth =
       selectedFile.dimensions?.width ?? originalImageRef.current.width
     const originalHeight =
@@ -467,11 +859,9 @@ function RedactPage() {
       throw new Error('Could not create output canvas context')
     }
 
-    // Set output canvas to original image size
     outputCanvas.width = originalWidth
     outputCanvas.height = originalHeight
 
-    // Draw original image at full resolution
     outputCtx.drawImage(
       originalImageRef.current,
       0,
@@ -491,7 +881,6 @@ function RedactPage() {
         outputCtx.fillStyle = area.color ?? '#000000'
         outputCtx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight)
       } else if (area.mode === 'blur') {
-        // For blur, get the image data and apply blur filter
         const imageData = outputCtx.getImageData(
           scaledX,
           scaledY,
@@ -506,7 +895,6 @@ function RedactPage() {
           tempCanvas.height = scaledHeight
           tempCtx.putImageData(imageData, 0, 0)
 
-          // Scale the blur radius to match the visual effect of the preview
           const scaledBlurRadius =
             (area.blurRadius ?? 10) * Math.max(scaleFactor.x, scaleFactor.y)
 
@@ -516,17 +904,12 @@ function RedactPage() {
           outputCtx.restore()
         }
       } else if (area.mode === 'pixelate') {
-        // For pixelate, apply pixelation at preview scale then scale up
-        // This maintains the exact same visual effect as the preview
-
-        // Scale it down to preview resolution for pixelation
         const previewCanvas = document.createElement('canvas')
         const previewCtx = previewCanvas.getContext('2d')
         if (previewCtx) {
           previewCanvas.width = area.width
           previewCanvas.height = area.height
 
-          // Draw the full-res area scaled down to preview size
           previewCtx.drawImage(
             outputCanvas,
             scaledX,
@@ -539,7 +922,6 @@ function RedactPage() {
             area.height,
           )
 
-          // Apply pixelation at preview scale
           const previewAreaData = previewCtx.getImageData(
             0,
             0,
@@ -552,7 +934,6 @@ function RedactPage() {
           )
           previewCtx.putImageData(pixelatedPreviewData, 0, 0)
 
-          // Scale it back up to full resolution
           outputCtx.drawImage(
             previewCanvas,
             0,
@@ -565,11 +946,22 @@ function RedactPage() {
             scaledHeight,
           )
         }
+      } else if (area.mode === 'emoji') {
+        const fontSize = Math.min(scaledWidth, scaledHeight) * 0.85
+        if (fontSize > 2) {
+          outputCtx.font = `${fontSize}px sans-serif`
+          outputCtx.textAlign = 'center'
+          outputCtx.textBaseline = 'middle'
+          outputCtx.fillStyle = '#000000'
+          outputCtx.fillText(
+            area.emoji ?? '\u{1F600}',
+            scaledX + scaledWidth / 2,
+            scaledY + scaledHeight / 2,
+          )
+        }
       }
     }
 
-    // Convert canvas to blob, preserving the original format where possible.
-    // JPEG inputs stay JPEG (with high quality) to avoid massive PNG files.
     const mimeType =
       selectedFile.type.includes('jpeg') || selectedFile.type.includes('jpg')
         ? 'image/jpeg'
@@ -596,26 +988,13 @@ function RedactPage() {
   const downloadRedactedImage = async () => {
     if (!selectedFile) return
 
-    console.log('🖼️ RedactionTool: Starting image download', {
-      fileName: selectedFile.name,
-      redactionCount: redactionAreas.length,
-    })
-
     setIsProcessing(true)
 
     try {
       const blob = await createRedactedImageBlob()
-
-      console.log('🖼️ RedactionTool: Download completed', {
-        originalSize: selectedFile.size,
-        newSize: blob.size,
-      })
-
       downloadBlob(blob, `redacted_${selectedFile.name}`)
-
-      console.log('🖼️ RedactionTool: Download successful')
     } catch (error) {
-      console.error('🖼️ RedactionTool: Error during download:', error)
+      console.error('RedactionTool: Error during download:', error)
     } finally {
       setIsProcessing(false)
     }
@@ -624,54 +1003,23 @@ function RedactPage() {
   const downloadRedactedImageWithMetadataStripped = async () => {
     if (!selectedFile) return
 
-    console.log(
-      '🖼️ RedactionTool: Starting redacted image download with metadata stripping',
-      {
-        fileName: selectedFile.name,
-        redactionCount: redactionAreas.length,
-      },
-    )
-
     setIsProcessing(true)
     setIsStrippingMetadata(true)
 
     try {
-      // Create redacted image using common function
       const redactedBlob = await createRedactedImageBlob()
 
-      console.log(
-        '🖼️ RedactionTool: Redacted image created, now stripping metadata',
-      )
-
-      // Convert blob to File for metadata stripping
       const redactedFile = new File(
         [redactedBlob],
         `redacted_${selectedFile.name}`,
-        {
-          type: redactedBlob.type,
-        },
+        { type: redactedBlob.type },
       )
 
-      // Strip metadata from the redacted image
       const strippedBlob = await stripFileMetadata(redactedFile)
-
-      console.log(
-        '🖼️ RedactionTool: Download with metadata stripping completed',
-        {
-          originalSize: selectedFile.size,
-          redactedSize: redactedBlob.size,
-          finalSize: strippedBlob.size,
-        },
-      )
-
       downloadBlob(strippedBlob, `redacted_no-metadata_${selectedFile.name}`)
-
-      console.log(
-        '🖼️ RedactionTool: Download with metadata stripping successful',
-      )
     } catch (error) {
       console.error(
-        '🖼️ RedactionTool: Error during download with metadata stripping:',
+        'RedactionTool: Error during download with metadata stripping:',
         error,
       )
       alert(
@@ -684,7 +1032,6 @@ function RedactPage() {
   }
 
   const clearAllRedactions = useCallback(() => {
-    // Reset canvas to original image
     if (canvasRef.current && originalImageRef.current) {
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
@@ -701,6 +1048,9 @@ function RedactPage() {
       }
     }
     setCurrentArea(null)
+    setSelectedIndex(null)
+    setResizeState(null)
+    setDragState(null)
   }, [])
 
   if (!selectedFile) {
@@ -759,6 +1109,18 @@ function RedactPage() {
               >
                 <Grid3x3 className="w-3 h-3" />
                 Pixelate
+              </button>
+              <button
+                type="button"
+                onClick={() => setRedactionMode('emoji')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  redactionMode === 'emoji'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Smile className="w-3 h-3" />
+                Emoji
               </button>
             </div>
           </div>
@@ -836,13 +1198,38 @@ function RedactPage() {
               </div>
             </div>
           )}
+
+          {redactionMode === 'emoji' && (
+            <div className="relative flex items-center gap-4">
+              <Label className="text-sm font-medium">Emoji:</Label>
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker((v) => !v)}
+                className="w-10 h-10 text-2xl rounded-lg border-2 border-border/50 hover:border-border transition-colors flex items-center justify-center bg-background"
+              >
+                {selectedEmoji}
+              </button>
+              {showEmojiPicker && (
+                <div className="absolute top-full left-0 z-50 mt-2">
+                  <EmojiPicker
+                    onEmojiClick={(emojiData: EmojiClickData) => {
+                      setSelectedEmoji(emojiData.emoji)
+                      setShowEmojiPicker(false)
+                    }}
+                    width={350}
+                    height={400}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="border-2 border-dashed border-primary/20 rounded-lg p-4 bg-muted/20 flex justify-center">
           <canvas
             ref={canvasRef}
-            className="max-w-full max-h-125 border border-border/50 rounded cursor-crosshair touch-none"
-            style={{ touchAction: 'none' }}
+            className="max-w-full max-h-125 border border-border/50 rounded touch-none"
+            style={{ touchAction: 'none', cursor: canvasCursor }}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
@@ -853,14 +1240,31 @@ function RedactPage() {
           />
         </div>
 
+        {selectedIndex !== null && (
+          <p className="text-xs text-muted-foreground text-center">
+            Drag to move. Drag handles to resize. Delete to remove. Escape to
+            deselect.
+          </p>
+        )}
+
         <div className="flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={clearAllRedactions}
-            disabled={redactionAreas.length === 0}
-          >
-            Clear All
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={undoLastRedaction}
+              disabled={redactionAreas.length === 0}
+            >
+              <Undo2 className="h-4 w-4 mr-2" />
+              Undo
+            </Button>
+            <Button
+              variant="outline"
+              onClick={clearAllRedactions}
+              disabled={redactionAreas.length === 0}
+            >
+              Clear All
+            </Button>
+          </div>
           <div className="flex gap-2">
             <Button
               onClick={() => void downloadRedactedImage()}
