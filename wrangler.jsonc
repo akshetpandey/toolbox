@@ -7,7 +7,7 @@
     "directory": "./dist/",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker": "always",
+    "run_worker_first": true,
   },
   "observability": {
     "enabled": true,

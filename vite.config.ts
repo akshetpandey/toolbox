@@ -10,40 +10,11 @@ export default defineConfig({
     target: ['chrome135', 'safari26', 'firefox140'],
     sourcemap: true,
     minify: false, // Keep readable output for debugging user-reported issues
-    rolldownOptions: {
-      output: {
-        manualChunks: function (id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('7z-wasm')) {
-              return '7z'
-            } else if (id.includes('@imagemagick')) {
-              return 'imagemagick'
-            } else if (id.includes('pdf-lib')) {
-              return 'pdf-lib'
-            } else if (id.includes('exiftool')) {
-              return 'exiftool'
-            } else if (id.includes('pandoc-wasm')) {
-              return 'pandoc-wasm'
-            } else if (id.includes('@myriaddreamin') || id.includes('typst')) {
-              return 'typst'
-            } else if (id.includes('wasmagic')) {
-              return 'wasmagic'
-            } else if (id.includes('hash-wasm')) {
-              return 'hash-wasm'
-            } else if (id.includes('libimagequant-wasm')) {
-              return 'libimagequant-wasm'
-            } else if (id.includes('@bjorn3')) {
-              return 'wasi-shim'
-            } else if (id.includes('ffmpeg')) {
-              return 'ffmpeg'
-            }
-            return 'vendor'
-          } else {
-            return 'app'
-          }
-        },
-      },
-    },
+    modulePreload: false, // Disable entirely — modern browsers handle module loading; avoids __vitePreload helper polluting chunks
+    // No manualChunks — let TanStack Router's auto code-splitting and
+    // Rolldown's natural chunking handle everything. WASM libraries are
+    // already dynamically imported in their respective lib files, so they
+    // become separate chunks automatically.
   },
   optimizeDeps: {
     exclude: [
