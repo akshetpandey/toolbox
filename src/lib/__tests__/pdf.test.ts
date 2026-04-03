@@ -36,17 +36,29 @@ beforeEach(() => {
 
 describe('isPDFFile', () => {
   test('accepts files with application/pdf MIME type', () => {
-    expect(isPDFFile(createTestFile('doc.pdf', '', 'application/pdf'))).toBe(true)
+    expect(isPDFFile(createTestFile('doc.pdf', '', 'application/pdf'))).toBe(
+      true,
+    )
   })
 
   test('accepts files with .pdf extension regardless of MIME type', () => {
-    expect(isPDFFile(createTestFile('doc.pdf', '', 'application/octet-stream'))).toBe(true)
+    expect(
+      isPDFFile(createTestFile('doc.pdf', '', 'application/octet-stream')),
+    ).toBe(true)
     expect(isPDFFile(createTestFile('doc.pdf', '', ''))).toBe(true)
   })
 
   test('rejects non-PDF files', () => {
     expect(isPDFFile(createTestFile('image.png', '', 'image/png'))).toBe(false)
-    expect(isPDFFile(createTestFile('doc.docx', '', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))).toBe(false)
+    expect(
+      isPDFFile(
+        createTestFile(
+          'doc.docx',
+          '',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ),
+      ),
+    ).toBe(false)
     expect(isPDFFile(createTestFile('file.txt', '', 'text/plain'))).toBe(false)
   })
 
@@ -60,7 +72,11 @@ describe('isPDFFile', () => {
 
 describe('createPDFFile', () => {
   test('creates a PDFFile with correct properties', () => {
-    const file = createTestFile('report.pdf', 'fake pdf content', 'application/pdf')
+    const file = createTestFile(
+      'report.pdf',
+      'fake pdf content',
+      'application/pdf',
+    )
     const pdfFile = createPDFFile(file)
 
     expect(pdfFile.name).toBe('report.pdf')
@@ -111,7 +127,11 @@ describe('mergePDFs', () => {
   })
 
   test('copies pages from each input PDF', async () => {
-    const files = [makePDFFile('a.pdf'), makePDFFile('b.pdf'), makePDFFile('c.pdf')]
+    const files = [
+      makePDFFile('a.pdf'),
+      makePDFFile('b.pdf'),
+      makePDFFile('c.pdf'),
+    ]
     await mergePDFs({ files })
 
     // Should load and copy pages from each file

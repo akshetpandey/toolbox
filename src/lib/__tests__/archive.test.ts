@@ -108,7 +108,9 @@ describe('ArchiveProcessor.compress', () => {
     await processor.compress(files, 'zip', 'my-archive')
 
     const callArgs = mockCallMain.mock.calls[0][0] as string[]
-    expect(callArgs.some((arg: string) => arg.includes('my-archive'))).toBe(true)
+    expect(callArgs.some((arg: string) => arg.includes('my-archive'))).toBe(
+      true,
+    )
   })
 
   test('compresses multiple files', async () => {
@@ -243,9 +245,7 @@ describe('ArchiveProcessor.decompress', () => {
     })
 
     const archiveData = new Uint8Array([1, 2])
-    expect(() =>
-      processor.decompress(archiveData, 'bad.zip'),
-    ).toThrow()
+    expect(() => processor.decompress(archiveData, 'bad.zip')).toThrow()
   })
 
   test('writes archive data to virtual filesystem before extraction', () => {

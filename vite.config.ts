@@ -22,6 +22,8 @@ export default defineConfig({
               return 'exiftool'
             } else if (id.includes('pandoc-wasm')) {
               return 'pandoc-wasm'
+            } else if (id.includes('@myriaddreamin') || id.includes('typst')) {
+              return 'typst'
             } else if (id.includes('wasmagic')) {
               return 'wasmagic'
             } else if (id.includes('hash-wasm')) {
@@ -53,6 +55,8 @@ export default defineConfig({
       '@uswriting/exiftool',
       'hash-wasm',
       'pandoc-wasm',
+      '@myriaddreamin/typst.ts',
+      '@myriaddreamin/typst-ts-web-compiler',
     ],
   },
   resolve: {

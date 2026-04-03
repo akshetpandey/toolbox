@@ -62,12 +62,12 @@ export function FileUpload({
         {selectedFiles.length === 0 ? (
           // Upload interface when no files are selected
           <div
-            className="border-2 border-dashed border-primary/20 rounded-xl p-4 sm:p-6 text-center hover:border-primary/40 transition-all duration-300 cursor-pointer group h-full flex flex-col justify-center min-h-[200px] lg:min-h-0"
+            className="border-2 border-dashed border-primary/20 rounded-xl p-4 sm:p-6 text-center hover:border-primary/40 transition-all duration-300 cursor-pointer group h-full flex flex-col justify-center min-h-50 lg:min-h-0"
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onClick={handleClick}
           >
-            <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
               <EmptyIcon className="h-6 w-6 text-primary" />
             </div>
             <h3 className="text-lg font-medium text-foreground mb-2">
@@ -92,7 +92,7 @@ export function FileUpload({
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
+                <div className="w-6 h-6 bg-linear-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
                   <SelectedIcon className="h-3 w-3 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-foreground">

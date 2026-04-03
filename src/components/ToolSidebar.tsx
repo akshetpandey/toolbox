@@ -219,7 +219,7 @@ export function ToolSidebar() {
                 <div
                   className={`${
                     isCollapsed ? 'w-8 h-8' : 'w-12 h-12'
-                  } bg-gradient-to-br from-primary/20 to-primary/10 ${
+                  } bg-linear-to-br from-primary/20 to-primary/10 ${
                     isCollapsed ? 'rounded-xl' : 'rounded-2xl'
                   } flex items-center justify-center`}
                 >

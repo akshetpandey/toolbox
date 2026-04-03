@@ -176,7 +176,7 @@ function VideoExtractComponent() {
         {/* Slow Processing Warning Banner */}
         {showSlowProcessingWarning && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
             <div className="flex-1">
               <h4 className="font-medium text-yellow-800 mb-1">
                 This will take a while...

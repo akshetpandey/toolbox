@@ -9,10 +9,7 @@ export function readFixture(filename: string): Uint8Array {
 }
 
 /** Create a File object from a fixture */
-export function createFixtureFile(
-  filename: string,
-  mimeType: string,
-): File {
+export function createFixtureFile(filename: string, mimeType: string): File {
   const data = readFixture(filename)
   return new File([data.buffer as ArrayBuffer], filename, { type: mimeType })
 }

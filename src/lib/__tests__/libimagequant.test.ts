@@ -26,11 +26,9 @@ import { LibImageQuantProcessor } from '../libimagequant'
 
 function makeImageFile(overrides?: Partial<ImageFile>): ImageFile {
   return {
-    file: new File(
-      [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
-      'image.png',
-      { type: 'image/png' },
-    ),
+    file: new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'image.png', {
+      type: 'image/png',
+    }),
     preview: 'blob:preview',
     name: 'image.png',
     size: 4,

@@ -3,40 +3,37 @@ import type { ImageFile } from '../shared'
 
 // ─── Hoisted mocks ──────────────────────────────────────────────────────────
 
-const {
-  mockResize,
-  mockWrite,
-  mockImage,
-  mockCompressPNG,
-  mockDispose,
-} = vi.hoisted(() => {
-  const mockResize = vi.fn()
-  const mockWrite = vi.fn()
-  const mockImage = {
-    width: 1920,
-    height: 1080,
-    format: { toString: () => 'JPEG' },
-    colorSpace: { toString: () => 'sRGB' },
-    depth: 8,
-    compression: { toString: () => 'JPEG' },
-    _quality: 85,
-    get quality() {
-      return this._quality
-    },
-    set quality(v: number) {
-      this._quality = v
-    },
-    resize: mockResize,
-    write: mockWrite,
-  }
-  const mockCompressPNG = vi.fn()
-  const mockDispose = vi.fn()
-  return { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose }
-})
+const { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose } =
+  vi.hoisted(() => {
+    const mockResize = vi.fn()
+    const mockWrite = vi.fn()
+    const mockImage = {
+      width: 1920,
+      height: 1080,
+      format: { toString: () => 'JPEG' },
+      colorSpace: { toString: () => 'sRGB' },
+      depth: 8,
+      compression: { toString: () => 'JPEG' },
+      _quality: 85,
+      get quality() {
+        return this._quality
+      },
+      set quality(v: number) {
+        this._quality = v
+      },
+      resize: mockResize,
+      write: mockWrite,
+    }
+    const mockCompressPNG = vi.fn()
+    const mockDispose = vi.fn()
+    return { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose }
+  })
 
 vi.mock('@imagemagick/magick-wasm', () => ({
   ImageMagick: {
-    read: vi.fn((_data: Uint8Array, cb: (img: typeof mockImage) => void) => cb(mockImage)),
+    read: vi.fn((_data: Uint8Array, cb: (img: typeof mockImage) => void) =>
+      cb(mockImage),
+    ),
   },
   MagickFormat: {
     Jpeg: 'JPEG',

@@ -515,6 +515,101 @@ export class ArchiveProcessor {
   }
 }
 
+/**
+ * Extract files from a ZIP blob using 7z-wasm.
+ * Returns a map of file paths to their binary data.
+ * Used by the pandoc→typst pipeline to extract embedded media from DOCX files.
+ */
+export async function extractZipEntries(
+  zipData: Uint8Array,
+): Promise<Record<string, Uint8Array>> {
+  const sevenZip = await loadSevenZip()
+
+  const zipName = '_media_extract.zip'
+  const extractDir = '_media_extracted'
+
+  try {
+    // Write the zip to the virtual filesystem
+    sevenZip.FS.writeFile(zipName, zipData)
+
+    // Create extraction directory
+    try {
+      sevenZip.FS.mkdir(extractDir)
+    } catch {
+      // Directory might already exist
+    }
+
+    // Extract
+    sevenZip.callMain(['x', zipName, `-o${extractDir}`, '-y'])
+
+    // Collect extracted files recursively
+    const result: Record<string, Uint8Array> = {}
+
+    const collectFiles = (dirPath: string, relativePath: string) => {
+      let entries: string[]
+      try {
+        entries = sevenZip.FS.readdir(dirPath)
+      } catch {
+        return
+      }
+      for (const entry of entries) {
+        if (entry === '.' || entry === '..') continue
+        const fullPath = `${dirPath}/${entry}`
+        const relPath = relativePath ? `${relativePath}/${entry}` : entry
+        try {
+          const stat = sevenZip.FS.stat(fullPath)
+          if (sevenZip.FS.isDir(stat.mode)) {
+            collectFiles(fullPath, relPath)
+          } else {
+            result[relPath] = sevenZip.FS.readFile(fullPath)
+          }
+        } catch {
+          // Skip files that can't be read
+        }
+      }
+    }
+
+    collectFiles(extractDir, '')
+    return result
+  } finally {
+    // Cleanup
+    const cleanup = (dirPath: string) => {
+      try {
+        const entries = sevenZip.FS.readdir(dirPath)
+        for (const entry of entries) {
+          if (entry === '.' || entry === '..') continue
+          const fullPath = `${dirPath}/${entry}`
+          try {
+            const stat = sevenZip.FS.stat(fullPath)
+            if (sevenZip.FS.isDir(stat.mode)) {
+              cleanup(fullPath)
+              sevenZip.FS.rmdir(fullPath)
+            } else {
+              sevenZip.FS.unlink(fullPath)
+            }
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    try {
+      sevenZip.FS.unlink(zipName)
+    } catch {
+      // Ignore
+    }
+    try {
+      cleanup(extractDir)
+      sevenZip.FS.rmdir(extractDir)
+    } catch {
+      // Ignore
+    }
+  }
+}
+
 // Utility functions
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes'

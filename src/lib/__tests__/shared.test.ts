@@ -157,17 +157,33 @@ describe('truncateFilename', () => {
 
 describe('isValidImageFile', () => {
   test('accepts common image types', () => {
-    expect(isValidImageFile(new File([], 'a.jpg', { type: 'image/jpeg' }))).toBe(true)
-    expect(isValidImageFile(new File([], 'a.png', { type: 'image/png' }))).toBe(true)
-    expect(isValidImageFile(new File([], 'a.webp', { type: 'image/webp' }))).toBe(true)
-    expect(isValidImageFile(new File([], 'a.gif', { type: 'image/gif' }))).toBe(true)
-    expect(isValidImageFile(new File([], 'a.svg', { type: 'image/svg+xml' }))).toBe(true)
+    expect(
+      isValidImageFile(new File([], 'a.jpg', { type: 'image/jpeg' })),
+    ).toBe(true)
+    expect(isValidImageFile(new File([], 'a.png', { type: 'image/png' }))).toBe(
+      true,
+    )
+    expect(
+      isValidImageFile(new File([], 'a.webp', { type: 'image/webp' })),
+    ).toBe(true)
+    expect(isValidImageFile(new File([], 'a.gif', { type: 'image/gif' }))).toBe(
+      true,
+    )
+    expect(
+      isValidImageFile(new File([], 'a.svg', { type: 'image/svg+xml' })),
+    ).toBe(true)
   })
 
   test('rejects non-image types', () => {
-    expect(isValidImageFile(new File([], 'a.mp4', { type: 'video/mp4' }))).toBe(false)
-    expect(isValidImageFile(new File([], 'a.txt', { type: 'text/plain' }))).toBe(false)
-    expect(isValidImageFile(new File([], 'a.pdf', { type: 'application/pdf' }))).toBe(false)
+    expect(isValidImageFile(new File([], 'a.mp4', { type: 'video/mp4' }))).toBe(
+      false,
+    )
+    expect(
+      isValidImageFile(new File([], 'a.txt', { type: 'text/plain' })),
+    ).toBe(false)
+    expect(
+      isValidImageFile(new File([], 'a.pdf', { type: 'application/pdf' })),
+    ).toBe(false)
     expect(isValidImageFile(new File([], 'a', { type: '' }))).toBe(false)
   })
 })
@@ -176,16 +192,30 @@ describe('isValidImageFile', () => {
 
 describe('isValidVideoFile', () => {
   test('accepts common video types', () => {
-    expect(isValidVideoFile(new File([], 'a.mp4', { type: 'video/mp4' }))).toBe(true)
-    expect(isValidVideoFile(new File([], 'a.webm', { type: 'video/webm' }))).toBe(true)
-    expect(isValidVideoFile(new File([], 'a.mkv', { type: 'video/x-matroska' }))).toBe(true)
-    expect(isValidVideoFile(new File([], 'a.avi', { type: 'video/x-msvideo' }))).toBe(true)
+    expect(isValidVideoFile(new File([], 'a.mp4', { type: 'video/mp4' }))).toBe(
+      true,
+    )
+    expect(
+      isValidVideoFile(new File([], 'a.webm', { type: 'video/webm' })),
+    ).toBe(true)
+    expect(
+      isValidVideoFile(new File([], 'a.mkv', { type: 'video/x-matroska' })),
+    ).toBe(true)
+    expect(
+      isValidVideoFile(new File([], 'a.avi', { type: 'video/x-msvideo' })),
+    ).toBe(true)
   })
 
   test('rejects non-video types', () => {
-    expect(isValidVideoFile(new File([], 'a.jpg', { type: 'image/jpeg' }))).toBe(false)
-    expect(isValidVideoFile(new File([], 'a.txt', { type: 'text/plain' }))).toBe(false)
-    expect(isValidVideoFile(new File([], 'a.mp3', { type: 'audio/mpeg' }))).toBe(false)
+    expect(
+      isValidVideoFile(new File([], 'a.jpg', { type: 'image/jpeg' })),
+    ).toBe(false)
+    expect(
+      isValidVideoFile(new File([], 'a.txt', { type: 'text/plain' })),
+    ).toBe(false)
+    expect(
+      isValidVideoFile(new File([], 'a.mp3', { type: 'audio/mpeg' })),
+    ).toBe(false)
   })
 })
 
@@ -205,8 +235,12 @@ describe('downloadFile', () => {
       click: clickSpy,
       style: {},
     } as unknown as HTMLAnchorElement)
-    appendChildSpy = vi.spyOn(document.body, 'appendChild').mockReturnValue(null as unknown as Node)
-    removeChildSpy = vi.spyOn(document.body, 'removeChild').mockReturnValue(null as unknown as Node)
+    appendChildSpy = vi
+      .spyOn(document.body, 'appendChild')
+      .mockReturnValue(null as unknown as Node)
+    removeChildSpy = vi
+      .spyOn(document.body, 'removeChild')
+      .mockReturnValue(null as unknown as Node)
   })
 
   test('creates an anchor element with correct href and download attributes', () => {
@@ -237,10 +271,18 @@ describe('downloadBlob', () => {
       click: clickSpy,
       style: {},
     } as unknown as HTMLAnchorElement)
-    vi.spyOn(document.body, 'appendChild').mockReturnValue(null as unknown as Node)
-    vi.spyOn(document.body, 'removeChild').mockReturnValue(null as unknown as Node)
-    createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url')
-    revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockReturnValue(undefined)
+    vi.spyOn(document.body, 'appendChild').mockReturnValue(
+      null as unknown as Node,
+    )
+    vi.spyOn(document.body, 'removeChild').mockReturnValue(
+      null as unknown as Node,
+    )
+    createObjectURLSpy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:mock-url')
+    revokeObjectURLSpy = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockReturnValue(undefined)
   })
 
   test('creates an object URL, triggers download, and revokes URL', () => {
@@ -257,7 +299,9 @@ describe('downloadBlob', () => {
 
 describe('createObjectURL', () => {
   test('delegates to URL.createObjectURL', () => {
-    const spy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url')
+    const spy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:test-url')
     const blob = new Blob(['data'])
     const result = createObjectURL(blob)
     expect(result).toBe('blob:test-url')

@@ -117,7 +117,7 @@ function PDFMergeRoute() {
                     key={`preview-${index}`}
                     className="flex items-center gap-2 text-sm"
                   >
-                    <span className="text-muted-foreground bg-muted rounded px-2 py-1 min-w-[1.5rem] text-center text-xs">
+                    <span className="text-muted-foreground bg-muted rounded px-2 py-1 min-w-6 text-center text-xs">
                       {index + 1}
                     </span>
                     <span className="text-foreground truncate">

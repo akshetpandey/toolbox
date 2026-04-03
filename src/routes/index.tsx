@@ -30,37 +30,41 @@ const features = [
     icon: Shield,
     title: 'Built on Open Source',
     description:
-      'Powered by FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, libmagic, Pandoc, libimagequant, and, more',
+      'Powered by FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, libmagic, Pandoc, Typst, libimagequant, and more',
   },
 ]
 
 const changelog = [
   {
-    date: 'Aug 19',
+    date: 'Apr 3 2026',
+    entries: ['Added Typst support for converting to PDF'],
+  },
+  {
+    date: 'Aug 19 2025',
     entries: ['Added libimagequant to compress png'],
   },
   {
-    date: 'Aug 7',
+    date: 'Aug 7 2025',
     entries: ['Added metadata stripping for enhanced privacy'],
   },
   {
-    date: 'Jul 11',
+    date: 'Jul 11 2025',
     entries: ['Added image redaction tool for privacy protection'],
   },
   {
-    date: 'Jul 7',
+    date: 'Jul 7 2025',
     entries: ['Added office document to PDF conversion'],
   },
   {
-    date: 'Jul 6',
+    date: 'Jul 6 2025',
     entries: ['Added archive compression and extraction support'],
   },
   {
-    date: 'Jul 3',
+    date: 'Jul 3 2025',
     entries: ['Added utilities section with file hashing and metadata tools'],
   },
   {
-    date: 'Jul 2',
+    date: 'Jul 2 2025',
     entries: [
       'Added EXIF data viewing for images',
       'Added PDF merge tool with reordering capability',
@@ -114,7 +118,7 @@ function App() {
           {/* Hero Section */}
           <div className="text-center max-w-4xl mx-auto mb-8">
             <div className="flex items-center justify-center gap-2 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-linear-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center">
                 <Hammer className="w-6 h-6 text-primary" />
               </div>
               <h1 className="text-display text-foreground">Toolbox</h1>
@@ -185,7 +189,7 @@ function App() {
               {features.map((feature) => (
                 <Card key={feature.title} className="flat-card border-0">
                   <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <div className="w-12 h-12 bg-linear-to-br from-primary/10 to-primary/5 rounded-xl flex items-center justify-center mx-auto mb-4">
                       <feature.icon className="h-6 w-6 text-primary" />
                     </div>
                     <h3 className="text-subheading text-foreground mb-2">
@@ -227,9 +231,7 @@ function App() {
                                 key={itemIndex}
                                 className="text-sm text-muted-foreground flex items-center gap-2"
                               >
-                                <span className="text-primary flex-shrink-0">
-                                  •
-                                </span>
+                                <span className="text-primary shrink-0">•</span>
                                 <span>{item}</span>
                               </div>
                             ))}
@@ -247,7 +249,7 @@ function App() {
           <div className="text-center border-t border-border/50 py-8 mt-16">
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 flex-nowrap">
               <span className="whitespace-nowrap">Made with</span>
-              <Heart className="w-4 h-4 text-red-500 fill-current flex-shrink-0" />
+              <Heart className="w-4 h-4 text-red-500 fill-current shrink-0" />
               <span className="whitespace-nowrap">
                 for the open source community
               </span>

@@ -1,7 +1,22 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+
+const { mockCompileTypstToPDF, mockExtractZipEntries } = vi.hoisted(() => ({
+  mockCompileTypstToPDF: vi.fn(),
+  mockExtractZipEntries: vi.fn(),
+}))
 
 vi.mock('pandoc-wasm', () => ({
   convert: vi.fn(),
+}))
+
+vi.mock('../typst', () => ({
+  compileTypstToPDF: (...args: unknown[]) =>
+    mockCompileTypstToPDF(...args) as unknown,
+}))
+
+vi.mock('../archive', () => ({
+  extractZipEntries: (...args: unknown[]) =>
+    mockExtractZipEntries(...args) as unknown,
 }))
 
 import {
@@ -30,11 +45,12 @@ function mockConvertResult(stdout: string, stderr = '') {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.useFakeTimers()
-})
-
-afterEach(() => {
-  vi.useRealTimers()
+  // Default: compileTypstToPDF returns a small PDF-like Uint8Array
+  mockCompileTypstToPDF.mockResolvedValue(
+    new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+  )
+  // Default: extractZipEntries returns empty (no media)
+  mockExtractZipEntries.mockResolvedValue({})
 })
 
 // ─── getSupportedInputFormats ────────────────────────────────────────────────
@@ -77,29 +93,85 @@ describe('getSupportedOutputFormats', () => {
 
 describe('isOfficeFile', () => {
   test('recognizes office document extensions', () => {
-    expect(isOfficeFile(createTestFile('report.docx', '', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))).toBe(true)
-    expect(isOfficeFile(createTestFile('slides.pptx', '', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'))).toBe(true)
-    expect(isOfficeFile(createTestFile('data.xlsx', '', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))).toBe(true)
-    expect(isOfficeFile(createTestFile('doc.odt', '', 'application/vnd.oasis.opendocument.text'))).toBe(true)
-    expect(isOfficeFile(createTestFile('text.rtf', '', 'application/rtf'))).toBe(true)
+    expect(
+      isOfficeFile(
+        createTestFile(
+          'report.docx',
+          '',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ),
+      ),
+    ).toBe(true)
+    expect(
+      isOfficeFile(
+        createTestFile(
+          'slides.pptx',
+          '',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        ),
+      ),
+    ).toBe(true)
+    expect(
+      isOfficeFile(
+        createTestFile(
+          'data.xlsx',
+          '',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ),
+      ),
+    ).toBe(true)
+    expect(
+      isOfficeFile(
+        createTestFile(
+          'doc.odt',
+          '',
+          'application/vnd.oasis.opendocument.text',
+        ),
+      ),
+    ).toBe(true)
+    expect(
+      isOfficeFile(createTestFile('text.rtf', '', 'application/rtf')),
+    ).toBe(true)
   })
 
   test('recognizes legacy office extensions', () => {
-    expect(isOfficeFile(createTestFile('old.doc', '', 'application/msword'))).toBe(true)
-    expect(isOfficeFile(createTestFile('old.ppt', '', 'application/vnd.ms-powerpoint'))).toBe(true)
-    expect(isOfficeFile(createTestFile('old.xls', '', 'application/vnd.ms-excel'))).toBe(true)
+    expect(
+      isOfficeFile(createTestFile('old.doc', '', 'application/msword')),
+    ).toBe(true)
+    expect(
+      isOfficeFile(
+        createTestFile('old.ppt', '', 'application/vnd.ms-powerpoint'),
+      ),
+    ).toBe(true)
+    expect(
+      isOfficeFile(createTestFile('old.xls', '', 'application/vnd.ms-excel')),
+    ).toBe(true)
   })
 
   test('rejects non-office files', () => {
-    expect(isOfficeFile(createTestFile('image.png', '', 'image/png'))).toBe(false)
-    expect(isOfficeFile(createTestFile('video.mp4', '', 'video/mp4'))).toBe(false)
-    expect(isOfficeFile(createTestFile('page.html', '', 'text/html'))).toBe(false)
-    expect(isOfficeFile(createTestFile('data.json', '', 'application/json'))).toBe(false)
+    expect(isOfficeFile(createTestFile('image.png', '', 'image/png'))).toBe(
+      false,
+    )
+    expect(isOfficeFile(createTestFile('video.mp4', '', 'video/mp4'))).toBe(
+      false,
+    )
+    expect(isOfficeFile(createTestFile('page.html', '', 'text/html'))).toBe(
+      false,
+    )
+    expect(
+      isOfficeFile(createTestFile('data.json', '', 'application/json')),
+    ).toBe(false)
   })
 
   test('is case-insensitive for extension', () => {
-    expect(isOfficeFile(createTestFile('REPORT.DOCX', '', 'application/octet-stream'))).toBe(true)
-    expect(isOfficeFile(createTestFile('Data.XLSX', '', 'application/octet-stream'))).toBe(true)
+    expect(
+      isOfficeFile(
+        createTestFile('REPORT.DOCX', '', 'application/octet-stream'),
+      ),
+    ).toBe(true)
+    expect(
+      isOfficeFile(createTestFile('Data.XLSX', '', 'application/octet-stream')),
+    ).toBe(true)
   })
 })
 
@@ -107,7 +179,11 @@ describe('isOfficeFile', () => {
 
 describe('createOfficeFile', () => {
   test('creates an OfficeFile with correct properties', () => {
-    const file = createTestFile('report.docx', 'content', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    const file = createTestFile(
+      'report.docx',
+      'content',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
     const officeFile = createOfficeFile(file)
 
     expect(officeFile.name).toBe('report.docx')
@@ -118,7 +194,11 @@ describe('createOfficeFile', () => {
   })
 
   test('generates unique IDs', () => {
-    const file = createTestFile('report.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'report.docx',
+      'content',
+      'application/octet-stream',
+    )
     const a = createOfficeFile(file)
     // IDs include Date.now() so they should differ
     // (might be same in fast execution, but id format is tested)
@@ -155,33 +235,38 @@ describe('getOutputFilename', () => {
   })
 
   test('handles files with multiple dots', () => {
-    expect(getOutputFilename('my.report.v2.docx', 'pdf')).toBe('my.report.v2.pdf')
+    expect(getOutputFilename('my.report.v2.docx', 'pdf')).toBe(
+      'my.report.v2.pdf',
+    )
   })
 })
 
 // ─── convertOfficeToPDF ──────────────────────────────────────────────────────
 
 describe('convertOfficeToPDF', () => {
-  test('converts docx to HTML and returns success', async () => {
+  test('converts docx to typst then compiles to PDF', async () => {
     mockConvert.mockResolvedValue(
-      mockConvertResult('<html><body>Hello</body></html>'),
+      mockConvertResult('#set page(paper: "a4")\nHello World'),
     )
 
-    const file = createTestFile('report.docx', 'fake docx content', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    const resultPromise = convertOfficeToPDF(file)
-
-    // Advance timers past the iframe cleanup timeouts
-    await vi.advanceTimersByTimeAsync(6000)
-
-    const result = await resultPromise
+    const file = createTestFile(
+      'report.docx',
+      'fake docx content',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    const result = await convertOfficeToPDF(file)
 
     expect(result.success).toBe(true)
+    expect(result.output).toBeInstanceOf(Blob)
+    expect((result.output as Blob).type).toBe('application/pdf')
+
+    // Verify pandoc was called with typst output format and input-files
     expect(mockConvert).toHaveBeenCalledWith(
       expect.objectContaining({
         from: 'docx',
-        to: 'html',
+        to: 'typst',
         standalone: true,
-        'embed-resources': true,
+        'input-files': ['report.docx'],
       }),
       null,
       /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -190,16 +275,42 @@ describe('convertOfficeToPDF', () => {
       }),
       /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     )
+
+    // Verify typst compilation was called with the pandoc output
+    expect(mockCompileTypstToPDF).toHaveBeenCalledWith(
+      '#set page(paper: "a4")\nHello World',
+      {},
+    )
   })
 
-  test('returns error when conversion produces no output', async () => {
+  test('returns a PDF blob on success', async () => {
+    mockConvert.mockResolvedValue(mockConvertResult('= Title\nSome content'))
+
+    const file = createTestFile(
+      'doc.docx',
+      'content',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    const result = await convertOfficeToPDF(file)
+
+    expect(result.success).toBe(true)
+    expect(result.output).toBeInstanceOf(Blob)
+    expect((result.output as Blob).size).toBeGreaterThan(0)
+  })
+
+  test('returns error when pandoc produces no output', async () => {
     mockConvert.mockResolvedValue(mockConvertResult('', 'some error'))
 
-    const file = createTestFile('empty.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'empty.docx',
+      'content',
+      'application/octet-stream',
+    )
     const result = await convertOfficeToPDF(file)
 
     expect(result.success).toBe(false)
     expect(result.error).toBeDefined()
+    expect(mockCompileTypstToPDF).not.toHaveBeenCalled()
   })
 
   test('returns error for unsupported format', async () => {
@@ -213,11 +324,71 @@ describe('convertOfficeToPDF', () => {
   test('handles pandoc-wasm throwing an error', async () => {
     mockConvert.mockRejectedValue(new Error('WASM crashed'))
 
-    const file = createTestFile('bad.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'bad.docx',
+      'content',
+      'application/octet-stream',
+    )
     const result = await convertOfficeToPDF(file)
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('WASM crashed')
+  })
+
+  test('handles typst compilation failure', async () => {
+    mockConvert.mockResolvedValue(mockConvertResult('= Some typst content'))
+    mockCompileTypstToPDF.mockRejectedValue(
+      new Error('Typst compilation produced no PDF output'),
+    )
+
+    const file = createTestFile(
+      'report.docx',
+      'content',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    const result = await convertOfficeToPDF(file)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Typst compilation')
+  })
+
+  test('passes media files from pandoc to typst', async () => {
+    // Pandoc now produces a media.zip blob when extract-media is used
+    const zipBlob = new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], {
+      type: 'application/zip',
+    })
+    mockConvert.mockResolvedValue({
+      stdout: '= Doc with image\n#image("./media/image1.png")',
+      stderr: '',
+      warnings: [],
+      files: { 'media.zip': zipBlob },
+      mediaFiles: {},
+    })
+
+    // extractZipEntries returns the image data from the zip
+    const pngData = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
+    mockExtractZipEntries.mockResolvedValue({
+      'media/image1.png': pngData,
+    })
+
+    const file = createTestFile(
+      'report.docx',
+      'content',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    await convertOfficeToPDF(file)
+
+    // Verify extractZipEntries was called with zip data
+    expect(mockExtractZipEntries).toHaveBeenCalledOnce()
+
+    // Verify resource files were forwarded to typst (both with and without ./ prefix)
+    const resourceArg = mockCompileTypstToPDF.mock.calls[0][1] as Record<
+      string,
+      Uint8Array
+    >
+    expect(resourceArg).toHaveProperty('media/image1.png')
+    expect(resourceArg['media/image1.png']).toBeInstanceOf(Uint8Array)
+    expect(resourceArg).toHaveProperty('./media/image1.png')
   })
 })
 
@@ -225,11 +396,13 @@ describe('convertOfficeToPDF', () => {
 
 describe('convertOfficeDocument', () => {
   test('passes from/to options to pandoc', async () => {
-    mockConvert.mockResolvedValue(
-      mockConvertResult('# Converted markdown'),
-    )
+    mockConvert.mockResolvedValue(mockConvertResult('# Converted markdown'))
 
-    const file = createTestFile('report.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'report.docx',
+      'content',
+      'application/octet-stream',
+    )
     const result = await convertOfficeDocument(file, {
       from: 'docx',
       to: 'markdown',
@@ -239,7 +412,11 @@ describe('convertOfficeDocument', () => {
     expect(result.output).toBe('# Converted markdown')
     /* eslint-disable @typescript-eslint/no-unsafe-assignment */
     expect(mockConvert).toHaveBeenCalledWith(
-      expect.objectContaining({ from: 'docx', to: 'markdown' }),
+      expect.objectContaining({
+        from: 'docx',
+        to: 'markdown',
+        'input-files': ['report.docx'],
+      }),
       null,
       expect.objectContaining({ 'report.docx': expect.any(Blob) }),
     )
@@ -247,11 +424,13 @@ describe('convertOfficeDocument', () => {
   })
 
   test('passes standalone option when set', async () => {
-    mockConvert.mockResolvedValue(
-      mockConvertResult('<html>output</html>'),
-    )
+    mockConvert.mockResolvedValue(mockConvertResult('<html>output</html>'))
 
-    const file = createTestFile('doc.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'doc.docx',
+      'content',
+      'application/octet-stream',
+    )
     await convertOfficeDocument(file, {
       from: 'docx',
       to: 'html',
@@ -268,7 +447,11 @@ describe('convertOfficeDocument', () => {
   test('parses additional args with equals syntax', async () => {
     mockConvert.mockResolvedValue(mockConvertResult('output'))
 
-    const file = createTestFile('doc.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'doc.docx',
+      'content',
+      'application/octet-stream',
+    )
     await convertOfficeDocument(file, {
       from: 'docx',
       to: 'html',
@@ -285,7 +468,11 @@ describe('convertOfficeDocument', () => {
   test('parses additional args with space-separated values', async () => {
     mockConvert.mockResolvedValue(mockConvertResult('output'))
 
-    const file = createTestFile('doc.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'doc.docx',
+      'content',
+      'application/octet-stream',
+    )
     await convertOfficeDocument(file, {
       from: 'docx',
       to: 'html',
@@ -302,7 +489,11 @@ describe('convertOfficeDocument', () => {
   test('parses boolean flag args', async () => {
     mockConvert.mockResolvedValue(mockConvertResult('output'))
 
-    const file = createTestFile('doc.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'doc.docx',
+      'content',
+      'application/octet-stream',
+    )
     await convertOfficeDocument(file, {
       from: 'docx',
       to: 'html',
@@ -317,11 +508,13 @@ describe('convertOfficeDocument', () => {
   })
 
   test('returns error when no output is produced', async () => {
-    mockConvert.mockResolvedValue(
-      mockConvertResult('', 'error occurred'),
-    )
+    mockConvert.mockResolvedValue(mockConvertResult('', 'error occurred'))
 
-    const file = createTestFile('doc.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'doc.docx',
+      'content',
+      'application/octet-stream',
+    )
     const result = await convertOfficeDocument(file, {
       from: 'docx',
       to: 'markdown',
@@ -334,7 +527,11 @@ describe('convertOfficeDocument', () => {
   test('handles convert throwing an error', async () => {
     mockConvert.mockRejectedValue(new Error('Conversion failed'))
 
-    const file = createTestFile('doc.docx', 'content', 'application/octet-stream')
+    const file = createTestFile(
+      'doc.docx',
+      'content',
+      'application/octet-stream',
+    )
     const result = await convertOfficeDocument(file, {
       from: 'docx',
       to: 'html',

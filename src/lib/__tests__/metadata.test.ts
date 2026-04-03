@@ -56,7 +56,9 @@ beforeEach(() => {
   })
   mockMd5.mockResolvedValue('d41d8cd98f00b204e9800998ecf8427e')
   mockSha1.mockResolvedValue('da39a3ee5e6b4b0d3255bfef95601890afd80709')
-  mockSha256.mockResolvedValue('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
+  mockSha256.mockResolvedValue(
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  )
 })
 
 // ─── formatFileSize ──────────────────────────────────────────────────────────
@@ -192,7 +194,11 @@ describe('extractFileMetadata', () => {
     mockGetMime.mockReturnValue(null)
     mockDetect.mockReturnValue(null)
 
-    const file = createTestFile('unknown.bin', 'binary data', 'application/octet-stream')
+    const file = createTestFile(
+      'unknown.bin',
+      'binary data',
+      'application/octet-stream',
+    )
     const result = await extractFileMetadata(file)
 
     expect(result.mimeType).toBe('application/octet-stream')
@@ -280,12 +286,18 @@ describe('stripFileMetadata', () => {
 
 describe('calculateFileHashes', () => {
   test('calculates MD5, SHA1, and SHA256 hashes', async () => {
-    const file = createTestFile('test.bin', 'test data', 'application/octet-stream')
+    const file = createTestFile(
+      'test.bin',
+      'test data',
+      'application/octet-stream',
+    )
     const result = await calculateFileHashes(file)
 
     expect(result.md5).toBe('d41d8cd98f00b204e9800998ecf8427e')
     expect(result.sha1).toBe('da39a3ee5e6b4b0d3255bfef95601890afd80709')
-    expect(result.sha256).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
+    expect(result.sha256).toBe(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    )
   })
 
   test('calls all three hash functions with the same data', async () => {

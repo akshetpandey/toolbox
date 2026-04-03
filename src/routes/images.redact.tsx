@@ -828,7 +828,7 @@ function RedactPage() {
         <div className="border-2 border-dashed border-primary/20 rounded-lg p-4 bg-muted/20 flex justify-center">
           <canvas
             ref={canvasRef}
-            className="max-w-full max-h-[500px] border border-border/50 rounded cursor-crosshair touch-none"
+            className="max-w-full max-h-125 border border-border/50 rounded cursor-crosshair touch-none"
             style={{ touchAction: 'none' }}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}

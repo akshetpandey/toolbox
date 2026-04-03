@@ -173,12 +173,15 @@ describe('FFmpegProcessor.extractMetadata', () => {
     await processor.extractMetadata()
 
     expect(ffmpeg.ffprobe).toHaveBeenCalledWith([
-      '-v', 'quiet',
-      '-print_format', 'json',
+      '-v',
+      'quiet',
+      '-print_format',
+      'json',
       '-show_format',
       '-show_streams',
       '/input/video.mp4',
-      '-o', 'metadata.json',
+      '-o',
+      'metadata.json',
     ])
   })
 
@@ -233,8 +236,20 @@ describe('FFmpegProcessor.convertVideo', () => {
     const probeOutput = {
       format: { duration: '10', bit_rate: '1000000' },
       streams: [
-        { codec_type: 'video', codec_name: 'h264', width: 1920, height: 1080, r_frame_rate: '30/1', avg_frame_rate: '30/1' },
-        { codec_type: 'audio', codec_name: 'aac', sample_rate: 44100, channels: 2 },
+        {
+          codec_type: 'video',
+          codec_name: 'h264',
+          width: 1920,
+          height: 1080,
+          r_frame_rate: '30/1',
+          avg_frame_rate: '30/1',
+        },
+        {
+          codec_type: 'audio',
+          codec_name: 'aac',
+          sample_rate: 44100,
+          channels: 2,
+        },
       ],
     }
     vi.mocked(ffmpeg.readFile).mockResolvedValue(

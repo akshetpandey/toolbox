@@ -54,7 +54,8 @@ pnpx shadcn@latest add button    # Add new Shadcn components
   - `@imagemagick/magick-wasm` - Image processing
   - `pdf-lib` - PDF manipulation
   - `7z-wasm` - Archive compression/extraction
-  - `wasm-pandoc` + `@bjorn3/browser_wasi_shim` - Document conversion via WASI
+  - `pandoc-wasm` + `@bjorn3/browser_wasi_shim` - Document conversion via WASI
+  - `@myriaddreamin/typst.ts` - Typst WASM compiler for PDF generation (used with pandoc)
   - `libimagequant-wasm` - PNG compression/quantization
   - `@uswriting/exiftool` - EXIF metadata extraction
   - `hash-wasm` - File hashing (MD5, SHA1, SHA256)
@@ -89,7 +90,7 @@ src/
 | **Videos**           | convert, compress, trim, extract audio, metadata | `VideoToolsContext`   | `ffmpeg.ts`, `videoToolsUtils.tsx`   |
 | **PDFs**             | merge, split (WIP), compress (WIP)               | `PDFToolsContext`     | `pdf.ts`                             |
 | **Archives**         | compress (zip/7z/tar/gzip), extract              | `ArchiveToolsContext` | `archive.ts`                         |
-| **Office Documents** | convert to PDF                                   | `OfficeToolsContext`  | `pandoc.ts`, `pandoc-cdn.ts`         |
+| **Office Documents** | convert to PDF                                   | `OfficeToolsContext`  | `pandoc.ts`, `typst.ts`              |
 | **Utilities**        | file hashes, file metadata                       | `UtilitiesContext`    | `metadata.ts`                        |
 
 **WASM Lazy Loading Pattern**: Heavy WASM libraries use a singleton pattern with module-level promises to prevent duplicate initialization:

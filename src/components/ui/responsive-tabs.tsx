@@ -37,7 +37,7 @@ export function ResponsiveTabs({
               key={tab.value}
               value={tab.value}
               disabled={isProcessing || tab.disabled}
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap min-w-[100px] px-3 py-2 flex-shrink-0"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap min-w-25 px-3 py-2 shrink-0"
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}

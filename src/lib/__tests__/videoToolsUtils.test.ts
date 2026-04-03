@@ -163,8 +163,8 @@ describe('isAspectRatioCompatible', () => {
   })
 
   test('respects custom tolerance', () => {
-    expect(isAspectRatioCompatible(1.78, 1.70, 0.1)).toBe(true)
-    expect(isAspectRatioCompatible(1.78, 1.70, 0.01)).toBe(false)
+    expect(isAspectRatioCompatible(1.78, 1.7, 0.1)).toBe(true)
+    expect(isAspectRatioCompatible(1.78, 1.7, 0.01)).toBe(false)
   })
 })
 
