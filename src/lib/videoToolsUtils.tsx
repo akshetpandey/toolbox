@@ -21,7 +21,7 @@ export const formatOptions = [
 export const videoCodecOptions = [
   { value: 'libx264', label: 'H.264', description: 'Best compatibility' },
   { value: 'libx265', label: 'H.265', description: 'Higher compression' },
-  { value: 'libvpx-vp9', label: 'VP9', description: 'Web standard' },
+  { value: 'libvpx', label: 'VP8', description: 'Web standard' },
 ] as const
 
 export const audioCodecOptions = [
@@ -40,11 +40,11 @@ export const compatibilityMatrix: Record<
     audio: ['aac', 'mp3'],
   },
   webm: {
-    video: ['libvpx-vp9'],
+    video: ['libvpx'],
     audio: ['libopus'],
   },
   mkv: {
-    video: ['libx264', 'libx265', 'libvpx-vp9'],
+    video: ['libx264', 'libx265', 'libvpx'],
     audio: ['aac', 'mp3', 'libopus'],
   },
   avi: {

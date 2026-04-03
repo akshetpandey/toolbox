@@ -23,7 +23,9 @@ beforeAll(async () => {
 
   ffmpeg = new FFmpeg()
 
-  const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.10/dist/esm'
+  // Load WASM files from the local @ffmpeg/core-mt package.
+  // Served by the ffmpegCorePlugin in vitest.browser.config.ts.
+  const baseURL = '/ffmpeg-core'
   await ffmpeg.load({
     coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
     wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),

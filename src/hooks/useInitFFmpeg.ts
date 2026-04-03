@@ -32,7 +32,12 @@ async function loadFFmpegModules() {
 export async function loadFFmpeg(ffmpeg: FFmpeg) {
   const { toBlobURL } = await loadFFmpegModules()
 
-  const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.10/dist/esm'
+  // Load WASM files from the local @ffmpeg/core-mt package.
+  // Files are served by the ffmpegCorePlugin (see vite-plugin-ffmpeg-core.ts)
+  // which serves raw files from node_modules in dev and emits them as assets
+  // in production builds. Using toBlobURL to create same-origin blob URLs
+  // required for COEP/SharedArrayBuffer compatibility.
+  const baseURL = '/ffmpeg-core'
   await ffmpeg.load({
     coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
     wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),

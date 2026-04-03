@@ -328,7 +328,7 @@ describe('FFmpegProcessor.convertVideo', () => {
   test('deletes output file after reading', async () => {
     await processor.convertVideo({
       targetFormat: 'webm',
-      videoCodec: 'libvpx-vp9',
+      videoCodec: 'libvpx',
       audioCodec: 'libopus',
       preset: 'medium',
     })

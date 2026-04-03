@@ -439,7 +439,6 @@ export class FFmpegProcessor {
       h264: 'libx264',
       h265: 'libx265',
       hevc: 'libx265',
-      vp9: 'libvpx-vp9',
       vp8: 'libvpx',
       aac: 'aac',
       mp3: 'mp3',
@@ -454,6 +453,7 @@ export class FFmpegProcessor {
       fileName: this.inputFileName,
       options,
     })
+
     const outputFileName = `output.${options.targetFormat}`
     // Build FFmpeg command based on format
     const command = ['-i', this.inputFileName ?? '']
@@ -477,21 +477,24 @@ export class FFmpegProcessor {
 
     // Add memory-efficient encoding options
     command.push('-movflags', '+faststart') // Optimize for streaming
-    command.push('-threads', '4') // Use a small no. of thread to avoid memory issues
     command.push('-max_muxing_queue_size', '1024') // Limit muxing queue
+    command.push('-threads', '4')
 
-    // Add downscaling filter if enabled
+    // Build video filter chain (all filters go into a single -vf argument)
+    const videoFilters: string[] = []
+
+    // Add user-requested downscaling filter
     if (options.downscale?.enabled) {
-      let scaleFilter = ''
-
       if (options.downscale.resolution) {
         const [width, height] = options.downscale.resolution
           .split('x')
           .map(Number)
         if (options.downscale.maintainAspectRatio) {
-          scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease`
+          videoFilters.push(
+            `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
+          )
         } else {
-          scaleFilter = `scale=${width}:${height}`
+          videoFilters.push(`scale=${width}:${height}`)
         }
       } else if (
         options.downscale.customWidth ||
@@ -499,13 +502,13 @@ export class FFmpegProcessor {
       ) {
         const width = options.downscale.customWidth ?? -1
         const height = options.downscale.customHeight ?? -1
-        scaleFilter = `scale=${width}:${height}`
+        videoFilters.push(`scale=${width}:${height}`)
       }
+    }
 
-      if (scaleFilter) {
-        command.push('-vf', scaleFilter)
-        console.log('🎬 FFmpeg: Adding downscale filter', { scaleFilter })
-      }
+    if (videoFilters.length > 0) {
+      command.push('-vf', videoFilters.join(','))
+      console.log('🎬 FFmpeg: Video filters', { videoFilters })
     }
 
     // Set video codec (use stream copy if possible)
@@ -532,8 +535,23 @@ export class FFmpegProcessor {
 
     // Add format-specific settings
     if (options.targetFormat === 'webm' && !canCopyVideo) {
-      command.push('-crf', '30') // Lower quality for WebM
+      command.push('-crf', '30') // Quality level for WebM
       command.push('-b:v', '1M') // Target bitrate
+    }
+
+    // VP8 (libvpx) WASM-specific encoder settings:
+    // Use realtime deadline + reduced lookahead to keep memory usage low.
+    if (options.videoCodec === 'libvpx' && !canCopyVideo) {
+      command.push(
+        '-deadline',
+        'realtime',
+        '-cpu-used',
+        '5',
+        '-lag-in-frames',
+        '0',
+        '-auto-alt-ref',
+        '0',
+      )
     }
 
     command.push(outputFileName)

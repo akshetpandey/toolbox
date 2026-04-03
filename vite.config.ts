@@ -3,6 +3,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
+import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core'
 
 export default defineConfig({
   build: {
@@ -63,6 +64,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
+    ffmpegCorePlugin(),
     tailwindcss(),
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),

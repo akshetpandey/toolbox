@@ -11,6 +11,8 @@ count.txt
 .vinxi
 count.txt
 .wrangler
+.vitest-attachments
+__screenshots__
 .dev.vars*
 # Sentry Config File
 .env.sentry-build-plugin

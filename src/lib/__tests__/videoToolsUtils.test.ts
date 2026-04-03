@@ -37,7 +37,7 @@ describe('videoCodecOptions', () => {
     const values = videoCodecOptions.map((o) => o.value)
     expect(values).toContain('libx264')
     expect(values).toContain('libx265')
-    expect(values).toContain('libvpx-vp9')
+    expect(values).toContain('libvpx')
   })
 })
 
@@ -69,15 +69,15 @@ describe('compatibilityMatrix', () => {
     expect(compatibilityMatrix.mp4.audio).toContain('mp3')
   })
 
-  test('webm supports vp9 video and opus audio', () => {
-    expect(compatibilityMatrix.webm.video).toContain('libvpx-vp9')
+  test('webm supports vp8 video and opus audio', () => {
+    expect(compatibilityMatrix.webm.video).toContain('libvpx')
     expect(compatibilityMatrix.webm.audio).toContain('libopus')
   })
 
   test('mkv supports all codecs', () => {
     expect(compatibilityMatrix.mkv.video).toContain('libx264')
     expect(compatibilityMatrix.mkv.video).toContain('libx265')
-    expect(compatibilityMatrix.mkv.video).toContain('libvpx-vp9')
+    expect(compatibilityMatrix.mkv.video).toContain('libvpx')
     expect(compatibilityMatrix.mkv.audio).toContain('aac')
     expect(compatibilityMatrix.mkv.audio).toContain('mp3')
     expect(compatibilityMatrix.mkv.audio).toContain('libopus')
@@ -109,7 +109,7 @@ describe('getCompatibleCodecs', () => {
 describe('isCodecCompatible', () => {
   test('returns true for compatible video codec', () => {
     expect(isCodecCompatible('mp4', 'libx264', 'video')).toBe(true)
-    expect(isCodecCompatible('webm', 'libvpx-vp9', 'video')).toBe(true)
+    expect(isCodecCompatible('webm', 'libvpx', 'video')).toBe(true)
   })
 
   test('returns true for compatible audio codec', () => {
@@ -118,7 +118,7 @@ describe('isCodecCompatible', () => {
   })
 
   test('returns false for incompatible codec', () => {
-    expect(isCodecCompatible('mp4', 'libvpx-vp9', 'video')).toBe(false)
+    expect(isCodecCompatible('mp4', 'libvpx', 'video')).toBe(false)
     expect(isCodecCompatible('webm', 'aac', 'audio')).toBe(false)
   })
 
