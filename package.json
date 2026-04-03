@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 5050",
-    "build": "vite build",
+    "build": "vite build && node scripts/compress-wasm.mjs",
     "serve": "vite preview",
     "test": "vitest run && vitest run --config vitest.browser.config.ts",
     "test:unit": "vitest run",

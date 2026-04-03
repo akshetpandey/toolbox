@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig(
-  globalIgnores(['dist/*']),
+  globalIgnores(['dist/*', 'scripts/*']),
   ...pluginRouter.configs['flat/recommended'],
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
