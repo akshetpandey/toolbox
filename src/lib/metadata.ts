@@ -86,7 +86,9 @@ const initMagic = async (): Promise<WASMagic> => {
 
     // WASMagic.create() will automatically look for the WASM file
     // in the same directory as the JS file, or we can provide a custom locateFile function
-    _magicInstance = await WASMagicClass.create()
+    _magicInstance = await WASMagicClass.create({
+      locateFile: (path: string) => `/${path}`,
+    })
     console.log('📋 Metadata: WASMagic instance created successfully')
     return _magicInstance
   } catch (error) {
@@ -109,6 +111,14 @@ export const extractExifMetadata = async (
     const exifResult = await parseMetadata(file, {
       args: ['-json', '-n'],
       transform: (data) => JSON.parse(data) as ExifMetadata[],
+      fetch: (...args: unknown[]) => {
+        const input = args[0]
+        // Redirect zeroperl.wasm requests to the public directory
+        if (typeof input === 'string' && input.endsWith('zeroperl.wasm')) {
+          return fetch('/zeroperl.wasm')
+        }
+        return fetch(input as RequestInfo | URL, args[1] as RequestInit)
+      },
     })
     console.log('📋 Metadata: EXIF metadata extraction successful', exifResult)
 
@@ -204,6 +214,13 @@ export const stripFileMetadata = async (file: File): Promise<Blob> => {
       {},
       {
         args: ['-all='],
+        fetch: (...args: unknown[]) => {
+          const input = args[0]
+          if (typeof input === 'string' && input.endsWith('zeroperl.wasm')) {
+            return fetch('/zeroperl.wasm')
+          }
+          return fetch(input as RequestInfo | URL, args[1] as RequestInit)
+        },
       },
     )
 

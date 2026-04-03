@@ -54,7 +54,6 @@ export default defineConfig({
       '@uswriting/exiftool',
       'hash-wasm',
       'pandoc-wasm',
-      'wasmagic',
     ],
   },
   plugins: [
