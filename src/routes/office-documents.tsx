@@ -4,7 +4,7 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
@@ -62,8 +62,27 @@ function OfficeDocumentsLayout() {
   const { isProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedFile, setSelectedFile] = useState<OfficeFile | null>(null)
+  const [selectedFile, updateSelectedFile] = useState<OfficeFile | null>(null)
+  const selectedFileRef = useRef<OfficeFile | null>(null)
   const [conversionStatus, setConversionStatus] = useState<string>('')
+
+  const setSelectedFile = useCallback((file: OfficeFile | null) => {
+    selectedFileRef.current = file
+    updateSelectedFile(file)
+    setConversionStatus('')
+  }, [])
+
+  const isCurrentFile = useCallback(
+    (file: OfficeFile) => selectedFileRef.current === file,
+    [],
+  )
+
+  useEffect(
+    () => () => {
+      selectedFileRef.current = null
+    },
+    [],
+  )
 
   // Determine current tab from URL path
   const currentTab = useMemo(() => {
@@ -87,35 +106,37 @@ function OfficeDocumentsLayout() {
 
   const clearSelectedFile = useCallback(() => {
     setSelectedFile(null)
-    setConversionStatus('')
-  }, [])
+  }, [setSelectedFile])
 
-  const handleFileSelect = useCallback((files: FileList) => {
-    console.log('📄 OfficeTools: File selection started', {
-      fileCount: files.length,
-    })
-
-    // Only process the first file
-    const file = files[0]
-    if (!file) return
-
-    if (isOfficeFile(file)) {
-      console.log('📄 OfficeTools: Processing office file', {
-        name: file.name,
-        size: file.size,
-        type: file.type,
+  const handleFileSelect = useCallback(
+    (files: FileList) => {
+      console.log('📄 OfficeTools: File selection started', {
+        fileCount: files.length,
       })
 
-      const officeFile = createOfficeFile(file)
-      setSelectedFile(officeFile)
-    } else {
-      console.warn('📄 OfficeTools: Invalid file type selected', {
-        name: file.name,
-        type: file.type,
-      })
-      alert('Please select a valid office file (Word, PowerPoint, Excel)')
-    }
-  }, [])
+      // Only process the first file
+      const file = files[0]
+      if (!file) return
+
+      if (isOfficeFile(file)) {
+        console.log('📄 OfficeTools: Processing office file', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        })
+
+        const officeFile = createOfficeFile(file)
+        setSelectedFile(officeFile)
+      } else {
+        console.warn('📄 OfficeTools: Invalid file type selected', {
+          name: file.name,
+          type: file.type,
+        })
+        alert('Please select a valid office file (Word, PowerPoint, Excel)')
+      }
+    },
+    [setSelectedFile],
+  )
 
   const getFileIcon = (fileName: string) => {
     const lower = fileName.toLowerCase()
@@ -132,11 +153,18 @@ function OfficeDocumentsLayout() {
     () => ({
       selectedFile,
       setSelectedFile,
+      isCurrentFile,
       conversionStatus,
       setConversionStatus,
       clearSelectedFile,
     }),
-    [selectedFile, conversionStatus, clearSelectedFile],
+    [
+      selectedFile,
+      conversionStatus,
+      clearSelectedFile,
+      setSelectedFile,
+      isCurrentFile,
+    ],
   )
 
   const officeFileUpload = (

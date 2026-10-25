@@ -16,7 +16,7 @@ function createMockFFmpeg() {
     mount: vi.fn().mockResolvedValue(undefined),
     unmount: vi.fn().mockResolvedValue(undefined),
     exec: vi.fn().mockResolvedValue(0),
-    ffprobe: vi.fn().mockResolvedValue(undefined),
+    ffprobe: vi.fn().mockResolvedValue(0),
     readFile: vi.fn().mockResolvedValue(new Uint8Array([0x00, 0x00, 0x00])),
     deleteFile: vi.fn().mockResolvedValue(undefined),
     writeFile: vi.fn().mockResolvedValue(undefined),
@@ -69,6 +69,30 @@ describe('FFmpegProcessor.mountInputFile', () => {
     await processor.mountInputFile(createVideoFile({ name: 'second.mp4' }))
 
     expect(ffmpeg.createDir).toHaveBeenCalledTimes(1)
+    expect(ffmpeg.unmount).toHaveBeenCalledWith('/input')
+  })
+
+  test('shares mount ownership when a layout creates another processor', async () => {
+    await processor.mountInputFile(createVideoFile())
+    const replacement = new FFmpegProcessor(ffmpeg)
+    const nextFile = createVideoFile({ name: 'next.mp4' })
+    await replacement.mountInputFile(nextFile)
+
+    expect(ffmpeg.createDir).toHaveBeenCalledTimes(1)
+    expect(processor.inputFile).toBeNull()
+    expect(replacement.inputFile).toBe(nextFile)
+    await processor.unmountInputFile()
+    expect(ffmpeg.unmount).toHaveBeenCalledTimes(1)
+    expect(replacement.inputFile).toBe(nextFile)
+  })
+
+  test('does not retain a file reference after its mount fails', async () => {
+    await processor.mountInputFile(createVideoFile())
+    vi.mocked(ffmpeg.mount).mockRejectedValueOnce(new Error('Mount failed'))
+    await expect(processor.mountInputFile(createVideoFile())).rejects.toThrow(
+      'Mount failed',
+    )
+    expect(processor.inputFile).toBeNull()
   })
 
   test('stores the input file reference', async () => {
@@ -90,7 +114,7 @@ describe('FFmpegProcessor.unmountInputFile', () => {
     await processor.mountInputFile(videoFile)
     await processor.unmountInputFile()
 
-    expect(ffmpeg.unmount).toHaveBeenCalledWith('/input/video.mp4')
+    expect(ffmpeg.unmount).toHaveBeenCalledWith('/input')
     expect(processor.inputFile).toBeNull()
   })
 })
@@ -383,6 +407,21 @@ describe('FFmpegProcessor.compressVideo', () => {
     expect(blob.type).toBe('video/mp4')
   })
 
+  test('uses MP4 output and MIME even when the source is WebM', async () => {
+    await processor.mountInputFile(
+      createVideoFile({
+        file: new File(['webm'], 'source.webm', { type: 'video/webm' }),
+        name: 'source.webm',
+        type: 'video/webm',
+      }),
+    )
+    const blob = await processor.compressVideo({ crf: 28, preset: 'fast' })
+    expect(blob.type).toBe('video/mp4')
+    expect(vi.mocked(ffmpeg.exec).mock.calls[0][0].at(-1)).toBe(
+      'compressed.mp4',
+    )
+  })
+
   test('rethrows on exec failure', async () => {
     vi.mocked(ffmpeg.exec).mockRejectedValue(new Error('OOM'))
 
@@ -390,6 +429,40 @@ describe('FFmpegProcessor.compressVideo', () => {
       processor.compressVideo({ crf: 23, preset: 'medium' }),
     ).rejects.toThrow('OOM')
   })
+})
+
+describe('FFmpeg exit status', () => {
+  test.each(['convert', 'compress', 'trim', 'audio', 'metadata'] as const)(
+    'rejects nonzero %s exits instead of reading partial output',
+    async (operation) => {
+      await processor.mountInputFile(createVideoFile())
+      vi.mocked(ffmpeg.exec).mockResolvedValue(1)
+      const run = () => {
+        switch (operation) {
+          case 'convert':
+            return processor.convertVideo({
+              targetFormat: 'mp4',
+              videoCodec: 'libx264',
+              audioCodec: 'aac',
+              preset: 'fast',
+            })
+          case 'compress':
+            return processor.compressVideo({ crf: 28, preset: 'fast' })
+          case 'trim':
+            return processor.trimVideo({ startTime: '0', endTime: '1' })
+          case 'audio':
+            return processor.extractAudio({ audioFormat: 'wav' })
+          case 'metadata':
+            return processor.stripMetadata()
+        }
+      }
+      await expect(run()).rejects.toThrow('FFmpeg exited with code 1')
+      expect(ffmpeg.readFile).not.toHaveBeenCalledWith(
+        expect.stringMatching(/^(output|compressed|trimmed|audio|stripped)\./),
+      )
+      expect(ffmpeg.terminate).toHaveBeenCalled()
+    },
+  )
 })
 
 // ─── trimVideo ───────────────────────────────────────────────────────────────

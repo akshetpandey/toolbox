@@ -230,18 +230,18 @@ export const stripFileMetadata = async (file: File): Promise<Blob> => {
     )
 
     console.log('📋 Metadata: Metadata stripping result', result)
-    if (result.success && result.data) {
-      console.log('📋 Metadata: Metadata stripping successful')
-      return new Blob([result.data], { type: file.type })
-    } else {
-      console.error('📋 Metadata: Failed to strip metadata:', result.error)
-      // Return original file as fallback
-      return file
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to strip metadata')
     }
+    if (!result.data?.byteLength) {
+      throw new Error('Metadata stripping returned no file data')
+    }
+
+    console.log('📋 Metadata: Metadata stripping successful')
+    return new Blob([result.data], { type: file.type })
   } catch (error) {
     console.error('📋 Metadata: Error stripping metadata:', error)
-    // Return original file as fallback
-    return file
+    throw error
   }
 }
 

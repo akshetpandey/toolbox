@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useProcessing } from '@/contexts/ProcessingContext'
@@ -48,17 +48,34 @@ export const Route = createFileRoute('/office-documents/convert')({
 
 function ConvertTool() {
   const { isProcessing, setIsProcessing } = useProcessing()
-  const { selectedFile, conversionStatus, setConversionStatus } =
+  const { selectedFile, conversionStatus, setConversionStatus, isCurrentFile } =
     useOfficeTools()
+  const conversionInProgress = useRef(false)
+  const conversionVersion = useRef(0)
+
+  useEffect(
+    () => () => {
+      conversionVersion.current++
+      if (conversionInProgress.current) {
+        conversionInProgress.current = false
+        setIsProcessing(false)
+      }
+    },
+    [setIsProcessing],
+  )
 
   const handleConvertToPDF = useCallback(async () => {
-    if (!selectedFile) return
+    if (!selectedFile || conversionInProgress.current) return
 
+    const version = ++conversionVersion.current
+    conversionInProgress.current = true
     setIsProcessing(true)
     setConversionStatus(`Converting ${selectedFile.name}...`)
 
     try {
       const result = await convertOfficeToPDF(selectedFile.file)
+      if (conversionVersion.current !== version || !isCurrentFile(selectedFile))
+        return
 
       if (result.success && result.output instanceof Blob) {
         const outputName = getOutputFilename(selectedFile.name, 'pdf')
@@ -72,14 +89,19 @@ function ConvertTool() {
         )
       }
     } catch (error) {
+      if (conversionVersion.current !== version || !isCurrentFile(selectedFile))
+        return
       console.error('Conversion error:', error)
       setConversionStatus(
         `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       )
     } finally {
-      setIsProcessing(false)
+      if (conversionVersion.current === version) {
+        conversionInProgress.current = false
+        setIsProcessing(false)
+      }
     }
-  }, [selectedFile, setIsProcessing, setConversionStatus])
+  }, [selectedFile, setIsProcessing, setConversionStatus, isCurrentFile])
 
   // Auto-trigger conversion when file is selected
   useEffect(() => {

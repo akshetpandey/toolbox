@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { downloadBlob } from '@/lib/shared'
 import { stripFileMetadata } from '@/lib/metadata'
+import { applyBlurRedaction } from '@/lib/redaction'
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
@@ -207,6 +208,7 @@ function RedactPage() {
   const [redactionAreas, setRedactionAreas] = useState<RedactionArea[]>([])
   const [scaleFactor, setScaleFactor] = useState({ x: 1, y: 1 })
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const originalImageRef = useRef<HTMLImageElement | null>(null)
 
@@ -306,25 +308,7 @@ function RedactPage() {
           ctx.fillStyle = area.color ?? '#000000'
           ctx.fillRect(area.x, area.y, area.width, area.height)
         } else if (area.mode === 'blur') {
-          const imageData = ctx.getImageData(
-            area.x,
-            area.y,
-            area.width,
-            area.height,
-          )
-          const tempCanvas = document.createElement('canvas')
-          const tempCtx = tempCanvas.getContext('2d')
-
-          if (tempCtx) {
-            tempCanvas.width = area.width
-            tempCanvas.height = area.height
-            tempCtx.putImageData(imageData, 0, 0)
-
-            ctx.save()
-            ctx.filter = `blur(${area.blurRadius ?? 10}px)`
-            ctx.drawImage(tempCanvas, area.x, area.y)
-            ctx.restore()
-          }
+          applyBlurRedaction(ctx, area, area.blurRadius ?? 10)
         } else if (area.mode === 'pixelate') {
           const imageData = ctx.getImageData(
             area.x,
@@ -441,6 +425,7 @@ function RedactPage() {
     setSelectedIndex(null)
     setResizeState(null)
     setDragState(null)
+    setDownloadError(null)
   }, [selectedFile])
 
   // Prevent document scrolling when drawing or resizing
@@ -668,30 +653,7 @@ function RedactPage() {
             Math.round(currentArea.height),
           )
         } else if (redactionMode === 'blur') {
-          const imageData = ctx.getImageData(
-            Math.round(currentArea.x),
-            Math.round(currentArea.y),
-            Math.round(currentArea.width),
-            Math.round(currentArea.height),
-          )
-
-          const tempCanvas = document.createElement('canvas')
-          const tempCtx = tempCanvas.getContext('2d')
-
-          if (tempCtx) {
-            tempCanvas.width = Math.round(currentArea.width)
-            tempCanvas.height = Math.round(currentArea.height)
-            tempCtx.putImageData(imageData, 0, 0)
-
-            ctx.save()
-            ctx.filter = `blur(${blurRadius}px)`
-            ctx.drawImage(
-              tempCanvas,
-              Math.round(currentArea.x),
-              Math.round(currentArea.y),
-            )
-            ctx.restore()
-          }
+          applyBlurRedaction(ctx, newRedactionArea, blurRadius)
         } else if (redactionMode === 'pixelate') {
           const imageData = ctx.getImageData(
             Math.round(currentArea.x),
@@ -881,28 +843,13 @@ function RedactPage() {
         outputCtx.fillStyle = area.color ?? '#000000'
         outputCtx.fillRect(scaledX, scaledY, scaledWidth, scaledHeight)
       } else if (area.mode === 'blur') {
-        const imageData = outputCtx.getImageData(
-          scaledX,
-          scaledY,
-          scaledWidth,
-          scaledHeight,
+        const scaledBlurRadius =
+          (area.blurRadius ?? 10) * Math.max(scaleFactor.x, scaleFactor.y)
+        applyBlurRedaction(
+          outputCtx,
+          { x: scaledX, y: scaledY, width: scaledWidth, height: scaledHeight },
+          scaledBlurRadius,
         )
-        const tempCanvas = document.createElement('canvas')
-        const tempCtx = tempCanvas.getContext('2d')
-
-        if (tempCtx) {
-          tempCanvas.width = scaledWidth
-          tempCanvas.height = scaledHeight
-          tempCtx.putImageData(imageData, 0, 0)
-
-          const scaledBlurRadius =
-            (area.blurRadius ?? 10) * Math.max(scaleFactor.x, scaleFactor.y)
-
-          outputCtx.save()
-          outputCtx.filter = `blur(${scaledBlurRadius}px)`
-          outputCtx.drawImage(tempCanvas, scaledX, scaledY)
-          outputCtx.restore()
-        }
       } else if (area.mode === 'pixelate') {
         const previewCanvas = document.createElement('canvas')
         const previewCtx = previewCanvas.getContext('2d')
@@ -989,12 +936,16 @@ function RedactPage() {
     if (!selectedFile) return
 
     setIsProcessing(true)
+    setDownloadError(null)
 
     try {
       const blob = await createRedactedImageBlob()
       downloadBlob(blob, `redacted_${selectedFile.name}`)
     } catch (error) {
       console.error('RedactionTool: Error during download:', error)
+      setDownloadError(
+        'Failed to redact the image. No file was downloaded. Please try again.',
+      )
     } finally {
       setIsProcessing(false)
     }
@@ -1005,6 +956,7 @@ function RedactPage() {
 
     setIsProcessing(true)
     setIsStrippingMetadata(true)
+    setDownloadError(null)
 
     try {
       const redactedBlob = await createRedactedImageBlob()
@@ -1022,8 +974,8 @@ function RedactPage() {
         'RedactionTool: Error during download with metadata stripping:',
         error,
       )
-      alert(
-        'Failed to download redacted image with metadata stripped. Please try again.',
+      setDownloadError(
+        'Failed to strip metadata from the redacted image. No file was downloaded. Please try again.',
       )
     } finally {
       setIsProcessing(false)
@@ -1245,6 +1197,12 @@ function RedactPage() {
           <p className="text-xs text-muted-foreground text-center">
             Drag to move. Drag handles to resize. Delete to remove. Escape to
             deselect.
+          </p>
+        )}
+
+        {downloadError && (
+          <p role="alert" className="text-sm text-destructive">
+            {downloadError}
           </p>
         )}
 

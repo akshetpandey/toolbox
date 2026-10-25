@@ -260,26 +260,40 @@ describe('stripFileMetadata', () => {
     /* oxlint-enable typescript/no-unsafe-assignment */
   })
 
-  test('returns original file when stripping fails', async () => {
+  test('rejects instead of returning the original file when stripping fails', async () => {
     mockWriteMetadata.mockResolvedValue({
       success: false,
       error: 'Cannot strip metadata',
     })
 
     const file = createTestFile('photo.jpg', 'jpeg data', 'image/jpeg')
-    const result = await stripFileMetadata(file)
-
-    expect(result).toBe(file)
+    await expect(stripFileMetadata(file)).rejects.toThrow(
+      'Cannot strip metadata',
+    )
   })
 
-  test('returns original file on thrown error', async () => {
+  test('rejects instead of returning the original file on a WASM error', async () => {
     mockWriteMetadata.mockRejectedValue(new Error('WASM error'))
 
     const file = createTestFile('photo.jpg', 'data', 'image/jpeg')
-    const result = await stripFileMetadata(file)
-
-    expect(result).toBe(file)
+    await expect(stripFileMetadata(file)).rejects.toThrow('WASM error')
   })
+
+  test.each([undefined, new ArrayBuffer(0)])(
+    'rejects successful responses without output bytes (%s)',
+    async (data) => {
+      mockWriteMetadata.mockResolvedValue({ success: true, data })
+      const file = createTestFile(
+        'photo.jpg',
+        'jpeg with private EXIF',
+        'image/jpeg',
+      )
+
+      await expect(stripFileMetadata(file)).rejects.toThrow(
+        'Metadata stripping returned no file data',
+      )
+    },
+  )
 })
 
 // ─── calculateFileHashes ─────────────────────────────────────────────────────

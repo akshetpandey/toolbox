@@ -12,8 +12,11 @@ pnpm install
 pnpm dev
 ```
 
-The development server uses port 5050. `pnpm serve` previews a production build
-on port 4173, and `pnpm preview` runs the Cloudflare preview on port 8787.
+The development server uses port 5050. After `pnpm build`, `pnpm serve` previews
+the production build with Vite on port 4173. Its preview middleware supplies the
+decoding headers for compressed WASM assets and inherits the development server's
+cross-origin isolation headers. `pnpm preview` uses the Cloudflare Worker runtime
+on port 8787.
 
 ## Coding agents
 

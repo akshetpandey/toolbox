@@ -14,7 +14,7 @@ This is an open-source SPA web application that provides browser-based file proc
 ```bash
 pnpm dev            # Start development server on port 5050
 pnpm build          # Build for production
-pnpm serve          # Preview production build locally on port 4173
+pnpm serve          # Preview production build with Vite on port 4173
 ```
 
 The developer normally keeps a development server running. Check for an existing
@@ -34,7 +34,7 @@ pnpm typecheck      # Check types with TypeScript 7
 pnpm check          # Format, lint fix, and check types
 pnpm test           # Run Node and Chromium suites with Vitest
 pnpm test:unit      # Run unit and real-WASM integration tests in Node
-pnpm test:browser   # Run real FFmpeg and DOCX-to-PDF WASM tests in Chromium
+pnpm test:browser   # Run real-WASM, redaction canvas, and keyboard tests in Chromium
 ```
 
 Before the first browser test run (and after Playwright upgrades), install its
@@ -112,6 +112,7 @@ src/
 
 - `useInitFFmpeg` hook - loads local FFmpeg assets with progress callback; `vite-plugin-ffmpeg-core.ts` serves and emits the multi-threaded core files
 - `vite-plugin-pandoc-wasm.ts` keeps Pandoc's WASM import as an asset URL for its browser WASI shim under Vite 8.3+
+- `vite-plugin-wasm-preview.ts` supplies gzip headers for precompressed WASM assets in Vite preview
 - `useInitImageMagick` hook - loads ImageMagick WASM
 - `metadata.ts`, `pandoc.ts`, `typst.ts` - inline lazy loading with cached instances
 

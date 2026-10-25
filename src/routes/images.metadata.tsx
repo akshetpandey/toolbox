@@ -13,7 +13,7 @@ import { downloadBlob } from '@/lib/shared'
 import { stripFileMetadata } from '@/lib/metadata'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 import { useProcessing } from '@/contexts/ProcessingContext'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export const Route = createFileRoute('/images/metadata')({
   component: MetadataPage,
@@ -50,6 +50,11 @@ function MetadataPage() {
     useImageTools()
   const { isProcessing, setIsProcessing } = useProcessing()
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
+  const [stripError, setStripError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setStripError(null)
+  }, [selectedFile])
 
   const handleStripMetadata = async () => {
     if (!selectedFile) return
@@ -57,6 +62,7 @@ function MetadataPage() {
     try {
       setIsStrippingMetadata(true)
       setIsProcessing(true)
+      setStripError(null)
 
       console.log(
         '🖼️ MetadataPage: Starting metadata stripping for',
@@ -71,7 +77,9 @@ function MetadataPage() {
       console.log('🖼️ MetadataPage: Metadata stripping completed successfully')
     } catch (error) {
       console.error('🖼️ MetadataPage: Error stripping metadata:', error)
-      alert('Failed to strip metadata. Please try again.')
+      setStripError(
+        'Failed to strip metadata. No file was downloaded. Please try again.',
+      )
     } finally {
       setIsStrippingMetadata(false)
       setIsProcessing(false)
@@ -171,6 +179,11 @@ function MetadataPage() {
                 </Button>
               )}
             </div>
+            {stripError && (
+              <p role="alert" className="text-sm text-destructive mb-4">
+                {stripError}
+              </p>
+            )}
             {isExtractingExif ? (
               <div className="flex items-center justify-center h-24">
                 <div className="text-center text-muted-foreground">

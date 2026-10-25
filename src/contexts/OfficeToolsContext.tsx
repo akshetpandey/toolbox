@@ -4,6 +4,7 @@ import type { OfficeFile } from '@/lib/pandoc'
 export interface OfficeToolsContextType {
   selectedFile: OfficeFile | null
   setSelectedFile: (file: OfficeFile | null) => void
+  isCurrentFile: (file: OfficeFile) => boolean
   conversionStatus: string
   setConversionStatus: (status: string) => void
   clearSelectedFile: () => void

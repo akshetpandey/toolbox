@@ -4,6 +4,7 @@ import type {
   DitherMethod,
   ColorSpace,
   QuantizeSettings,
+  MagickGeometry,
 } from '@imagemagick/magick-wasm'
 import { LibImageQuantProcessor } from './libimagequant'
 import type { ImageFile } from './shared'
@@ -14,6 +15,7 @@ let _MagickFormat: typeof MagickFormat | null = null
 let _DitherMethod: typeof DitherMethod | null = null
 let _ColorSpace: typeof ColorSpace | null = null
 let _QuantizeSettings: typeof QuantizeSettings | null = null
+let _MagickGeometry: typeof MagickGeometry | null = null
 
 async function initImageMagick() {
   if (
@@ -21,7 +23,8 @@ async function initImageMagick() {
     !_MagickFormat ||
     !_DitherMethod ||
     !_ColorSpace ||
-    !_QuantizeSettings
+    !_QuantizeSettings ||
+    !_MagickGeometry
   ) {
     console.log('🖼️ ImageMagick: Loading ImageMagick library...')
     const {
@@ -30,12 +33,14 @@ async function initImageMagick() {
       DitherMethod,
       ColorSpace,
       QuantizeSettings,
+      MagickGeometry,
     } = await import('@imagemagick/magick-wasm')
     _ImageMagick = ImageMagick
     _MagickFormat = MagickFormat
     _DitherMethod = DitherMethod
     _ColorSpace = ColorSpace
     _QuantizeSettings = QuantizeSettings
+    _MagickGeometry = MagickGeometry
     console.log('🖼️ ImageMagick: Library loaded successfully')
   }
   return {
@@ -44,6 +49,7 @@ async function initImageMagick() {
     DitherMethod: _DitherMethod,
     ColorSpace: _ColorSpace,
     QuantizeSettings: _QuantizeSettings,
+    MagickGeometry: _MagickGeometry,
   }
 }
 
@@ -110,6 +116,21 @@ export class ImageMagickProcessor {
     }
   }
 
+  private getOriginalMimeType(format: MagickFormat, fallback: string): string {
+    switch (format.toString()) {
+      case 'JPEG':
+        return 'image/jpeg'
+      case 'PNG':
+        return 'image/png'
+      case 'WEBP':
+        return 'image/webp'
+      case 'GIF':
+        return 'image/gif'
+      default:
+        return fallback || 'application/octet-stream'
+    }
+  }
+
   async extractMetadata(imageFile: ImageFile): Promise<ImageMetadata> {
     console.log('🖼️ ImageMagick: Starting metadata extraction', {
       fileName: imageFile.name,
@@ -167,80 +188,28 @@ export class ImageMagickProcessor {
       options,
     })
 
-    const { ImageMagick, MagickFormat } = await initImageMagick()
+    const { ImageMagick, MagickGeometry } = await initImageMagick()
+    const bytes = new Uint8Array(await imageFile.file.arrayBuffer())
+    const geometry = new MagickGeometry(options.width, options.height)
+    geometry.ignoreAspectRatio = !options.maintainAspectRatio
 
-    const arrayBuffer = await imageFile.file.arrayBuffer()
-    const uint8Array = new Uint8Array(arrayBuffer)
-    console.log('🖼️ ImageMagick: File loaded into memory', {
-      size: uint8Array.length,
-    })
-
-    return new Promise((resolve) => {
-      ImageMagick.read(uint8Array, (img) => {
-        // Apply EXIF orientation before resizing so dimensions are correct
-        img.autoOrient()
-
-        console.log('🖼️ ImageMagick: Original image dimensions', {
-          width: img.width,
-          height: img.height,
-        })
-
-        if (options.maintainAspectRatio) {
-          const aspectRatio = img.width / img.height
-          const targetAspectRatio = options.width / options.height
-
-          if (aspectRatio > targetAspectRatio) {
-            const newHeight = Math.round(options.width / aspectRatio)
-            console.log('🖼️ ImageMagick: Resizing with aspect ratio', {
-              newWidth: options.width,
-              newHeight,
-            })
-            img.resize(options.width, newHeight)
-          } else {
-            const newWidth = Math.round(options.height * aspectRatio)
-            console.log('🖼️ ImageMagick: Resizing with aspect ratio', {
-              newWidth,
-              newHeight: options.height,
-            })
-            img.resize(newWidth, options.height)
-          }
-        } else {
-          console.log('🖼️ ImageMagick: Resizing without aspect ratio', {
-            newWidth: options.width,
-            newHeight: options.height,
-          })
-          img.resize(options.width, options.height)
-        }
-
-        // Determine format based on original file type
-        let format: MagickFormat
-        if (imageFile.type.includes('jpeg') || imageFile.type.includes('jpg')) {
-          format = MagickFormat.Jpeg
-        } else if (imageFile.type.includes('png')) {
-          format = MagickFormat.Png
-        } else if (imageFile.type.includes('webp')) {
-          format = MagickFormat.WebP
-        } else {
-          format = MagickFormat.Jpeg // Default
-        }
-
-        console.log('🖼️ ImageMagick: Writing resized image', {
-          format: format.toString(),
-        })
-        img.write(format, (data: Uint8Array) => {
-          const arrayBuffer = new ArrayBuffer(data.length)
-          new Uint8Array(arrayBuffer).set(data)
-          const blob = new Blob([arrayBuffer], { type: imageFile.type })
-          console.log(
-            '🖼️ ImageMagick: Resize operation completed successfully',
-            {
-              originalSize: imageFile.size,
-              newSize: blob.size,
-            },
-          )
-          resolve(blob)
-        })
-      })
+    return ImageMagick.readCollection(bytes, (images) => {
+      const format = images[0].format
+      // Animated frames can store only the changed rectangle. Expand them
+      // before resizing, then update the animation canvas to the new size.
+      if (images.length > 1) images.coalesce()
+      for (const image of images) {
+        image.autoOrient()
+        image.resize(geometry)
+        image.resetPage()
+      }
+      return images.write(
+        format,
+        (data) =>
+          new Blob([data.slice()], {
+            type: this.getOriginalMimeType(format, imageFile.type),
+          }),
+      )
     })
   }
 
@@ -322,56 +291,23 @@ export class ImageMagickProcessor {
       }
     }
 
-    // Use ImageMagick for non-PNG files or as fallback
-    const { ImageMagick, MagickFormat } = await initImageMagick()
-
-    const arrayBuffer = await imageFile.file.arrayBuffer()
-    const uint8Array = new Uint8Array(arrayBuffer)
-    console.log('🖼️ ImageMagick: File loaded into memory', {
-      size: uint8Array.length,
-    })
-
-    return new Promise((resolve) => {
-      ImageMagick.read(uint8Array, (img) => {
-        // Apply EXIF orientation before compressing
-        img.autoOrient()
-
-        // Set quality for compression
-        img.quality = options.quality
-        console.log('🖼️ ImageMagick: Setting compression quality', {
-          quality: options.quality,
-        })
-
-        // Determine format based on original file type
-        let format: MagickFormat
-        if (imageFile.type.includes('jpeg') || imageFile.type.includes('jpg')) {
-          format = MagickFormat.Jpeg
-        } else if (imageFile.type.includes('png')) {
-          format = MagickFormat.Png
-        } else if (imageFile.type.includes('webp')) {
-          format = MagickFormat.WebP
-        } else {
-          format = MagickFormat.Jpeg // Default to JPEG for compression
-        }
-
-        console.log('🖼️ ImageMagick: Writing compressed image', {
-          format: format.toString(),
-        })
-        img.write(format, (data: Uint8Array) => {
-          const arrayBuffer = new ArrayBuffer(data.length)
-          new Uint8Array(arrayBuffer).set(data)
-          const blob = new Blob([arrayBuffer], { type: imageFile.type })
-          console.log('🖼️ ImageMagick: Compression completed successfully', {
-            originalSize: imageFile.size,
-            newSize: blob.size,
-            compressionRatio:
-              (((imageFile.size - blob.size) / imageFile.size) * 100).toFixed(
-                1,
-              ) + '%',
-          })
-          resolve(blob)
-        })
-      })
+    // Preserve the original encoding and all animation frames.
+    const { ImageMagick } = await initImageMagick()
+    const bytes = new Uint8Array(await imageFile.file.arrayBuffer())
+    return ImageMagick.readCollection(bytes, (images) => {
+      const format = images[0].format
+      if (images.length > 1) images.coalesce()
+      for (const image of images) {
+        image.autoOrient()
+        image.quality = options.quality
+      }
+      return images.write(
+        format,
+        (data) =>
+          new Blob([data.slice()], {
+            type: this.getOriginalMimeType(format, imageFile.type),
+          }),
+      )
     })
   }
 

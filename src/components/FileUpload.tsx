@@ -56,6 +56,11 @@ export function FileUpload({
     fileInputRef.current?.click()
   }
 
+  const handleChooseFile = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    handleClick()
+  }
+
   return (
     <Card className="glass-card border-0 animate-fade-in h-full">
       <CardContent className="p-4 sm:p-6 h-full">
@@ -81,6 +86,14 @@ export function FileUpload({
                 </Badge>
               ))}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleChooseFile}
+              className="mt-4 self-center"
+            >
+              Choose {multiple ? 'files' : 'file'}
+            </Button>
           </div>
         ) : (
           // Display uploaded file(s)
@@ -135,10 +148,16 @@ export function FileUpload({
             )}
 
             <div className="mt-3 pt-3 border-t border-border/50">
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleChooseFile}
+                className="w-full gap-2 text-xs text-muted-foreground"
+              >
                 <Upload className="w-3 h-3" />
-                <span>Click to change file</span>
-              </div>
+                Change {multiple ? 'files' : 'file'}
+              </Button>
             </div>
           </div>
         )}
@@ -146,6 +165,7 @@ export function FileUpload({
         <input
           ref={fileInputRef}
           type="file"
+          aria-label={multiple ? 'Upload files' : 'Upload file'}
           accept={acceptedTypes}
           multiple={multiple}
           className="hidden"

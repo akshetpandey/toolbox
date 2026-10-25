@@ -8,6 +8,19 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   optimizeDeps: {
+    // Discover React component-test dependencies before Chromium starts so
+    // first-run optimization cannot reload the page during test collection.
+    include: [
+      '@radix-ui/react-slot',
+      '@testing-library/react',
+      'class-variance-authority',
+      'clsx',
+      'lucide-react',
+      'react',
+      'react-dom/client',
+      'react/jsx-dev-runtime',
+      'tailwind-merge',
+    ],
     exclude: [
       '@ffmpeg/core-mt',
       '@ffmpeg/ffmpeg',

@@ -165,9 +165,17 @@ interface FFProbeOutput {
 }
 
 export class FFmpegProcessor {
+  // The hook shares one FFmpeg worker across category layout mounts.
+  private static inputMounts = new WeakMap<
+    FFmpeg,
+    {
+      directoryCreated: boolean
+      owner: FFmpegProcessor | null
+      pending: Promise<void>
+    }
+  >()
   private ffmpeg: FFmpeg
   private inputDir = '/input'
-  private didCreateInputDir = false
   private inputFileName: string | null = null
   public inputFile: VideoFile | null = null
 
@@ -176,42 +184,79 @@ export class FFmpegProcessor {
   }
 
   private async reloadFFmpeg() {
+    const inputFile = this.inputFile
     this.ffmpeg.terminate()
     await loadFFmpeg(this.ffmpeg)
-    this.didCreateInputDir = false
-    if (this.inputFile) {
-      await this.mountInputFile(this.inputFile)
+    FFmpegProcessor.inputMounts.delete(this.ffmpeg)
+    this.inputFile = null
+    this.inputFileName = null
+    if (inputFile) {
+      await this.mountInputFile(inputFile)
     }
   }
 
-  private async ensureInputDir() {
-    if (this.didCreateInputDir) return
-    await this.ffmpeg.createDir(this.inputDir)
-    this.didCreateInputDir = true
+  private getInputMount() {
+    let mount = FFmpegProcessor.inputMounts.get(this.ffmpeg)
+    if (!mount) {
+      mount = {
+        directoryCreated: false,
+        owner: null,
+        pending: Promise.resolve(),
+      }
+      FFmpegProcessor.inputMounts.set(this.ffmpeg, mount)
+    }
+    return mount
   }
 
   async mountInputFile(videoFile: VideoFile) {
-    this.inputFile = videoFile
-    this.inputFileName = this.inputDir + '/' + videoFile.file.name
-    console.log('🎬 FFmpeg: Mounting input file', {
-      inputFileName: this.inputFileName,
+    const mount = this.getInputMount()
+    const pending = mount.pending.then(async () => {
+      if (mount.owner) {
+        await this.ffmpeg.unmount(this.inputDir)
+        mount.owner.inputFile = null
+        mount.owner.inputFileName = null
+        mount.owner = null
+      }
+      if (!mount.directoryCreated) {
+        await this.ffmpeg.createDir(this.inputDir)
+        mount.directoryCreated = true
+      }
+      await this.ffmpeg.mount(
+        //@ts-expect-error - WORKERFS is not a valid FFFSType
+        'WORKERFS',
+        { files: [videoFile.file] },
+        this.inputDir,
+      )
+      this.inputFile = videoFile
+      this.inputFileName = this.inputDir + '/' + videoFile.file.name
+      mount.owner = this
     })
-    await this.ensureInputDir()
-    await this.ffmpeg.mount(
-      //@ts-expect-error - WORKERFS is not a valid FFFSType
-      'WORKERFS',
-      {
-        files: [videoFile.file],
-      },
-      this.inputDir,
-    )
+    mount.pending = pending.catch(() => {
+      // Keep the queue usable after this caller receives its mount error.
+    })
+    await pending
   }
 
   async unmountInputFile() {
-    if (!this.inputFileName) return
-    await this.ffmpeg.unmount(this.inputFileName)
-    this.inputFile = null
-    this.inputFileName = null
+    const mount = this.getInputMount()
+    const pending = mount.pending.then(async () => {
+      if (mount.owner !== this) return
+      await this.ffmpeg.unmount(this.inputDir)
+      this.inputFile = null
+      this.inputFileName = null
+      mount.owner = null
+    })
+    mount.pending = pending.catch(() => {
+      // Keep the queue usable after this caller receives its mount error.
+    })
+    await pending
+  }
+
+  private async exec(command: string[], signal?: AbortSignal) {
+    const exitCode = await this.ffmpeg.exec(command, -1, { signal })
+    if (exitCode !== 0) {
+      throw new Error(`FFmpeg exited with code ${exitCode}`)
+    }
   }
 
   private getFileExtension(filename: string): string {
@@ -241,6 +286,8 @@ export class FFmpegProcessor {
     try {
       // Use ffprobe to get detailed metadata in JSON format
       console.log('🎬 FFmpeg: Running ffprobe for detailed metadata')
+      // core-mt 0.12.10 leaves its status at -1 even when ffprobe succeeds;
+      // validate the emitted JSON instead of relying on that status value.
       await this.ffmpeg.ffprobe([
         '-v',
         'quiet',
@@ -560,7 +607,7 @@ export class FFmpegProcessor {
 
     const startTime = Date.now()
     try {
-      await this.ffmpeg.exec(command, -1, { signal: options.signal })
+      await this.exec(command, options.signal)
       const processingTime = Date.now() - startTime
       console.log(`🎬 FFmpeg: Conversion completed in ${processingTime}ms`)
     } catch (error) {
@@ -586,7 +633,7 @@ export class FFmpegProcessor {
       options,
     })
 
-    const outputFileName = `compressed.${this.getFileExtension(this.inputFileName ?? '')}`
+    const outputFileName = 'compressed.mp4'
 
     const command = [
       '-i',
@@ -620,7 +667,7 @@ export class FFmpegProcessor {
 
     const startTime = Date.now()
     try {
-      await this.ffmpeg.exec(command, -1, { signal: options.signal })
+      await this.exec(command, options.signal)
       const processingTime = Date.now() - startTime
       console.log(`🎬 FFmpeg: Compression completed in ${processingTime}ms`)
     } catch (error) {
@@ -634,10 +681,7 @@ export class FFmpegProcessor {
     console.log('🎬 FFmpeg: Video compression completed successfully')
     await this.ffmpeg.deleteFile(outputFileName)
 
-    return this.createBlobFromFFmpegOutput(
-      data,
-      this.inputFile?.type ?? 'video/mp4',
-    )
+    return this.createBlobFromFFmpegOutput(data, 'video/mp4')
   }
 
   async trimVideo(options: TrimOptions): Promise<Blob> {
@@ -729,7 +773,7 @@ export class FFmpegProcessor {
 
     console.log('🎬 FFmpeg: Executing trim command', { command, format })
     try {
-      await this.ffmpeg.exec(command, -1, { signal: options.signal })
+      await this.exec(command, options.signal)
     } catch (error) {
       console.error('🎬 FFmpeg: Trimming failed', error)
       await this.reloadFFmpeg()
@@ -790,7 +834,7 @@ export class FFmpegProcessor {
 
     console.log('🎬 FFmpeg: Executing audio extraction command', { command })
     try {
-      await this.ffmpeg.exec(command, -1, { signal: options.signal })
+      await this.exec(command, options.signal)
     } catch (error) {
       console.error('🎬 FFmpeg: Audio extraction failed', error)
       await this.reloadFFmpeg()
@@ -824,7 +868,7 @@ export class FFmpegProcessor {
 
     console.log('🎬 FFmpeg: Executing metadata stripping command', { command })
     try {
-      await this.ffmpeg.exec(command)
+      await this.exec(command)
     } catch (error) {
       console.error('🎬 FFmpeg: Metadata stripping failed', error)
       await this.reloadFFmpeg()

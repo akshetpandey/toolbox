@@ -11,7 +11,7 @@ const { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose } =
     const mockImage = {
       width: 1920,
       height: 1080,
-      format: { toString: () => 'JPEG' },
+      format: 'JPEG',
       colorSpace: { toString: () => 'sRGB' },
       depth: 8,
       compression: { toString: () => 'JPEG' },
@@ -25,6 +25,7 @@ const { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose } =
       resize: mockResize,
       write: mockWrite,
       autoOrient: mockAutoOrient,
+      resetPage: vi.fn(),
     }
     const mockCompressPNG = vi.fn()
     const mockDispose = vi.fn()
@@ -33,6 +34,16 @@ const { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose } =
 
 vi.mock('@imagemagick/magick-wasm', () => ({
   ImageMagick: {
+    readCollection: vi.fn(
+      (_data: Uint8Array, cb: (images: (typeof mockImage)[]) => unknown) =>
+        cb(
+          Object.assign([mockImage], {
+            coalesce: vi.fn(),
+            optimize: vi.fn(),
+            write: mockWrite,
+          }),
+        ),
+    ),
     read: vi.fn((_data: Uint8Array, cb: (img: typeof mockImage) => void) =>
       cb(mockImage),
     ),
@@ -42,6 +53,13 @@ vi.mock('@imagemagick/magick-wasm', () => ({
     Png: 'PNG',
     WebP: 'WEBP',
     Gif: 'GIF',
+  },
+  MagickGeometry: class {
+    ignoreAspectRatio = false
+    constructor(
+      public width: number,
+      public height: number,
+    ) {}
   },
   DitherMethod: {},
   ColorSpace: {},
@@ -77,10 +95,11 @@ beforeEach(() => {
   mockImage._quality = 85
   mockImage.width = 1920
   mockImage.height = 1080
+  mockImage.format = 'JPEG'
   // Default mock for write: returns small JPEG-like bytes
   mockWrite.mockImplementation(
     (_format: string, cb: (data: Uint8Array) => void) => {
-      cb(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00]))
+      return cb(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00]))
     },
   )
   processor = new ImageMagickProcessor()
@@ -133,7 +152,13 @@ describe('ImageMagickProcessor.resizeImage', () => {
       maintainAspectRatio: false,
     })
 
-    expect(mockResize).toHaveBeenCalledWith(800, 600)
+    expect(mockResize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        width: 800,
+        height: 600,
+        ignoreAspectRatio: true,
+      }),
+    )
     expect(blob).toBeInstanceOf(Blob)
     expect(blob.type).toBe('image/jpeg')
   })
@@ -147,9 +172,13 @@ describe('ImageMagickProcessor.resizeImage', () => {
       maintainAspectRatio: true,
     })
 
-    expect(mockResize).toHaveBeenCalledWith(800, expect.any(Number))
-    const [, height] = mockResize.mock.calls[0] as [number, number]
-    expect(height).toBeLessThan(600)
+    expect(mockResize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        width: 800,
+        height: 600,
+        ignoreAspectRatio: false,
+      }),
+    )
   })
 
   test('resizes maintaining aspect ratio (height-constrained)', async () => {
@@ -167,9 +196,13 @@ describe('ImageMagickProcessor.resizeImage', () => {
       maintainAspectRatio: true,
     })
 
-    expect(mockResize).toHaveBeenCalled()
-    const [width] = mockResize.mock.calls[0] as [number, number]
-    expect(width).toBeLessThan(800)
+    expect(mockResize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        width: 800,
+        height: 600,
+        ignoreAspectRatio: false,
+      }),
+    )
   })
 
   test('outputs JPEG format for JPEG input', async () => {
@@ -184,6 +217,7 @@ describe('ImageMagickProcessor.resizeImage', () => {
   })
 
   test('outputs PNG format for PNG input', async () => {
+    mockImage.format = 'PNG'
     const imageFile = makeImageFile({
       type: 'image/png',
       name: 'image.png',
@@ -199,6 +233,7 @@ describe('ImageMagickProcessor.resizeImage', () => {
   })
 
   test('outputs WebP format for WebP input', async () => {
+    mockImage.format = 'WEBP'
     const imageFile = makeImageFile({
       type: 'image/webp',
       name: 'image.webp',
@@ -288,6 +323,7 @@ describe('ImageMagickProcessor.compressImage', () => {
   })
 
   test('falls back to ImageMagick when libimagequant fails for PNG', async () => {
+    mockImage.format = 'PNG'
     mockCompressPNG.mockRejectedValue(new Error('Quantization failed'))
 
     const imageFile = makeImageFile({
@@ -311,6 +347,7 @@ describe('ImageMagickProcessor.compressImage', () => {
   })
 
   test('compresses WebP with ImageMagick', async () => {
+    mockImage.format = 'WEBP'
     const imageFile = makeImageFile({
       type: 'image/webp',
       name: 'photo.webp',

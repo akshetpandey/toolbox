@@ -112,7 +112,7 @@ function VideoFileUpload({
       selectedFiles={simpleFiles}
       onFileSelect={(files) => void onFileSelect(files)}
       onClearFiles={onClear}
-      acceptedTypes="video/*,.mkv"
+      acceptedTypes="video/*,.mp4,.webm,.avi,.mov,.mkv"
       title="Drop a video here"
       description="Supports MP4, WebM, AVI, MOV, MKV"
       supportedFormats={['MP4', 'WebM', 'AVI', 'MOV', 'MKV']}
@@ -207,6 +207,8 @@ function VideoToolsLayout() {
 
   // Create FFmpeg processor instance
   const ffmpegProcessorRef = useRef<FFmpegProcessor | null>(null)
+  const fileSelectionId = useRef(0)
+  const fileSelectionTask = useRef(Promise.resolve())
   const getFfmpegProcessor = useCallback(async (): Promise<FFmpegProcessor> => {
     if (ffmpegProcessorRef.current) {
       return ffmpegProcessorRef.current
@@ -220,6 +222,23 @@ function VideoToolsLayout() {
     ffmpegProcessorRef.current = proc
     return proc
   }, [isInitialized, ffmpeg, init])
+
+  const selectedPreview = selectedFiles[0]?.preview
+  useEffect(() => {
+    return () => {
+      if (selectedPreview) URL.revokeObjectURL(selectedPreview)
+    }
+  }, [selectedPreview])
+
+  useEffect(() => {
+    return () => {
+      fileSelectionId.current++
+      setIsProcessing(false)
+      void fileSelectionTask.current
+        .then(() => ffmpegProcessorRef.current?.unmountInputFile())
+        .catch(console.error)
+    }
+  }, [setIsProcessing])
 
   // Determine current tab from URL path
   const currentTab = useMemo(() => {
@@ -302,7 +321,12 @@ function VideoToolsLayout() {
       })
 
       const file = files[0]
-      if (file?.type.startsWith('video/') || file.name.endsWith('.mkv')) {
+      if (
+        file &&
+        (file.type.startsWith('video/') ||
+          /\.(mp4|webm|avi|mov|mkv)$/i.test(file.name))
+      ) {
+        const selectionId = ++fileSelectionId.current
         console.log('🎬 VideoTools: Processing video file', {
           name: file.name,
           size: file.size,
@@ -310,60 +334,62 @@ function VideoToolsLayout() {
         })
 
         const preview = URL.createObjectURL(file)
-
-        const video = document.createElement('video')
-        const videoMetadata = await new Promise<{
-          width: number
-          height: number
-          duration: number
-        }>((resolve) => {
-          video.onloadedmetadata = () => {
-            resolve({
-              width: video.videoWidth,
-              height: video.videoHeight,
-              duration: video.duration,
-            })
-          }
-          video.src = preview
-        })
-
-        const videoFile = {
+        const videoFile: VideoFile = {
           file,
           preview,
           name: file.name,
           size: file.size,
           type: file.type,
-          dimensions: {
-            width: videoMetadata.width,
-            height: videoMetadata.height,
-          },
-          duration: videoMetadata.duration,
         }
 
         setSelectedFiles([videoFile])
         setMetadata({})
 
-        if (!isInitialized) {
-          console.log('🎬 VideoTools: Initializing FFmpeg...')
-          await init()
-          console.log('🎬 VideoTools: FFmpeg initialization completed')
-        }
-
-        // Extract metadata
+        setIsProcessing(true)
+        // FFprobe supports containers/codecs the native <video> element cannot
+        // decode (including many AVI/MKV files). Preview support is optional.
         try {
-          const processor = await getFfmpegProcessor()
-          await processor.mountInputFile(videoFile)
-          const meta = await processor.extractMetadata()
-          setMetadata((prev) => ({ ...prev, [videoFile.name]: meta }))
+          const task = fileSelectionTask.current.then(async () => {
+            if (selectionId !== fileSelectionId.current) return
+            const processor = await getFfmpegProcessor()
+            if (selectionId !== fileSelectionId.current) return
+            await processor.mountInputFile(videoFile)
+            if (selectionId !== fileSelectionId.current) return
+            const meta = await processor.extractMetadata()
+            if (selectionId !== fileSelectionId.current) return
+            setMetadata({ [videoFile.name]: meta })
+            setSelectedFiles([
+              {
+                ...videoFile,
+                ...(meta.width > 0 && meta.height > 0
+                  ? { dimensions: { width: meta.width, height: meta.height } }
+                  : {}),
+                ...(Number.isFinite(meta.duration) && meta.duration > 0
+                  ? { duration: meta.duration }
+                  : {}),
+              },
+            ])
+          })
+          fileSelectionTask.current = task.catch(() => {
+            // The current caller reports errors; future selections may retry.
+          })
+          await task
         } catch (error) {
           console.error('🎬 VideoTools: Error extracting metadata:', error)
+        } finally {
+          if (selectionId === fileSelectionId.current) setIsProcessing(false)
         }
       }
     },
-    [isInitialized, init, getFfmpegProcessor],
+    [getFfmpegProcessor, setIsProcessing],
   )
 
   const clearSelectedFile = useCallback(() => {
+    fileSelectionId.current++
+    void fileSelectionTask.current
+      .then(() => ffmpegProcessorRef.current?.unmountInputFile())
+      .catch(console.error)
+    setIsProcessing(false)
     setSelectedFiles([])
     setMetadata({})
     setProgress(0)
@@ -372,7 +398,7 @@ function VideoToolsLayout() {
     setElapsedTime(null)
     setShowSlowProcessingWarning(false)
     setCurrentAbortController(null)
-  }, [])
+  }, [setIsProcessing])
 
   const cancelProcessing = useCallback(() => {
     if (currentAbortController) {

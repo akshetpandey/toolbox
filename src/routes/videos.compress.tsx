@@ -118,9 +118,7 @@ function VideoCompressComponent() {
         /\.[^/.]+$/,
         '',
       ) // Remove extension
-      const extension =
-        ffmpegProcessor.inputFile?.name.split('.').pop() ?? 'mp4'
-      const filename = `${originalName}_compressed.${extension}`
+      const filename = `${originalName}_compressed.mp4`
 
       // Download the file directly
       downloadFile(URL.createObjectURL(blob), filename)
@@ -222,6 +220,9 @@ function VideoCompressComponent() {
         )}
 
         <div className="flex flex-col gap-6">
+          <p className="text-xs text-muted-foreground">
+            Downloads as MP4 with H.264 video and AAC audio.
+          </p>
           {/* Quality Settings */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Quality (CRF)</Label>

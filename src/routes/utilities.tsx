@@ -4,7 +4,7 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
@@ -65,13 +65,39 @@ function UtilitiesLayout() {
   const { isProcessing, setIsProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedFile, setSelectedFile] = useState<UploadedFile | null>(null)
+  const [selectedFile, updateSelectedFile] = useState<UploadedFile | null>(null)
+  const selectedFileRef = useRef<UploadedFile | null>(null)
   const [fileMetadata, setFileMetadata] = useState<FileMetadata | null>(null)
   const [exifMetadata, setExifMetadata] = useState<ExifMetadata>({})
   const [fileHashes, setFileHashes] = useState<FileHashes | null>(null)
   const [expectedHash, setExpectedHash] = useState('')
   const [isExtractingExif, setIsExtractingExif] = useState(false)
   const [hashProgress, setHashProgress] = useState(0)
+
+  const setSelectedFile = useCallback(
+    (file: UploadedFile | null) => {
+      // Invalidate the previous selection immediately, before its async work
+      // has a chance to publish results into the next render.
+      selectedFileRef.current = file
+      updateSelectedFile(file)
+      setFileMetadata(null)
+      setExifMetadata({})
+      setFileHashes(null)
+      setExpectedHash('')
+      setIsExtractingExif(false)
+      setHashProgress(0)
+      setIsProcessing(false)
+    },
+    [setIsProcessing],
+  )
+
+  useEffect(
+    () => () => {
+      selectedFileRef.current = null
+      setIsProcessing(false)
+    },
+    [setIsProcessing],
+  )
 
   // Determine current tab from URL path
   const currentTab = useMemo(() => {
@@ -93,41 +119,38 @@ function UtilitiesLayout() {
     [navigate, isProcessing],
   )
 
-  const handleFileSelect = useCallback(async (files: FileList) => {
-    console.log('🔧 UtilitiesTools: File selection started', {
-      fileCount: files.length,
-    })
-
-    // Only take the first file
-    const file = files[0]
-    if (file) {
-      console.log('🔧 UtilitiesTools: Processing file', {
-        name: file.name,
-        size: file.size,
-        type: file.type,
+  const handleFileSelect = useCallback(
+    async (files: FileList) => {
+      console.log('🔧 UtilitiesTools: File selection started', {
+        fileCount: files.length,
       })
 
-      const uploadedFile: UploadedFile = {
-        file,
-        name: file.name,
-        size: file.size,
-        type: file.type,
+      // Only take the first file
+      const file = files[0]
+      if (file) {
+        console.log('🔧 UtilitiesTools: Processing file', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        })
+
+        const uploadedFile: UploadedFile = {
+          file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        }
+
+        setSelectedFile(uploadedFile)
+
+        console.log('🔧 UtilitiesTools: File selection completed successfully')
+
+        await generateHashes(uploadedFile)
+        await extractMetadata(uploadedFile)
       }
-
-      setSelectedFile(uploadedFile)
-      setFileMetadata(null)
-      setExifMetadata({})
-      setFileHashes(null)
-      setExpectedHash('')
-      setIsExtractingExif(false)
-      setHashProgress(0)
-
-      console.log('🔧 UtilitiesTools: File selection completed successfully')
-
-      await generateHashes(uploadedFile)
-      await extractMetadata(uploadedFile)
-    }
-  }, [])
+    },
+    [setSelectedFile],
+  )
 
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
@@ -144,53 +167,51 @@ function UtilitiesLayout() {
   }, [])
 
   const generateHashes = async (file: UploadedFile) => {
+    if (selectedFileRef.current !== file) return
     setIsProcessing(true)
     setHashProgress(0)
 
     try {
       const hashes = await calculateFileHashes(file.file, (progress) => {
-        setHashProgress(progress)
+        if (selectedFileRef.current === file) setHashProgress(progress)
       })
-      setFileHashes(hashes)
+      if (selectedFileRef.current === file) setFileHashes(hashes)
     } catch (error) {
       console.error('🔧 UtilitiesTools: Error generating hashes:', error)
     } finally {
-      setIsProcessing(false)
-      setHashProgress(0)
+      if (selectedFileRef.current === file) {
+        setIsProcessing(false)
+        setHashProgress(0)
+      }
     }
   }
 
   const extractMetadata = async (file: UploadedFile) => {
+    if (selectedFileRef.current !== file) return
     setIsProcessing(true)
 
     try {
       // Extract file metadata using wasmagic
       const metadata = await extractFileMetadata(file.file)
+      if (selectedFileRef.current !== file) return
       setFileMetadata(metadata)
 
       // Extract EXIF metadata if it's an image
       if (file.type.startsWith('image/')) {
-        const exifData = await extractExifMetadata(
-          file.file,
-          setIsExtractingExif,
-        )
-        setExifMetadata(exifData)
+        const exifData = await extractExifMetadata(file.file, (extracting) => {
+          if (selectedFileRef.current === file) setIsExtractingExif(extracting)
+        })
+        if (selectedFileRef.current === file) setExifMetadata(exifData)
       }
     } catch (error) {
       console.error('🔧 UtilitiesTools: Error extracting metadata:', error)
     } finally {
-      setIsProcessing(false)
+      if (selectedFileRef.current === file) setIsProcessing(false)
     }
   }
 
   const clearFile = () => {
     setSelectedFile(null)
-    setFileMetadata(null)
-    setExifMetadata({})
-    setFileHashes(null)
-    setExpectedHash('')
-    setIsExtractingExif(false)
-    setHashProgress(0)
   }
 
   // Context value

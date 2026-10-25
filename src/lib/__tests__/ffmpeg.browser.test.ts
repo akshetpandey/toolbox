@@ -6,6 +6,7 @@
  * Run with: pnpm vitest --config vitest.browser.config.ts
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest'
+import { FFmpegProcessor, type VideoFile } from '../ffmpeg'
 
 // ─── FFmpeg Setup ───────────────────────────────────────────────────────────
 
@@ -38,6 +39,88 @@ beforeAll(async () => {
 
 afterAll(() => {
   ffmpeg?.terminate()
+})
+
+describe('FFmpegProcessor with real WASM', () => {
+  async function fixtureVideo(name: string): Promise<VideoFile> {
+    const type = name.endsWith('.webm') ? 'video/webm' : 'video/mp4'
+    const file = new File([(await loadFixture(name)).slice()], name, { type })
+    return { file, name, type, size: file.size, preview: '' }
+  }
+
+  test('replaces WORKERFS input and reuses the worker after a layout remount', async () => {
+    const processor = new FFmpegProcessor(ffmpeg)
+    const nextProcessor = new FFmpegProcessor(ffmpeg)
+    try {
+      await processor.mountInputFile(await fixtureVideo('sample.mp4'))
+      await processor.mountInputFile(await fixtureVideo('sample.webm'))
+      expect(
+        (await processor.extractMetadata()).video_streams[0].codec_name,
+      ).toBe('vp8')
+      await nextProcessor.mountInputFile(await fixtureVideo('sample.mp4'))
+      expect(processor.inputFile).toBeNull()
+      await processor.unmountInputFile()
+      expect(
+        (await nextProcessor.extractMetadata()).video_streams[0].codec_name,
+      ).toBe('h264')
+    } finally {
+      await nextProcessor.unmountInputFile()
+      await processor.unmountInputFile()
+    }
+  })
+
+  test('compresses WebM to a readable MP4 with matching MIME and codecs', async () => {
+    const processor = new FFmpegProcessor(ffmpeg)
+    try {
+      await processor.mountInputFile(await fixtureVideo('sample.webm'))
+      const blob = await processor.compressVideo({
+        crf: 28,
+        preset: 'ultrafast',
+      })
+      expect(blob.type).toBe('video/mp4')
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      expect(new TextDecoder().decode(bytes.slice(4, 8))).toBe('ftyp')
+      const file = new File([blob], 'compressed.mp4', { type: blob.type })
+      await processor.mountInputFile({
+        file,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        preview: '',
+      })
+      const metadata = await processor.extractMetadata()
+      expect(metadata.video_streams[0].codec_name).toBe('h264')
+      expect(metadata.audio_streams[0].codec_name).toBe('aac')
+      expect(metadata.duration).toBeGreaterThan(0)
+    } finally {
+      await processor.unmountInputFile()
+    }
+  })
+
+  test('rejects a failed encoder instead of returning a partial download', async () => {
+    const processor = new FFmpegProcessor(ffmpeg)
+    try {
+      const file = new File(['invalid video bytes'], 'broken.mp4', {
+        type: 'video/mp4',
+      })
+      await processor.mountInputFile({
+        file,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        preview: '',
+      })
+      await expect(
+        processor.compressVideo({ crf: 28, preset: 'ultrafast' }),
+      ).rejects.toThrow('FFmpeg exited with code')
+      await processor.mountInputFile(await fixtureVideo('sample.mp4'))
+      expect(
+        (await processor.extractMetadata()).video_streams[0].codec_name,
+      ).toBe('h264')
+    } finally {
+      await processor.unmountInputFile()
+    }
+  })
 })
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

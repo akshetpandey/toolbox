@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core.ts'
 import { pandocWasmPlugin } from './vite-plugin-pandoc-wasm.ts'
+import { wasmPreviewPlugin } from './vite-plugin-wasm-preview.ts'
 
 export default defineConfig({
   build: {
@@ -66,6 +67,7 @@ export default defineConfig({
   plugins: [
     ffmpegCorePlugin(),
     pandocWasmPlugin(),
+    wasmPreviewPlugin(),
     tailwindcss(),
     tanstackRouter({ target: 'react', autoCodeSplitting: false }),
     react(),
