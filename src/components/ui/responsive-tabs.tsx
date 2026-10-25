@@ -1,4 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useId } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
 interface TabItem {
@@ -7,7 +7,6 @@ interface TabItem {
   icon: LucideIcon
   disabled?: boolean
 }
-
 interface ResponsiveTabsProps {
   tabs: TabItem[]
   currentTab: string
@@ -23,43 +22,27 @@ export function ResponsiveTabs({
   isProcessing = false,
   className = '',
 }: ResponsiveTabsProps) {
+  const id = useId()
+  if (tabs.length < 2) return null
   return (
-    <Tabs
-      value={currentTab}
-      onValueChange={onTabChange}
-      className={`w-full ${className}`}
-    >
-      {/* Mobile: Horizontal scrolling tabs */}
-      <div className="lg:hidden relative">
-        <TabsList className="w-full flex overflow-x-auto scrollbar-hide gap-1 py-1 justify-start">
-          {tabs.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              disabled={isProcessing || tab.disabled}
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap min-w-25 px-3 py-2 shrink-0"
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </div>
-
-      {/* Desktop: Grid layout tabs */}
-      <TabsList className={`hidden lg:flex w-full`}>
+    <div className={`xl:hidden ${className}`}>
+      <label htmlFor={id} className="mb-2 block text-sm font-medium">
+        Tool
+      </label>
+      <select
+        id={id}
+        value={currentTab}
+        disabled={isProcessing}
+        onChange={(event) => onTabChange(event.target.value)}
+        className="h-12 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-base focus-ring disabled:opacity-50"
+      >
         {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.value}
-            value={tab.value}
-            disabled={isProcessing || tab.disabled}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <tab.icon className="w-4 h-4" />
+          <option key={tab.value} value={tab.value} disabled={tab.disabled}>
             {tab.label}
-          </TabsTrigger>
+            {tab.disabled ? ' · Coming soon' : ''}
+          </option>
         ))}
-      </TabsList>
-    </Tabs>
+      </select>
+    </div>
   )
 }

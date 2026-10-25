@@ -5,6 +5,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
@@ -65,12 +66,23 @@ function UtilitiesLayout() {
   const { isProcessing, setIsProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedFile, updateSelectedFile] = useState<UploadedFile | null>(null)
-  const selectedFileRef = useRef<UploadedFile | null>(null)
-  const [fileMetadata, setFileMetadata] = useState<FileMetadata | null>(null)
-  const [exifMetadata, setExifMetadata] = useState<ExifMetadata>({})
-  const [fileHashes, setFileHashes] = useState<FileHashes | null>(null)
-  const [expectedHash, setExpectedHash] = useState('')
+  const [selectedFile, updateSelectedFile] =
+    useWorkspaceState<UploadedFile | null>('utilities.file', null)
+  const selectedFileRef = useRef<UploadedFile | null>(selectedFile)
+  const [fileMetadata, setFileMetadata] =
+    useWorkspaceState<FileMetadata | null>('utilities.metadata', null)
+  const [exifMetadata, setExifMetadata] = useWorkspaceState<ExifMetadata>(
+    'utilities.exif',
+    {},
+  )
+  const [fileHashes, setFileHashes] = useWorkspaceState<FileHashes | null>(
+    'utilities.hashes',
+    null,
+  )
+  const [expectedHash, setExpectedHash] = useWorkspaceState(
+    'utilities.expected-hash',
+    '',
+  )
   const [isExtractingExif, setIsExtractingExif] = useState(false)
   const [hashProgress, setHashProgress] = useState(0)
 
@@ -290,7 +302,7 @@ function UtilitiesLayout() {
   return (
     <UtilitiesContext.Provider value={contextValue}>
       <ToolLayout
-        title="Utilities"
+        title={currentTab === 'hash' ? 'File checksums' : 'File metadata'}
         icon={Settings}
         iconColor="text-orange-500"
         iconBgColor="bg-gradient-to-br from-orange-500/10 to-orange-500/5"

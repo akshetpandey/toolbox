@@ -22,9 +22,9 @@ code {
 }
 
 :root {
-  /* Apple-inspired color palette */
-  --background: oklch(0.99 0.002 285.823);
-  --foreground: oklch(0.15 0.005 285.823);
+  /* Shared surfaces and semantic colors. */
+  --background: oklch(0.98 0.004 250);
+  --foreground: oklch(0.23 0.025 250);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.15 0.005 285.823);
   --popover: oklch(1 0 0);
@@ -34,20 +34,20 @@ code {
   --secondary: oklch(0.97 0.003 285.823);
   --secondary-foreground: oklch(0.25 0.005 285.823);
   --muted: oklch(0.96 0.002 285.823);
-  --muted-foreground: oklch(0.45 0.01 285.823);
+  --muted-foreground: oklch(0.46 0.025 250);
   --accent: oklch(0.95 0.02 250);
   --accent-foreground: oklch(0.25 0.005 285.823);
-  --destructive: oklch(0.65 0.25 25);
+  --destructive: oklch(0.52 0.2 25);
   --destructive-foreground: oklch(0.99 0.002 285.823);
-  --border: oklch(0.92 0.003 285.823);
-  --input: oklch(0.94 0.002 285.823);
+  --border: oklch(0.89 0.01 250);
+  --input: oklch(0.84 0.014 250);
   --ring: oklch(0.55 0.15 250);
   --chart-1: oklch(0.65 0.22 250);
   --chart-2: oklch(0.6 0.15 180);
   --chart-3: oklch(0.7 0.18 120);
   --chart-4: oklch(0.75 0.2 60);
   --chart-5: oklch(0.8 0.15 300);
-  --radius: 0.75rem;
+  --radius: 0.625rem;
 
   /* Sidebar colors */
   --sidebar: oklch(0.98 0.001 285.823);
@@ -151,117 +151,99 @@ code {
   }
 }
 
-/* Custom animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: calc(200px + 100%) 0;
-  }
-}
-
-/* Utility classes */
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-.animate-scale-in {
-  animation: scaleIn 0.2s ease-out;
-}
-
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-}
-
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-}
-
+/* Restrained shared surfaces keep attention on files and controls. */
+.glass,
+.glass-card,
 .flat-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: none;
 }
 
-.shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    oklch(1 0 0 / 0.1),
-    transparent
-  );
-  background-size: 200px 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-/* Enhanced focus states */
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
 }
 
-/* Professional typography */
+:where(a, button, input, select, summary, textarea):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+:where(button, a) {
+  touch-action: manipulation;
+}
+
+input[type='range'] {
+  min-height: 44px;
+  cursor: pointer;
+}
+
 .text-display {
-  @apply text-4xl font-bold tracking-tight;
+  @apply text-4xl font-semibold tracking-tight;
 }
-
 .text-heading {
   @apply text-2xl font-semibold tracking-tight;
 }
-
 .text-subheading {
-  @apply text-lg font-medium tracking-tight;
+  @apply text-lg font-semibold;
 }
-
 .text-body {
   @apply text-base leading-relaxed;
 }
-
 .text-caption {
   @apply text-sm text-muted-foreground;
+}
+
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 100;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.skip-link:focus {
+  top: 12px;
+}
+.tool-drawer:not([open]) {
+  display: none;
+}
+.file-summary img {
+  max-height: 144px;
+  object-fit: contain;
+}
+.file-summary video {
+  max-height: 180px;
+  width: 100%;
+}
+.file-summary :where(p, span) {
+  overflow-wrap: anywhere;
+}
+.editor-file-summary .file-summary img {
+  max-height: 80px;
+}
+:where([data-slot='checkbox'] + label) {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 639px) {
+  .file-summary img {
+    max-height: 96px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Custom slider styling */

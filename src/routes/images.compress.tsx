@@ -1,12 +1,15 @@
+import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import { ResultCard, useToolResult } from '@/components/ResultCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { type ImageCompressOptions } from '@/lib/imagemagick'
-import { createObjectURL, revokeObjectURL, downloadFile } from '@/lib/shared'
+import { downloadBlob } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
@@ -42,9 +45,16 @@ export const Route = createFileRoute('/images/compress')({
 })
 
 function CompressPage() {
-  const { selectedFile, imageMagickProcessor } = useImageTools()
-  const { isProcessing, setIsProcessing } = useProcessing()
-  const [quality, setQuality] = useState(85)
+  const { selectedFile, imageMagickProcessor, clearSelectedFile } =
+    useImageTools()
+  const { isProcessing } = useProcessing()
+  const beginOperation = useFileOperation(selectedFile?.file)
+  const [quality, setQuality] = useWorkspaceState('images.compress.quality', 85)
+  const [error, setError] = useState<string | null>(null)
+  const { result, setResult } = useToolResult(
+    selectedFile?.file,
+    'images.compress',
+  )
 
   const compressImage = async (imageFile: typeof selectedFile) => {
     if (!imageFile) {
@@ -57,7 +67,8 @@ function CompressPage() {
       quality,
     })
 
-    setIsProcessing(true)
+    const operation = beginOperation()
+    setError(null)
 
     try {
       const options: ImageCompressOptions = {
@@ -69,6 +80,7 @@ function CompressPage() {
         options,
       )
       const blob = await imageMagickProcessor.compressImage(imageFile, options)
+      if (!operation.isCurrent()) return
       console.log('🖼️ CompressTool: Compression completed', {
         originalSize: imageFile.size,
         newSize: blob.size,
@@ -77,55 +89,97 @@ function CompressPage() {
           '%',
       })
 
-      const url = createObjectURL(blob)
-      downloadFile(url, `compressed_${imageFile.name}`)
-      revokeObjectURL(url)
+      const filename = `compressed_${imageFile.name}`
+      setResult({
+        blob,
+        filename,
+        sourceSize: imageFile.size,
+        details: imageFile.dimensions
+          ? [
+              `${imageFile.dimensions.width} × ${imageFile.dimensions.height} px`,
+            ]
+          : [],
+      })
+      downloadBlob(blob, filename)
 
       console.log('🖼️ CompressTool: Compression successful - file downloaded')
-      setIsProcessing(false)
     } catch (error) {
+      if (!operation.isCurrent()) return
       console.error('🖼️ CompressTool: Error during compression:', error)
-      setIsProcessing(false)
+      setError(
+        'This image could not be compressed. Try another format or choose another image.',
+      )
+    } finally {
+      operation.finish()
     }
   }
 
   return (
-    <Card className="glass-card border-0">
-      <CardContent className="p-6 flex flex-col gap-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="quality" className="text-sm font-medium">
-              Quality: {quality}%
-            </Label>
-          </div>
-          <Input
-            id="quality"
-            type="range"
-            min="1"
-            max="100"
-            value={quality}
-            onChange={(e) => setQuality(parseInt(e.target.value))}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Smaller file</span>
-            <span>Better quality</span>
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            onClick={() => void compressImage(selectedFile)}
-            disabled={isProcessing || !selectedFile}
-            className="bg-orange-500 hover:bg-orange-600"
+    <div className="flex min-w-0 flex-col gap-5">
+      <Card>
+        <CardContent className="p-4 sm:p-6 flex flex-col gap-5">
+          <div
+            className="flex flex-wrap gap-2"
+            aria-label="Compression presets"
           >
-            {isProcessing ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Download
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            {[
+              ['Smaller file', 60],
+              ['Balanced', 85],
+              ['Higher quality', 95],
+            ].map(([label, value]) => (
+              <Button
+                key={label}
+                variant={quality === value ? 'default' : 'outline'}
+                aria-pressed={quality === value}
+                disabled={isProcessing}
+                onClick={() => setQuality(Number(value))}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="quality" className="text-sm font-medium">
+                Quality: {quality}%
+              </Label>
+            </div>
+            <Input
+              id="quality"
+              type="range"
+              min="1"
+              max="100"
+              value={quality}
+              onChange={(e) => setQuality(parseInt(e.target.value))}
+              disabled={isProcessing}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Smaller file</span>
+              <span>Better quality</span>
+            </div>
+          </div>
+
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => void compressImage(selectedFile)}
+              disabled={isProcessing || !selectedFile}
+              className="w-full sm:w-auto"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Compress & download
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      <ResultCard result={result} onReset={clearSelectedFile} />
+    </div>
   )
 }

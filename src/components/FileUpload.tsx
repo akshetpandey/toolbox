@@ -1,17 +1,14 @@
-import { useRef } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Upload, FileImage } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { formatFileSize } from '@/lib/shared'
 
 interface FileItem {
   name: string
   size?: number
-  // Allow additional properties for different file types including complex objects
   [key: string]: string | number | boolean | undefined | object
 }
-
 interface FileUploadProps {
   selectedFiles: FileItem[]
   onFileSelect: (files: FileList) => void
@@ -22,8 +19,10 @@ interface FileUploadProps {
   supportedFormats: string[]
   emptyStateIcon?: LucideIcon
   selectedFileIcon?: LucideIcon
-  children?: React.ReactNode // For custom file display
-  multiple?: boolean // Allow multiple file selection
+  children?: React.ReactNode
+  multiple?: boolean
+  selectedActionLabel?: string
+  disabled?: boolean
 }
 
 export function FileUpload({
@@ -38,140 +37,110 @@ export function FileUpload({
   selectedFileIcon: SelectedIcon = FileImage,
   children,
   multiple = false,
+  selectedActionLabel = 'Change file',
+  disabled = false,
 }: FileUploadProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    if (e.dataTransfer.files) {
-      onFileSelect(e.dataTransfer.files)
-    }
+  const input = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const selected = selectedFiles.length > 0
+  const choose = () => {
+    if (!disabled) input.current?.click()
   }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-  }
-
-  const handleClick = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleChooseFile = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-    handleClick()
-  }
-
   return (
-    <Card className="glass-card border-0 animate-fade-in h-full">
-      <CardContent className="p-4 sm:p-6 h-full">
-        {selectedFiles.length === 0 ? (
-          // Upload interface when no files are selected
-          <div
-            className="border-2 border-dashed border-primary/20 rounded-xl p-4 sm:p-6 text-center hover:border-primary/40 transition-all duration-300 cursor-pointer group h-full flex flex-col justify-center min-h-50 lg:min-h-0"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={handleClick}
-          >
-            <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <EmptyIcon className="h-6 w-6 text-primary" />
+    <section
+      aria-label={selected ? 'Selected files' : 'Choose files'}
+      className={`file-upload min-w-0 rounded-xl border bg-card ${dragging ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+      onDragOver={(event) => {
+        event.preventDefault()
+        if (!disabled) setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault()
+        setDragging(false)
+        if (!disabled && event.dataTransfer.files.length)
+          onFileSelect(event.dataTransfer.files)
+      }}
+    >
+      {selected ? (
+        <div className="file-summary min-w-0 p-4">
+          {selectedFiles.length > 1 && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <SelectedIcon
+                  aria-hidden="true"
+                  className="size-4 text-muted-foreground"
+                />
+                {selectedFiles.length} selected files
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {title}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">{description}</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {supportedFormats.map((format) => (
-                <Badge key={format} variant="secondary" className="text-xs">
-                  {format}
-                </Badge>
+          )}
+          {children ?? (
+            <ul className="space-y-3">
+              {selectedFiles.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="min-w-0">
+                  <p className="break-all text-sm font-medium">{file.name}</p>
+                  {file.size !== undefined && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {formatFileSize(file.size)}
+                    </p>
+                  )}
+                </li>
               ))}
-            </div>
+            </ul>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={handleChooseFile}
-              className="mt-4 self-center"
+              disabled={disabled}
+              onClick={choose}
+              className="flex-1"
             >
-              Choose {multiple ? 'files' : 'file'}
+              <Upload aria-hidden="true" />
+              {selectedActionLabel}
+            </Button>
+            <Button variant="ghost" disabled={disabled} onClick={onClearFiles}>
+              Clear
             </Button>
           </div>
-        ) : (
-          // Display uploaded file(s)
-          <div
-            className="border-2 border-dashed border-primary/20 rounded-xl p-4 hover:border-primary/40 transition-all duration-300 cursor-pointer group"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={handleClick}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-linear-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
-                  <SelectedIcon className="h-3 w-3 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-foreground">
-                  Selected File{selectedFiles.length > 1 ? 's' : ''}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClearFiles()
-                }}
-                className="hover:bg-red-500 hover:text-red-foreground text-xs"
-              >
-                Clear
-              </Button>
-            </div>
-
-            {/* Custom file display or default */}
-            {children ?? (
-              <div className="flex flex-col gap-2">
-                {selectedFiles.map((file, index) => (
-                  <div key={file.name ?? index} className="flex flex-col gap-2">
-                    <div className="flex flex-col gap-1">
-                      <p className="font-medium text-foreground truncate text-sm">
-                        {file.name}
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
-                          {file.size
-                            ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
-                            : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleChooseFile}
-                className="w-full gap-2 text-xs text-muted-foreground"
-              >
-                <Upload className="w-3 h-3" />
-                Change {multiple ? 'files' : 'file'}
-              </Button>
-            </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center rounded-xl border border-dashed border-primary/25 p-5 text-center sm:p-6">
+          <div className="mb-4 flex size-11 items-center justify-center rounded-lg bg-accent">
+            <EmptyIcon aria-hidden="true" className="size-5 text-primary" />
           </div>
-        )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          aria-label={multiple ? 'Upload files' : 'Upload file'}
-          accept={acceptedTypes}
-          multiple={multiple}
-          className="hidden"
-          onChange={(e) => e.target.files && onFileSelect(e.target.files)}
-        />
-      </CardContent>
-    </Card>
+          <h2 className="text-base font-semibold">{title}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+          <Button
+            type="button"
+            disabled={disabled}
+            onClick={choose}
+            className="mt-5"
+          >
+            <Upload aria-hidden="true" />
+            Choose {multiple ? 'files' : 'file'}
+          </Button>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            {supportedFormats.join(' · ')} · or drop{' '}
+            {multiple ? 'files' : 'a file'} here
+          </p>
+        </div>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept={acceptedTypes}
+        multiple={multiple}
+        disabled={disabled}
+        aria-label={multiple ? 'Upload files' : 'Upload file'}
+        className="hidden"
+        onChange={(event) => {
+          if (event.target.files?.length && !disabled)
+            onFileSelect(event.target.files)
+          event.target.value = ''
+        }}
+      />
+    </section>
   )
 }

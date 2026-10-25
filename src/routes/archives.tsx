@@ -25,8 +25,8 @@ import {
 } from 'lucide-react'
 
 const archiveTabs = [
-  { value: 'compress', label: 'Compress', icon: Package },
-  { value: 'extract', label: 'Extract', icon: FileArchive },
+  { value: 'compress', label: 'Create archive', icon: Package },
+  { value: 'extract', label: 'Extract archive', icon: FileArchive },
 ]
 
 export const Route = createFileRoute('/archives')({
@@ -114,18 +114,11 @@ function ArchiveToolsContent() {
       const archiveFiles: ArchiveFile[] = []
 
       for (const file of files) {
-        let preview: string | undefined
-
-        if (file.type.startsWith('image/')) {
-          preview = URL.createObjectURL(file)
-        }
-
         archiveFiles.push({
           file,
           name: file.name,
           size: file.size,
           type: file.type,
-          preview,
         })
       }
 
@@ -188,18 +181,20 @@ function ArchiveToolsContent() {
       supportedFormats={['All Files']}
       emptyStateIcon={Upload}
       selectedFileIcon={FileIcon}
-      multiple={true}
+      multiple
+      selectedActionLabel="Add files"
+      disabled={isProcessing}
     >
       {selectedFiles.length > 0 && (
         <div className="flex flex-col gap-2">
           {selectedFiles.map((file, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
+              className="flex min-w-0 items-start gap-3 rounded-lg border p-3"
             >
               <FileIcon className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="text-sm font-medium text-foreground [overflow-wrap:anywhere]">
                   {file.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -208,10 +203,15 @@ function ArchiveToolsContent() {
               </div>
               <button
                 type="button"
-                onClick={() => removeFile(index)}
-                className="p-1 hover:bg-muted rounded"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  removeFile(index)
+                }}
+                aria-label={`Remove ${file.name}`}
+                disabled={isProcessing}
+                className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"
               >
-                <X className="h-4 w-4" />
+                <X aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
           ))}
@@ -242,13 +242,14 @@ function ArchiveToolsContent() {
       supportedFormats={['7Z', 'ZIP', 'TAR', 'GZIP', 'RAR']}
       emptyStateIcon={Upload}
       selectedFileIcon={FileArchive}
+      disabled={isProcessing}
     >
       {uploadedArchive && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+          <div className="flex min-w-0 items-start gap-3 rounded-lg border p-3">
             <FileArchive className="h-8 w-8 text-primary" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
+              <p className="text-sm font-medium text-foreground [overflow-wrap:anywhere]">
                 {uploadedArchive.name}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -274,10 +275,10 @@ function ArchiveToolsContent() {
 
   return (
     <ToolLayout
-      title="Archive Tools"
+      title={currentTab === 'compress' ? 'Create archive' : 'Extract archive'}
       icon={Archive}
-      iconColor="text-purple-500"
-      iconBgColor="bg-gradient-to-br from-purple-500/10 to-purple-500/5"
+      iconColor="text-primary"
+      iconBgColor="bg-primary/10"
       fileUploadComponent={
         currentTab === 'compress' ? compressFileUpload : extractFileUpload
       }

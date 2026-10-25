@@ -2,17 +2,16 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useVideoTools } from '@/contexts/VideoToolsContext'
-import { formatFileSize, formatDuration, downloadBlob } from '@/lib/shared'
+import { ResultCard } from '@/components/ResultCard'
+import { useVideoAction, VideoActionStatus } from '@/lib/videoToolsUtils'
+import { formatFileSize, formatDuration } from '@/lib/shared'
 import {
   Info,
   Video as VideoIcon,
   Volume2,
-  Download,
   ShieldOff,
   Loader2,
 } from 'lucide-react'
-import { useState } from 'react'
 
 export const Route = createFileRoute('/videos/metadata')({
   component: VideoMetadataComponent,
@@ -46,47 +45,26 @@ export const Route = createFileRoute('/videos/metadata')({
 })
 
 function VideoMetadataComponent() {
-  const {
-    selectedFile,
-    metadata,
-    ffmpegProcessor,
-    isProcessing,
-    setIsProcessing,
-  } = useVideoTools()
-  const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
-
-  const handleStripMetadata = async () => {
-    if (!selectedFile || !ffmpegProcessor) return
-
-    try {
-      setIsStrippingMetadata(true)
-      setIsProcessing(true)
-
-      console.log(
-        '🎬 MetadataPage: Starting metadata stripping for',
-        selectedFile.name,
-      )
-
-      const blob = await ffmpegProcessor.stripMetadata()
-      const filename = `no-metadata_${selectedFile.name}`
-
-      downloadBlob(blob, filename)
-
-      console.log('🎬 MetadataPage: Metadata stripping completed successfully')
-    } catch (error) {
-      console.error('🎬 MetadataPage: Error stripping metadata:', error)
-      alert('Failed to strip metadata. Please try again.')
-    } finally {
-      setIsStrippingMetadata(false)
-      setIsProcessing(false)
-    }
-  }
+  const action = useVideoAction(
+    'videos.metadata',
+    'Metadata could not be removed. Try another video or choose a different output format first.',
+  )
+  const { selectedFile, metadata, isProcessing } = action
+  const isStrippingMetadata = isProcessing
+  const handleStripMetadata = () =>
+    action.run(async (processor) => ({
+      blob: await processor.stripMetadata(),
+      filename: `no-metadata_${selectedFile!.name}`,
+      details: [
+        'Descriptive metadata removed. Container and codec information remains.',
+      ],
+    }))
 
   if (!selectedFile) {
     return (
-      <Card className="glass-card border-0">
-        <CardContent className="p-6">
-          <div className="text-center text-muted-foreground">
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardContent className="p-0">
+          <div className="text-sm text-muted-foreground">
             Please select a video file to view its metadata
           </div>
         </CardContent>
@@ -98,10 +76,10 @@ function VideoMetadataComponent() {
 
   if (!fileMetadata) {
     return (
-      <Card className="glass-card border-0">
-        <CardContent className="p-6">
-          <div className="text-center text-muted-foreground">
-            Extracting metadata...
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardContent className="p-0">
+          <div className="text-sm text-muted-foreground">
+            Video information will appear once preparation finishes.
           </div>
         </CardContent>
       </Card>
@@ -109,19 +87,33 @@ function VideoMetadataComponent() {
   }
 
   return (
-    <Card className="glass-card border-0">
-      <CardContent className="p-6">
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardContent className="p-0">
         <div className="flex flex-col gap-6">
+          <VideoActionStatus
+            label="Removing metadata"
+            cancellable={false}
+            error={action.error}
+            diagnostic={action.diagnostic}
+          />
+          <ResultCard
+            result={action.result}
+            onReset={action.busy ? undefined : action.clearSelectedFile}
+          />
+          <p className="text-sm text-muted-foreground">
+            View the video’s technical details or remove descriptive metadata
+            without re-encoding.
+          </p>
           {/* Format Information */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Info className="h-5 w-5 text-blue-500" />
                 Format Information
               </h3>
               <Button
                 onClick={() => void handleStripMetadata()}
-                disabled={isStrippingMetadata || isProcessing}
+                disabled={action.busy}
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2"
@@ -131,13 +123,10 @@ function VideoMetadataComponent() {
                 ) : (
                   <ShieldOff className="h-4 w-4" />
                 )}
-                <Download className="h-4 w-4" />
-                {isStrippingMetadata
-                  ? 'Stripping...'
-                  : 'Download Without Metadata'}
+                {isStrippingMetadata ? 'Removing metadata…' : 'Remove metadata'}
               </Button>
             </div>
-            <div className="bg-muted/50 p-4 rounded-lg flex flex-col gap-2">
+            <div className="border-t border-border py-4 flex flex-col gap-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Container:</span>
@@ -188,7 +177,7 @@ function VideoMetadataComponent() {
                 {fileMetadata.video_streams.map((stream) => (
                   <div
                     key={stream.index}
-                    className="bg-muted/50 p-4 rounded-lg"
+                    className="border-t border-border py-4"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="secondary" className="text-xs">
@@ -288,7 +277,7 @@ function VideoMetadataComponent() {
                 {fileMetadata.audio_streams.map((stream) => (
                   <div
                     key={stream.index}
-                    className="bg-muted/50 p-4 rounded-lg"
+                    className="border-t border-border py-4"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="secondary" className="text-xs">

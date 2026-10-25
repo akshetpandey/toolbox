@@ -1,19 +1,15 @@
+import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { Loader2, Settings, Info, Download, ShieldOff } from 'lucide-react'
+import { Loader2, Settings, Info, ShieldOff } from 'lucide-react'
 import { formatFileSize } from '@/lib/imagemagick'
 import { downloadBlob } from '@/lib/shared'
 import { stripFileMetadata } from '@/lib/metadata'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useEffect, useState } from 'react'
+import { ResultCard, useToolResult } from '@/components/ResultCard'
 
 export const Route = createFileRoute('/images/metadata')({
   component: MetadataPage,
@@ -46,11 +42,27 @@ export const Route = createFileRoute('/images/metadata')({
 })
 
 function MetadataPage() {
-  const { selectedFile, metadata, exifMetadata, isExtractingExif } =
-    useImageTools()
-  const { isProcessing, setIsProcessing } = useProcessing()
+  const {
+    selectedFile,
+    metadata,
+    exifMetadata,
+    isExtractingExif,
+    clearSelectedFile,
+  } = useImageTools()
+  const { isProcessing } = useProcessing()
+  const beginOperation = useFileOperation(selectedFile?.file)
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
   const [stripError, setStripError] = useState<string | null>(null)
+  const { result, setResult } = useToolResult(
+    selectedFile?.file,
+    'images.metadata',
+  )
+  const imageMetadata = selectedFile ? metadata[selectedFile.name] : null
+  const supportsRemoval =
+    selectedFile &&
+    ['image/jpeg', 'image/png', 'image/webp', 'image/tiff'].includes(
+      selectedFile.file.type,
+    )
 
   useEffect(() => {
     setStripError(null)
@@ -58,191 +70,147 @@ function MetadataPage() {
 
   const handleStripMetadata = async () => {
     if (!selectedFile) return
-
+    setIsStrippingMetadata(true)
+    const operation = beginOperation()
+    setStripError(null)
     try {
-      setIsStrippingMetadata(true)
-      setIsProcessing(true)
-      setStripError(null)
-
-      console.log(
-        '🖼️ MetadataPage: Starting metadata stripping for',
-        selectedFile.name,
-      )
-
       const blob = await stripFileMetadata(selectedFile.file)
+      if (!operation.isCurrent()) return
       const filename = `no-metadata_${selectedFile.name}`
-
+      setResult({
+        blob,
+        filename,
+        sourceSize: selectedFile.size,
+        details: [
+          ...(selectedFile.dimensions
+            ? [
+                `${selectedFile.dimensions.width} × ${selectedFile.dimensions.height} px`,
+              ]
+            : []),
+          'Embedded metadata removed; ICC color profile retained. The source image is unchanged.',
+        ],
+      })
       downloadBlob(blob, filename)
-
-      console.log('🖼️ MetadataPage: Metadata stripping completed successfully')
-    } catch (error) {
-      console.error('🖼️ MetadataPage: Error stripping metadata:', error)
+    } catch {
+      if (!operation.isCurrent()) return
       setStripError(
         'Failed to strip metadata. No file was downloaded. Please try again.',
       )
     } finally {
-      setIsStrippingMetadata(false)
-      setIsProcessing(false)
+      if (operation.isCurrent()) setIsStrippingMetadata(false)
+      operation.finish()
     }
   }
 
   return (
-    <TooltipProvider>
-      <div className="flex flex-col gap-4">
-        {/* ImageMagick Metadata Section */}
-        <Card className="glass-card border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="h-4 w-4 text-primary" />
-              <h3 className="font-medium text-foreground">Metadata</h3>
-            </div>
-            {selectedFile && metadata[selectedFile.name] ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm bg-muted/50 p-4 rounded-lg">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Dimensions:</span>
-                  <span className="font-medium">
-                    {metadata[selectedFile.name].width} ×{' '}
-                    {metadata[selectedFile.name].height}
-                  </span>
+    <div className="flex min-w-0 flex-col gap-5">
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <Settings className="size-5 text-primary" />
+            Image information
+          </h2>
+          {imageMetadata ? (
+            <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+              {[
+                [
+                  'Dimensions',
+                  `${imageMetadata.width} × ${imageMetadata.height} px`,
+                ],
+                ['Format', imageMetadata.format],
+                ['Color space', imageMetadata.colorspace],
+                ['Bit depth', String(imageMetadata.depth)],
+                ['Compression', imageMetadata.compression],
+                ['File size', formatFileSize(imageMetadata.size)],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-0">
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 break-words font-medium">{value}</dd>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Format:</span>
-                  <span className="font-medium">
-                    {metadata[selectedFile.name].format}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Colorspace:</span>
-                  <span className="font-medium">
-                    {metadata[selectedFile.name].colorspace}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Bit Depth:</span>
-                  <span className="font-medium">
-                    {metadata[selectedFile.name].depth}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Compression:</span>
-                  <span className="font-medium">
-                    {metadata[selectedFile.name].compression}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Size:</span>
-                  <span className="font-medium">
-                    {formatFileSize(metadata[selectedFile.name].size)}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-24">
-                <div className="text-center text-muted-foreground">
-                  <p className="text-sm">
-                    Select an image to view ImageMagick metadata
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* EXIF Metadata Section */}
-        <Card className="glass-card border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-primary" />
-                <h3 className="font-medium text-foreground">EXIF Metadata</h3>
-                {isExtractingExif && (
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                )}
-              </div>
-              {selectedFile && Object.keys(exifMetadata).length > 0 && (
+              ))}
+            </dl>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {selectedFile
+                ? 'Reading image information…'
+                : 'Choose an image to view its information.'}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <Info className="size-5 text-primary" />
+            Embedded metadata
+          </h2>
+          {isExtractingExif ? (
+            <p
+              role="status"
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+            >
+              <Loader2 className="size-4 animate-spin" />
+              Reading image metadata…
+            </p>
+          ) : selectedFile && Object.keys(exifMetadata).length > 0 ? (
+            <dl className="max-h-96 min-w-0 overflow-y-auto divide-y divide-border text-sm">
+              {Object.entries(exifMetadata)
+                .filter(([, value]) => value !== null && value !== '')
+                .map(([key, value]) => (
+                  <div
+                    key={key}
+                    className="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-2 sm:gap-4"
+                  >
+                    <dt className="break-words text-muted-foreground">{key}</dt>
+                    <dd className="min-w-0 break-all font-medium">
+                      {String(value)}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {selectedFile
+                ? 'No embedded image metadata was found.'
+                : 'Choose an image to inspect its embedded metadata.'}
+            </p>
+          )}
+          {selectedFile && (
+            <div className="space-y-3 border-t pt-4">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Remove embedded EXIF, GPS, XMP, and other supported metadata
+                from a new copy. Color profiles are retained. This does not hide
+                visible text, faces, or other image content.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Available for JPEG, PNG, WebP, and TIFF images.
+              </p>
+              {supportsRemoval && (
                 <Button
                   onClick={() => void handleStripMetadata()}
                   disabled={isStrippingMetadata || isProcessing}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
+                  className="h-auto min-h-11 w-full whitespace-normal sm:w-auto"
                 >
                   {isStrippingMetadata ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <ShieldOff className="h-4 w-4" />
+                    <ShieldOff className="size-4" />
                   )}
-                  <Download className="h-4 w-4" />
                   {isStrippingMetadata
-                    ? 'Stripping...'
+                    ? 'Removing metadata…'
                     : 'Download Without Metadata'}
                 </Button>
               )}
             </div>
-            {stripError && (
-              <p role="alert" className="text-sm text-destructive mb-4">
-                {stripError}
-              </p>
-            )}
-            {isExtractingExif ? (
-              <div className="flex items-center justify-center h-24">
-                <div className="text-center text-muted-foreground">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
-                  <p className="text-sm">Extracting EXIF metadata...</p>
-                </div>
-              </div>
-            ) : selectedFile && exifMetadata ? (
-              <div className="flex flex-col gap-2">
-                {Object.keys(exifMetadata).length > 0 ? (
-                  <div className="grid grid-cols-1 gap-2 text-sm bg-muted/50 p-4 rounded-lg max-h-64 overflow-y-auto">
-                    {Object.entries(exifMetadata)
-                      .filter(
-                        ([, value]) =>
-                          value !== null && value !== undefined && value !== '',
-                      )
-                      .map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex justify-between py-1 border-b border-border/20 last:border-0"
-                        >
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-muted-foreground font-medium truncate pr-2 md:cursor-default cursor-help">
-                                {key}:
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="md:hidden">
-                              <p>{key}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <span className="font-medium text-right">
-                            {typeof value === 'object'
-                              ? JSON.stringify(value)
-                              : String(value)}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-24">
-                    <div className="text-center text-muted-foreground">
-                      <p className="text-sm">No EXIF metadata found</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-24">
-                <div className="text-center text-muted-foreground">
-                  <p className="text-sm">
-                    Select an image to view EXIF metadata
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </TooltipProvider>
+          )}
+          {stripError && (
+            <p role="alert" className="break-words text-sm text-destructive">
+              {stripError}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      <ResultCard result={result} onReset={clearSelectedFile} />
+    </div>
   )
 }

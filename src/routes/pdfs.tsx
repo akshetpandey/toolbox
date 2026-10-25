@@ -1,11 +1,6 @@
-import {
-  createFileRoute,
-  Outlet,
-  useLocation,
-  useNavigate,
-} from '@tanstack/react-router'
-import { useState, useCallback, useMemo } from 'react'
-import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
+import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
+import { useState, useCallback, useEffect } from 'react'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
 import { useProcessing } from '@/contexts/ProcessingContext'
@@ -13,52 +8,53 @@ import {
   PDFToolsContext,
   type PDFToolsContextType,
 } from '@/contexts/PDFToolsContext'
-
 import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
 import {
   SortableContext,
   arrayMove,
   useSortable,
   verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
   FileText,
-  Merge,
-  Split,
-  Minimize,
-  Trash2,
   File,
   GripVertical,
-  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
 } from 'lucide-react'
 import { type PDFFile, isPDFFile, createPDFFile } from '@/lib/pdf'
-import { formatFileSize, truncateFilename } from '@/lib/shared'
-import { Button } from '@/components/ui'
-
-const pdfTabs = [
-  { value: 'merge', label: 'Merge', icon: Merge },
-  { value: 'split', label: 'Split', icon: Split },
-  { value: 'compress', label: 'Compress', icon: Minimize },
-]
+import { formatFileSize } from '@/lib/shared'
+import { Button } from '@/components/ui/button'
 
 interface SortableFileItemProps {
   file: PDFFile
-  onRemove: (id: string) => void
-  isDragging?: boolean
+  index: number
+  count: number
+  pageCount?: number | null
+  disabled: boolean
+  onRemove: () => void
+  onMove: (direction: -1 | 1) => void
 }
 
 function SortableFileItem({
   file,
+  index,
+  count,
+  pageCount,
+  disabled,
   onRemove,
-  isDragging = false,
+  onMove,
 }: SortableFileItemProps) {
   const {
     attributes,
@@ -66,53 +62,74 @@ function SortableFileItem({
     setNodeRef,
     transform,
     transition,
-    isDragging: isSortableDragging,
-  } = useSortable({ id: file.id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-
+    isDragging,
+  } = useSortable({ id: file.id, disabled })
   return (
-    <div
+    <li
       ref={setNodeRef}
-      style={style}
-      className={`group flex items-center justify-between p-3 bg-muted/50 rounded-lg transition-all duration-200 ${
-        isSortableDragging || isDragging
-          ? 'opacity-50 shadow-lg ring-2 ring-primary/50 z-50'
-          : 'hover:bg-muted/70'
-      }`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`min-w-0 rounded-lg border bg-background p-3 ${isDragging ? 'opacity-50 ring-2 ring-primary/50' : ''}`}
+      onClick={(event) => event.stopPropagation()}
     >
-      <div className="flex items-center gap-3">
-        <div
+      <div className="flex min-w-0 items-start gap-2">
+        <button
+          type="button"
           {...attributes}
           {...listeners}
-          className="h-4 w-4 cursor-move text-muted-foreground hover:text-foreground transition-colors touch-none"
+          aria-label={`Drag ${file.name} to reorder`}
+          disabled={disabled}
+          className="flex size-11 shrink-0 touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"
         >
-          <GripVertical className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="font-medium text-foreground text-sm" title={file.name}>
-            {truncateFilename(file.name)}
+          <GripVertical aria-hidden="true" className="size-4" />
+        </button>
+        <div className="min-w-0 flex-1 pt-1">
+          <p className="text-sm font-medium [overflow-wrap:anywhere]">
+            <span className="text-muted-foreground">{index + 1}. </span>
+            {file.name}
           </p>
-          <p className="text-xs text-muted-foreground">
-            {formatFileSize(file.size)}
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatFileSize(file.size)} ·{' '}
+            {pageCount === undefined
+              ? 'Reading pages…'
+              : pageCount === null
+                ? 'Could not read PDF'
+                : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`}
           </p>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation()
-          onRemove(file.id)
-        }}
-        className="text-destructive hover:text-destructive h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    </div>
+      <div className="mt-2 flex justify-end gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-11"
+          aria-label={`Move ${file.name} up`}
+          disabled={disabled || index === 0}
+          onClick={() => onMove(-1)}
+        >
+          <ArrowUp aria-hidden="true" className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-11"
+          aria-label={`Move ${file.name} down`}
+          disabled={disabled || index === count - 1}
+          onClick={() => onMove(1)}
+        >
+          <ArrowDown aria-hidden="true" className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-11 text-destructive"
+          aria-label={`Remove ${file.name}`}
+          disabled={disabled}
+          onClick={onRemove}
+        >
+          <Trash2 aria-hidden="true" className="size-4" />
+        </Button>
+      </div>
+    </li>
   )
 }
 
@@ -148,109 +165,97 @@ export const Route = createFileRoute('/pdfs')({
 
 function PDFToolsLayout() {
   const { isProcessing } = useProcessing()
-  const navigate = useNavigate()
   const location = useLocation()
-  const [selectedFiles, setSelectedFiles] = useState<PDFFile[]>([])
+  const [selectedFiles, setSelectedFiles] = useWorkspaceState<PDFFile[]>(
+    'pdfs.files',
+    [],
+  )
   const [activeId, setActiveId] = useState<string | null>(null)
-
+  const [pageCounts, setPageCounts] = useState<Record<string, number | null>>(
+    {},
+  )
+  const [selectionError, setSelectionError] = useState('')
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     }),
   )
 
-  // Determine current tab from URL path
-  const currentTab = useMemo(() => {
-    const path = location.pathname
-    if (path.includes('/merge')) return 'merge'
-    if (path.includes('/split')) return 'split'
-    if (path.includes('/compress')) return 'compress'
-    return 'merge' // default
-  }, [location.pathname])
+  useEffect(() => {
+    let current = true
+    const missing = selectedFiles.filter(
+      (file) => pageCounts[file.id] === undefined,
+    )
+    if (missing.length > 0) {
+      void (async () => {
+        const counts = await Promise.all(
+          missing.map(async (file): Promise<[string, number | null]> => {
+            try {
+              const { PDFDocument } = await import('pdf-lib')
+              const pdf = await PDFDocument.load(await file.file.arrayBuffer())
+              return [file.id, pdf.getPageCount()]
+            } catch (error) {
+              console.warn('PDF page count could not be read:', error)
+              return [file.id, null]
+            }
+          }),
+        )
+        if (current)
+          setPageCounts((previous) => ({
+            ...previous,
+            ...Object.fromEntries(counts),
+          }))
+      })()
+    }
+    return () => {
+      current = false
+    }
+  }, [selectedFiles, pageCounts])
 
-  // Handle tab changes
-  const handleTabChange = useCallback(
-    (value: string) => {
-      if (isProcessing) return // Prevent tab changes while processing
-
-      void navigate({
-        to: `/pdfs/${value}`,
-      })
+  const handleFileSelect = useCallback(
+    (files: FileList) => {
+      if (isProcessing || files.length === 0) return
+      setSelectionError('')
+      const pdfFiles = Array.from(files)
+        .filter(isPDFFile)
+        .map((file) => ({ ...createPDFFile(file), id: crypto.randomUUID() }))
+      if (pdfFiles.length)
+        setSelectedFiles((previous) => [...previous, ...pdfFiles])
+      if (pdfFiles.length !== files.length)
+        setSelectionError(
+          'Only PDF files were added. Choose PDF files to continue.',
+        )
     },
-    [navigate, isProcessing],
+    [isProcessing, setSelectedFiles],
   )
 
-  const handleFileSelect = useCallback((files: FileList) => {
-    console.log('📄 PDFTools: File selection started', {
-      fileCount: files.length,
-    })
-
-    const pdfFiles: PDFFile[] = []
-
-    for (const file of Array.from(files)) {
-      if (isPDFFile(file)) {
-        console.log('📄 PDFTools: Processing PDF file', {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        })
-
-        const pdfFile = createPDFFile(file)
-        pdfFiles.push(pdfFile)
-      } else {
-        console.warn('📄 PDFTools: Invalid file type selected', {
-          name: file.name,
-          type: file.type,
-        })
-      }
-    }
-
-    if (pdfFiles.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...pdfFiles])
-      console.log('📄 PDFTools: File selection completed successfully')
-    } else {
-      alert('Please select valid PDF files')
-    }
-  }, [])
-
-  const removeFile = useCallback((id: string) => {
-    setSelectedFiles((prev) => prev.filter((file) => file.id !== id))
-  }, [])
-
+  const removeFile = useCallback(
+    (id: string) => {
+      setSelectedFiles((files) => files.filter((file) => file.id !== id))
+    },
+    [setSelectedFiles],
+  )
   const clearFiles = useCallback(() => {
     setSelectedFiles([])
-  }, [])
-
-  const reorderFiles = useCallback((activeId: string, overId: string) => {
-    setSelectedFiles((items) => {
-      const oldIndex = items.findIndex((item) => item.id === activeId)
-      const newIndex = items.findIndex((item) => item.id === overId)
-      return arrayMove(items, oldIndex, newIndex)
-    })
-  }, [])
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
-  }
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (active.id !== over?.id && over?.id) {
-      reorderFiles(active.id as string, over.id as string)
-    }
-
+    setSelectionError('')
+  }, [setSelectedFiles])
+  const reorderFiles = useCallback(
+    (fromId: string, toId: string) => {
+      setSelectedFiles((items) => {
+        const from = items.findIndex((file) => file.id === fromId)
+        const to = items.findIndex((file) => file.id === toId)
+        return from < 0 || to < 0 ? items : arrayMove(items, from, to)
+      })
+    },
+    [setSelectedFiles],
+  )
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (over && active.id !== over.id)
+      reorderFiles(String(active.id), String(over.id))
     setActiveId(null)
   }
-
-  // Find the active file for drag overlay
-  const activeFile = activeId
-    ? selectedFiles.find((file) => file.id === activeId)
-    : null
-
-  // Create context value
+  const activeFile = selectedFiles.find((file) => file.id === activeId)
   const contextValue: PDFToolsContextType = {
     selectedFiles,
     isProcessing,
@@ -258,13 +263,15 @@ function PDFToolsLayout() {
     removeFile,
     clearFiles,
     reorderFiles,
+    pageCounts,
   }
-
+  const unavailable = /\/(split|compress)\/?$/.test(location.pathname)
   const pdfFileUpload = (
     <DndContext
       sensors={sensors}
-      onDragStart={handleDragStart}
+      onDragStart={({ active }) => setActiveId(String(active.id))}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
     >
       <FileUpload
         selectedFiles={selectedFiles.map((file) => ({
@@ -274,85 +281,72 @@ function PDFToolsLayout() {
         }))}
         onFileSelect={handleFileSelect}
         onClearFiles={clearFiles}
-        acceptedTypes=".pdf"
-        title="Drop PDF files here"
-        description="Supports multiple PDF files"
+        acceptedTypes=".pdf,application/pdf"
+        title="Choose PDF files"
+        description="Add two or more PDFs, then arrange them in the order you want."
         supportedFormats={['PDF']}
         selectedFileIcon={File}
+        multiple
+        selectedActionLabel="Add files"
+        disabled={isProcessing}
       >
-        {/* Custom file display for PDFs with drag-and-drop reordering */}
         {selectedFiles.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {/* Reorder instruction */}
-            {selectedFiles.length > 1 && (
-              <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
-                  <ArrowUpDown className="w-3 h-3" />
-                  <span>Drag files to reorder them</span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Drag to reorder, or use the move up and down buttons.
+            </p>
+            <ol aria-label="PDF merge order" className="space-y-2">
               <SortableContext
                 items={selectedFiles}
                 strategy={verticalListSortingStrategy}
               >
-                {selectedFiles.map((file) => (
+                {selectedFiles.map((file, index) => (
                   <SortableFileItem
                     key={file.id}
                     file={file}
-                    onRemove={removeFile}
+                    index={index}
+                    count={selectedFiles.length}
+                    pageCount={pageCounts[file.id]}
+                    disabled={isProcessing}
+                    onRemove={() => removeFile(file.id)}
+                    onMove={(direction) => {
+                      const target = selectedFiles[index + direction]
+                      if (target) reorderFiles(file.id, target.id)
+                    }}
                   />
                 ))}
               </SortableContext>
-            </div>
+            </ol>
           </div>
         )}
       </FileUpload>
-
-      {/* Drag Overlay */}
       <DragOverlay>
-        {activeFile ? (
-          <div className="group flex items-center justify-between p-3 bg-muted/50 rounded-lg shadow-lg ring-2 ring-primary">
-            <div className="flex items-center gap-3">
-              <GripVertical className="h-4 w-4 text-primary" />
-              <div>
-                <p
-                  className="font-medium text-foreground text-sm"
-                  title={activeFile.name}
-                >
-                  {truncateFilename(activeFile.name, 25)}
-                </p>
-              </div>
-            </div>
+        {activeFile && (
+          <div
+            aria-hidden="true"
+            className="rounded-lg border bg-card p-3 text-sm font-medium shadow-md [overflow-wrap:anywhere]"
+          >
+            {activeFile.name}
           </div>
-        ) : null}
+        )}
       </DragOverlay>
     </DndContext>
   )
-
-  const pdfToolsNav = (
-    <div className="w-full">
-      <ResponsiveTabs
-        tabs={pdfTabs}
-        currentTab={currentTab}
-        onTabChange={handleTabChange}
-        isProcessing={isProcessing}
-      />
-    </div>
-  )
-
   return (
     <PDFToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title="PDF Tools"
+        title={unavailable ? 'PDF tools' : 'Merge PDFs'}
         icon={FileText}
-        iconColor="text-green-500"
-        iconBgColor="bg-gradient-to-br from-green-500/10 to-green-500/5"
-        fileUploadComponent={pdfFileUpload}
-        toolsComponent={pdfToolsNav}
+        iconColor="text-primary"
+        iconBgColor="bg-primary/10"
+        fileUploadComponent={unavailable ? null : pdfFileUpload}
+        toolsComponent={null}
       >
+        {selectionError && (
+          <p role="alert" className="text-sm text-destructive">
+            {selectionError}
+          </p>
+        )}
         <Outlet />
       </ToolLayout>
     </PDFToolsContext.Provider>

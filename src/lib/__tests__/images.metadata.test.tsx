@@ -1,3 +1,4 @@
+import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import {
   cleanup,
@@ -19,7 +20,10 @@ vi.mock('@uswriting/exiftool', () => ({
   parseMetadata: vi.fn(),
   writeMetadata: mockWriteMetadata,
 }))
-vi.mock('@/lib/shared', () => ({ downloadBlob: mockDownload }))
+vi.mock('@/lib/shared', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/shared')>()),
+  downloadBlob: mockDownload,
+}))
 vi.mock('@/contexts/ProcessingContext', () => ({
   useProcessing: () => ({
     isProcessing: false,
@@ -45,7 +49,10 @@ import { Route } from '../../routes/images.metadata'
 const MetadataPage = Route.options.component
 if (!MetadataPage) throw new Error('Metadata route component is missing')
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  resetWorkspaceState()
+})
 afterEach(cleanup)
 
 test.each(['failed result', 'WASM rejection'])(

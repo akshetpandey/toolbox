@@ -1,6 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
-import { Split } from 'lucide-react'
 
 export const Route = createFileRoute('/pdfs/split')({
   component: PDFSplitRoute,
@@ -34,18 +33,19 @@ export const Route = createFileRoute('/pdfs/split')({
 
 function PDFSplitRoute() {
   return (
-    <Card className="glass-card border-0">
-      <CardContent className="p-6">
-        <div className="text-center py-12">
-          <Split className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Split PDF Tool
-          </h3>
-          <p className="text-muted-foreground">
-            Coming soon! This tool will allow you to split PDF files into
-            separate PDFs.
-          </p>
-        </div>
+    <Card className="shadow-none">
+      <CardContent className="space-y-4 p-6">
+        <p className="text-sm font-medium text-muted-foreground">Coming soon</p>
+        <h2 className="text-lg font-semibold">Split PDFs</h2>
+        <p className="text-sm text-muted-foreground">
+          This tool is not available yet. You can merge PDF files today.
+        </p>
+        <Link
+          to="/pdfs/merge"
+          className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          Go to Merge PDFs
+        </Link>
       </CardContent>
     </Card>
   )

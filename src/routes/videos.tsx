@@ -5,11 +5,11 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
 import { useInitFFmpeg } from '@/hooks/useInitFFmpeg'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import {
   FFmpegProcessor,
   type VideoFile,
@@ -30,7 +30,7 @@ import {
   Zap,
   Scissors,
   Volume2,
-  X,
+  Loader2,
   Video as VideoIcon,
 } from 'lucide-react'
 
@@ -92,11 +92,16 @@ function VideoFileUpload({
   selectedFiles,
   onFileSelect,
   onClear,
+  disabled,
+  showPreview,
 }: {
   selectedFiles: VideoFile[]
   onFileSelect: (files: FileList) => Promise<void>
   onClear: () => void
+  disabled: boolean
+  showPreview: boolean
 }) {
+  const [failedPreview, setFailedPreview] = useState<string | null>(null)
   // Convert VideoFile to simple format for FileUpload component
   const simpleFiles = selectedFiles.map((file) => ({
     name: file.name,
@@ -110,6 +115,7 @@ function VideoFileUpload({
   return (
     <FileUpload
       selectedFiles={simpleFiles}
+      disabled={disabled}
       onFileSelect={(files) => void onFileSelect(files)}
       onClearFiles={onClear}
       acceptedTypes="video/*,.mp4,.webm,.avi,.mov,.mkv"
@@ -124,14 +130,6 @@ function VideoFileUpload({
           <div className="flex flex-col gap-2">
             {selectedFiles.map((file) => (
               <div key={file.name} className="flex flex-col gap-2">
-                <div className="relative">
-                  <video
-                    src={file.preview}
-                    className="w-full max-h-48 lg:max-h-48 rounded-lg bg-muted/20"
-                    controls
-                    preload="metadata"
-                  />
-                </div>
                 <div className="flex flex-col gap-1">
                   <p className="font-medium text-foreground truncate text-sm">
                     {file.name}
@@ -150,6 +148,25 @@ function VideoFileUpload({
                     </div>
                   )}
                 </div>
+                <details open={showPreview} className="mt-2">
+                  <summary className="cursor-pointer py-2 text-sm font-medium">
+                    Preview video
+                  </summary>
+                  <video
+                    aria-label="Source video preview"
+                    src={file.preview}
+                    className="mt-2 max-h-64 w-full rounded-lg bg-muted"
+                    controls
+                    preload="metadata"
+                    onError={() => setFailedPreview(file.preview)}
+                  />
+                  {failedPreview === file.preview && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Preview is unavailable for this video. You can still
+                      process the file.
+                    </p>
+                  )}
+                </details>
               </div>
             ))}
           </div>
@@ -190,8 +207,18 @@ function VideoToolsLayout() {
   const { isProcessing, setIsProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedFiles, setSelectedFiles] = useState<VideoFile[]>([])
-  const [metadata, setMetadata] = useState<Record<string, VideoMetadata>>({})
+  const [selectedFiles, setSelectedFiles] = useWorkspaceState<VideoFile[]>(
+    'videos.files',
+    [],
+  )
+  const [metadata, setMetadata] = useWorkspaceState<
+    Record<string, VideoMetadata>
+  >('videos.metadata', {})
+  const [isPreparing, setIsPreparing] = useState(false)
+  const [preparationMessage, setPreparationMessage] = useState(
+    'Preparing video tools…',
+  )
+  const [preparationError, setPreparationError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [progressStartTime, setProgressStartTime] = useState<number | null>(
     null,
@@ -209,26 +236,22 @@ function VideoToolsLayout() {
   const ffmpegProcessorRef = useRef<FFmpegProcessor | null>(null)
   const fileSelectionId = useRef(0)
   const fileSelectionTask = useRef(Promise.resolve())
-  const getFfmpegProcessor = useCallback(async (): Promise<FFmpegProcessor> => {
-    if (ffmpegProcessorRef.current) {
-      return ffmpegProcessorRef.current
-    }
-
-    const core = isInitialized ? ffmpeg! : await init()
-    if (!core) {
-      throw new Error('Failed to initialize FFmpeg')
-    }
-    const proc = new FFmpegProcessor(core)
-    ffmpegProcessorRef.current = proc
-    return proc
-  }, [isInitialized, ffmpeg, init])
-
-  const selectedPreview = selectedFiles[0]?.preview
-  useEffect(() => {
-    return () => {
-      if (selectedPreview) URL.revokeObjectURL(selectedPreview)
-    }
-  }, [selectedPreview])
+  const getFfmpegProcessor = useCallback(
+    async (input?: VideoFile): Promise<FFmpegProcessor> => {
+      let processor = ffmpegProcessorRef.current
+      if (!processor) {
+        const core = isInitialized ? ffmpeg! : await init()
+        if (!core) throw new Error('Failed to initialize video tools')
+        processor = new FFmpegProcessor(core)
+        ffmpegProcessorRef.current = processor
+      }
+      const selected = input ?? selectedFiles[0]
+      if (selected && processor.inputFile?.file !== selected.file)
+        await processor.mountInputFile(selected)
+      return processor
+    },
+    [isInitialized, ffmpeg, init, selectedFiles],
+  )
 
   useEffect(() => {
     return () => {
@@ -314,6 +337,58 @@ function VideoToolsLayout() {
     }
   }, [isProcessing])
 
+  const prepareVideoFile = useCallback(
+    async (videoFile: VideoFile) => {
+      const selectionId = ++fileSelectionId.current
+      setIsPreparing(true)
+      setPreparationMessage('Preparing video tools…')
+      setPreparationError(null)
+      // FFprobe supports containers/codecs the native <video> element cannot
+      // decode (including many AVI/MKV files). Preview support is optional.
+      try {
+        const task = fileSelectionTask.current.then(async () => {
+          if (selectionId !== fileSelectionId.current) return
+          const processor = await getFfmpegProcessor(videoFile)
+          setPreparationMessage('Reading video information…')
+          if (selectionId !== fileSelectionId.current) return
+          const meta = await processor.extractMetadata()
+          if (selectionId !== fileSelectionId.current) return
+          setMetadata({ [videoFile.name]: meta })
+          setSelectedFiles([
+            {
+              ...videoFile,
+              ...(meta.width > 0 && meta.height > 0
+                ? { dimensions: { width: meta.width, height: meta.height } }
+                : {}),
+              ...(Number.isFinite(meta.duration) && meta.duration > 0
+                ? { duration: meta.duration }
+                : {}),
+            },
+          ])
+        })
+        fileSelectionTask.current = task.catch(() => {
+          // The current caller reports errors; future selections may retry.
+        })
+        await task
+      } catch (error) {
+        console.error('🎬 VideoTools: Error extracting metadata:', error)
+        if (selectionId === fileSelectionId.current)
+          setPreparationError(
+            'We could not prepare this video. Choose another file or try replacing it.',
+          )
+      } finally {
+        if (selectionId === fileSelectionId.current) setIsPreparing(false)
+      }
+    },
+    [getFfmpegProcessor, setMetadata, setSelectedFiles],
+  )
+
+  useEffect(() => {
+    const file = selectedFiles[0]
+    if (file && !metadata[file.name] && !isPreparing && !preparationError)
+      void prepareVideoFile(file)
+  }, [selectedFiles, metadata, isPreparing, preparationError, prepareVideoFile])
+
   const handleFileSelect = useCallback(
     async (files: FileList) => {
       console.log('🎬 VideoTools: File selection started', {
@@ -326,13 +401,14 @@ function VideoToolsLayout() {
         (file.type.startsWith('video/') ||
           /\.(mp4|webm|avi|mov|mkv)$/i.test(file.name))
       ) {
-        const selectionId = ++fileSelectionId.current
         console.log('🎬 VideoTools: Processing video file', {
           name: file.name,
           size: file.size,
           type: file.type,
         })
 
+        for (const previous of selectedFiles)
+          URL.revokeObjectURL(previous.preview)
         const preview = URL.createObjectURL(file)
         const videoFile: VideoFile = {
           file,
@@ -345,43 +421,10 @@ function VideoToolsLayout() {
         setSelectedFiles([videoFile])
         setMetadata({})
 
-        setIsProcessing(true)
-        // FFprobe supports containers/codecs the native <video> element cannot
-        // decode (including many AVI/MKV files). Preview support is optional.
-        try {
-          const task = fileSelectionTask.current.then(async () => {
-            if (selectionId !== fileSelectionId.current) return
-            const processor = await getFfmpegProcessor()
-            if (selectionId !== fileSelectionId.current) return
-            await processor.mountInputFile(videoFile)
-            if (selectionId !== fileSelectionId.current) return
-            const meta = await processor.extractMetadata()
-            if (selectionId !== fileSelectionId.current) return
-            setMetadata({ [videoFile.name]: meta })
-            setSelectedFiles([
-              {
-                ...videoFile,
-                ...(meta.width > 0 && meta.height > 0
-                  ? { dimensions: { width: meta.width, height: meta.height } }
-                  : {}),
-                ...(Number.isFinite(meta.duration) && meta.duration > 0
-                  ? { duration: meta.duration }
-                  : {}),
-              },
-            ])
-          })
-          fileSelectionTask.current = task.catch(() => {
-            // The current caller reports errors; future selections may retry.
-          })
-          await task
-        } catch (error) {
-          console.error('🎬 VideoTools: Error extracting metadata:', error)
-        } finally {
-          if (selectionId === fileSelectionId.current) setIsProcessing(false)
-        }
+        await prepareVideoFile(videoFile)
       }
     },
-    [getFfmpegProcessor, setIsProcessing],
+    [prepareVideoFile, selectedFiles, setSelectedFiles, setMetadata],
   )
 
   const clearSelectedFile = useCallback(() => {
@@ -390,6 +433,9 @@ function VideoToolsLayout() {
       .then(() => ffmpegProcessorRef.current?.unmountInputFile())
       .catch(console.error)
     setIsProcessing(false)
+    setIsPreparing(false)
+    setPreparationError(null)
+    for (const file of selectedFiles) URL.revokeObjectURL(file.preview)
     setSelectedFiles([])
     setMetadata({})
     setProgress(0)
@@ -398,7 +444,7 @@ function VideoToolsLayout() {
     setElapsedTime(null)
     setShowSlowProcessingWarning(false)
     setCurrentAbortController(null)
-  }, [setIsProcessing])
+  }, [setIsProcessing, selectedFiles, setSelectedFiles, setMetadata])
 
   const cancelProcessing = useCallback(() => {
     if (currentAbortController) {
@@ -413,6 +459,7 @@ function VideoToolsLayout() {
       metadata,
       ffmpegProcessor: ffmpegProcessorRef.current,
       isProcessing,
+      isPreparing,
       progress,
       progressStartTime,
       estimatedTimeRemaining,
@@ -435,6 +482,7 @@ function VideoToolsLayout() {
       selectedFiles,
       metadata,
       isProcessing,
+      isPreparing,
       progress,
       progressStartTime,
       estimatedTimeRemaining,
@@ -449,30 +497,18 @@ function VideoToolsLayout() {
     ],
   )
 
-  if (error) {
-    return (
-      <div className="container mx-auto p-6">
-        <Card className="glass-card border-destructive">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 text-destructive">
-              <X className="h-5 w-5" />
-              <div>
-                <h3 className="font-semibold">FFmpeg Initialization Error</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {typeof error === 'string' ? error : (error as Error).message}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
     <VideoToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title="Video Tools"
+        title={
+          {
+            metadata: 'Video information',
+            convert: 'Convert video',
+            compress: 'Compress video',
+            trim: 'Trim video',
+            extract: 'Extract audio',
+          }[currentTab] ?? 'Video tools'
+        }
         icon={VideoIcon}
         iconColor="text-purple-500"
         iconBgColor="bg-gradient-to-br from-purple-500/10 to-purple-500/5"
@@ -481,14 +517,47 @@ function VideoToolsLayout() {
             selectedFiles={selectedFiles}
             onFileSelect={handleFileSelect}
             onClear={clearSelectedFile}
+            disabled={isPreparing || isProcessing}
+            showPreview={currentTab === 'trim'}
           />
         }
         toolsComponent={
-          <VideoTools
-            currentTab={currentTab}
-            onTabChange={handleTabChange}
-            isProcessing={isProcessing}
-          />
+          <div className="space-y-5">
+            {isPreparing && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-2 rounded-lg border p-3 text-sm"
+              >
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                {preparationMessage}
+              </div>
+            )}
+            {(preparationError ?? error) && (
+              <div
+                role="alert"
+                className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
+              >
+                {preparationError ??
+                  'Video tools could not load. Check your connection, then replace the file to try again.'}
+              </div>
+            )}
+            {!isPreparing &&
+              !isProcessing &&
+              selectedFiles[0] &&
+              metadata[selectedFiles[0].name] &&
+              !preparationError &&
+              !error && (
+                <p role="status" className="text-sm text-muted-foreground">
+                  Ready to process. Your video stays on this device.
+                </p>
+              )}
+            <VideoTools
+              currentTab={currentTab}
+              onTabChange={handleTabChange}
+              isProcessing={isProcessing}
+            />
+          </div>
         }
       />
     </VideoToolsContext.Provider>

@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { useVideoTools } from '@/contexts/VideoToolsContext'
+import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
 import type { VideoMetadata } from '@/lib/ffmpeg'
 
 const mocks = vi.hoisted(() => ({
@@ -22,8 +23,21 @@ const mocks = vi.hoisted(() => ({
 }))
 
 function VideoState() {
+  const context = useVideoTools()
   return (
-    <div data-testid="metadata">{JSON.stringify(useVideoTools().metadata)}</div>
+    <>
+      <div data-testid="metadata">{JSON.stringify(context.metadata)}</div>
+      <div data-testid="stage">
+        {context.isPreparing
+          ? 'preparing'
+          : context.isProcessing
+            ? 'processing'
+            : 'ready'}
+      </div>
+      <button onClick={() => void context.getFfmpegProcessor()}>
+        Get processor
+      </button>
+    </>
   )
 }
 
@@ -125,6 +139,7 @@ function metadata(filename: string): VideoMetadata {
 }
 
 beforeEach(() => {
+  resetWorkspaceState()
   vi.clearAllMocks()
   mocks.metadata.mockReset().mockResolvedValue(metadata('clip.AVI'))
   let nextPreview = 0
@@ -196,4 +211,81 @@ test('an empty file selection leaves the layout unchanged', () => {
     target: { files: [] },
   })
   expect(mocks.mount).not.toHaveBeenCalled()
+})
+
+test('importing is preparation, never an encoding operation', async () => {
+  let finish!: (value: VideoMetadata) => void
+  mocks.metadata.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  render(<VideoLayout />)
+  fireEvent.change(screen.getByLabelText('video upload'), {
+    target: { files: [new File(['video'], 'clip.avi')] },
+  })
+  await waitFor(() => expect(mocks.metadata).toHaveBeenCalledOnce())
+  expect(screen.getByTestId('stage').textContent).toBe('preparing')
+  expect(screen.getByRole('status').textContent).toContain(
+    'Reading video information',
+  )
+  expect(screen.queryByText(/Compressing/)).toBeNull()
+  await act(async () => {
+    finish(metadata('clip.avi'))
+    await Promise.resolve()
+  })
+  await waitFor(() =>
+    expect(screen.getByTestId('stage').textContent).toBe('ready'),
+  )
+})
+
+test('ordinary navigation retains the video, metadata and preview for reuse', async () => {
+  const view = render(<VideoLayout />)
+  fireEvent.change(screen.getByLabelText('video upload'), {
+    target: { files: [new File(['video'], 'clip.avi')] },
+  })
+  await waitFor(() =>
+    expect(screen.getByTestId('selection').textContent).toContain('1920'),
+  )
+  view.unmount()
+  await act(async () => {
+    await Promise.resolve()
+  })
+  expect(mocks.revokePreview).not.toHaveBeenCalled()
+  render(<VideoLayout />)
+  expect(screen.getByTestId('selection').textContent).toContain('clip.avi')
+  expect(screen.getByTestId('metadata').textContent).toContain('1920')
+  fireEvent.click(screen.getByText('Get processor'))
+  await waitFor(() => expect(mocks.mount).toHaveBeenCalledTimes(2))
+  fireEvent.click(screen.getByText('Clear'))
+  expect(mocks.revokePreview).toHaveBeenCalledWith('blob:video-1')
+})
+
+test('returning to a video resumes interrupted preparation without replacing its preview', async () => {
+  let finishOld!: (value: VideoMetadata) => void
+  mocks.metadata
+    .mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishOld = resolve
+      }),
+    )
+    .mockResolvedValueOnce(metadata('clip.avi'))
+  const view = render(<VideoLayout />)
+  fireEvent.change(screen.getByLabelText('video upload'), {
+    target: { files: [new File(['video'], 'clip.avi')] },
+  })
+  await waitFor(() => expect(mocks.metadata).toHaveBeenCalledOnce())
+  view.unmount()
+  render(<VideoLayout />)
+  await waitFor(() => expect(mocks.metadata).toHaveBeenCalledTimes(2))
+  await waitFor(() =>
+    expect(screen.getByTestId('selection').textContent).toContain('1920'),
+  )
+  expect(mocks.revokePreview).not.toHaveBeenCalled()
+  await act(async () => {
+    finishOld(metadata('obsolete'))
+    await Promise.resolve()
+  })
+  expect(screen.getByTestId('metadata').textContent).toContain('clip.avi')
+  expect(screen.getByTestId('metadata').textContent).not.toContain('obsolete')
 })

@@ -8,6 +8,7 @@ export interface OfficeToolsContextType {
   conversionStatus: string
   setConversionStatus: (status: string) => void
   clearSelectedFile: () => void
+  chooseAnotherFile: () => void
 }
 
 export const OfficeToolsContext = createContext<OfficeToolsContextType | null>(

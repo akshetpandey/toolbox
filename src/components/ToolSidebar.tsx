@@ -1,371 +1,177 @@
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Button } from '@/components/ui/button'
 import { Link, useLocation } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { Hammer, Menu, X, ArrowUpRight, ShieldCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useRef, useState, useEffect } from 'react'
 import { useProcessing } from '@/contexts/ProcessingContext'
-import {
-  Image,
-  Video,
-  FileText,
-  Hammer,
-  Construction,
-  Settings,
-  Archive,
-  Building,
-  // Tool icons
-  Info,
-  Maximize,
-  Zap,
-  Eye,
-  Scissors,
-  Volume2,
-  Package,
-  FileArchive,
-  Merge,
-  Split,
-  Minimize,
-  Hash,
-  // UI icons
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
-
-interface ToolItem {
-  name: string
-  route: string
-  icon: React.ComponentType<{ className?: string }>
-  underConstruction?: boolean
-}
-
-interface ToolCategory {
-  name: string
-  icon: React.ComponentType<{ className?: string }>
-  route: string
-  tools: ToolItem[]
-  color: string
-  bgColor: string
-}
-
-const toolCategories: ToolCategory[] = [
-  {
-    name: 'Image',
-    icon: Image,
-    route: '/images',
-    tools: [
-      { name: 'Image Metadata', route: '/images/metadata', icon: Info },
-      { name: 'Resize Image', route: '/images/resize', icon: Maximize },
-      { name: 'Convert Format', route: '/images/convert', icon: Settings },
-      { name: 'Compress Image', route: '/images/compress', icon: Zap },
-      { name: 'Redact Image', route: '/images/redact', icon: Eye },
-    ],
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10',
-  },
-  {
-    name: 'Video',
-    icon: Video,
-    route: '/videos',
-    tools: [
-      { name: 'Video Metadata', route: '/videos/metadata', icon: Info },
-      { name: 'Convert Format', route: '/videos/convert', icon: Settings },
-      { name: 'Compress Video', route: '/videos/compress', icon: Zap },
-      { name: 'Trim Video', route: '/videos/trim', icon: Scissors },
-      { name: 'Extract Audio', route: '/videos/extract', icon: Volume2 },
-    ],
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
-  },
-  {
-    name: 'PDF',
-    icon: FileText,
-    route: '/pdfs',
-    tools: [
-      { name: 'Merge', route: '/pdfs/merge', icon: Merge },
-      {
-        name: 'Split',
-        route: '/pdfs/split',
-        icon: Split,
-        underConstruction: true,
-      },
-      {
-        name: 'Compress',
-        route: '/pdfs/compress',
-        icon: Minimize,
-        underConstruction: true,
-      },
-    ],
-    color: 'text-green-500',
-    bgColor: 'bg-green-500/10',
-  },
-  {
-    name: 'Office Documents',
-    icon: Building,
-    route: '/office-documents',
-    tools: [
-      {
-        name: 'Document to PDF',
-        route: '/office-documents/convert',
-        icon: FileText,
-      },
-    ],
-    color: 'text-indigo-500',
-    bgColor: 'bg-indigo-500/10',
-  },
-  {
-    name: 'Archives',
-    icon: Archive,
-    route: '/archives',
-    tools: [
-      { name: 'Compress Files', route: '/archives/compress', icon: Package },
-      {
-        name: 'Extract Archive',
-        route: '/archives/extract',
-        icon: FileArchive,
-      },
-    ],
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
-  },
-  {
-    name: 'Utilities',
-    icon: Settings,
-    route: '/utilities',
-    tools: [
-      { name: 'File Hash', route: '/utilities/hash', icon: Hash },
-      { name: 'File Metadata', route: '/utilities/metadata', icon: Info },
-    ],
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-500/10',
-  },
-]
+import { toolCategories } from '@/lib/tools'
 
 export function ToolSidebar() {
-  const location = useLocation()
+  const { pathname } = useLocation()
   const { isProcessing } = useProcessing()
-  const activeToolRef = useRef<HTMLDivElement>(null)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [open, setOpen] = useState(false)
+  const dialog = useRef<HTMLDialogElement>(null)
+  const close = () => setOpen(false)
 
-  // Check if mobile on mount and set collapsed state accordingly
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768 // Tailwind's md breakpoint
-      setIsMobile(mobile)
-      setIsCollapsed(mobile)
+    if (open) dialog.current?.showModal()
+    else dialog.current?.close()
+  }, [open])
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1280px)')
+    const onResize = () => {
+      if (media.matches) setOpen(false)
     }
-
-    checkMobile()
-
-    // Optional: Listen to window resize events to adjust dynamically
-    window.addEventListener('resize', checkMobile)
-
-    return () => {
-      window.removeEventListener('resize', checkMobile)
-    }
+    media.addEventListener('change', onResize)
+    return () => media.removeEventListener('change', onResize)
   }, [])
 
-  // Function to determine if a tool is currently active
-  const isToolActive = (toolRoute: string) => {
-    return location.pathname === toolRoute
-  }
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
-
-  // Close sidebar when clicking outside on mobile
-  const handleOverlayClick = () => {
-    if (isMobile) {
-      setIsCollapsed(true)
-    }
-  }
-
+  const navigation = (
+    <>
+      <nav aria-label="File tools" className="flex-1 overflow-y-auto px-3 py-4">
+        <p className="px-3 pb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Your toolbox
+        </p>
+        <div className="space-y-1">
+          {toolCategories.map((category) => {
+            const active =
+              pathname.startsWith(`${category.path}/`) ||
+              pathname === category.path
+            return (
+              <div key={category.path}>
+                <Link
+                  to={category.tools[0].route}
+                  aria-disabled={isProcessing || undefined}
+                  onClick={(event) => {
+                    if (isProcessing) event.preventDefault()
+                    else close()
+                  }}
+                  className={`nav-link flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 font-medium ${active ? 'text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                >
+                  <category.icon
+                    aria-hidden="true"
+                    className={`size-5 shrink-0 ${category.color}`}
+                  />
+                  {category.name}
+                </Link>
+                {active && category.tools.length > 1 && (
+                  <ul className="ml-5 space-y-1 border-l border-border pl-3 pb-2">
+                    {category.tools.map((tool) => (
+                      <li key={tool.route}>
+                        <Link
+                          to={tool.route}
+                          aria-current={
+                            pathname === tool.route ? 'page' : undefined
+                          }
+                          aria-disabled={isProcessing || undefined}
+                          onClick={(event) => {
+                            if (isProcessing) event.preventDefault()
+                            else close()
+                          }}
+                          className={`nav-link flex min-h-11 items-center rounded-lg px-3 py-2 text-sm ${pathname === tool.route ? 'bg-accent font-semibold text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                        >
+                          {tool.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </nav>
+      <div className="space-y-4 border-t border-border px-5 py-5">
+        <p className="flex gap-2 text-sm text-muted-foreground">
+          <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          Files stay on your device.
+        </p>
+        <ThemeToggle />
+        <a
+          href="https://github.com/akshetpandey/toolbox"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          Open source on GitHub
+          <ArrowUpRight aria-hidden="true" className="size-3.5" />
+        </a>
+      </div>
+    </>
+  )
+  const brand = (
+    <Link
+      to="/"
+      aria-label="Toolbox home"
+      onClick={(event) => {
+        if (isProcessing) event.preventDefault()
+        else close()
+      }}
+      className="flex min-h-11 items-center gap-2.5 font-semibold text-xl tracking-tight"
+    >
+      <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <Hammer aria-hidden="true" className="size-5" />
+      </span>
+      Toolbox
+    </Link>
+  )
   return (
     <>
-      {/* Mobile Overlay */}
-      {isMobile && !isCollapsed && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={handleOverlayClick}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`bg-background border-r border-border/50 h-screen flex flex-col transition-all duration-300 z-50 ${
-          isMobile
-            ? `fixed top-0 left-0 ${isCollapsed ? 'w-16' : 'w-80'}`
-            : `${isCollapsed ? 'w-16' : 'w-72'}`
-        }`}
-      >
-        {/* Header */}
-        <div
-          className={`border-b border-border/50 shrink-0 ${
-            isCollapsed ? 'p-2' : 'p-4'
-          }`}
+      <header className="mobile-app-bar fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-4 xl:hidden">
+        {brand}
+        <Button
+          variant="outline"
+          aria-expanded={open}
+          aria-controls="tools-drawer"
+          onClick={() => setOpen(true)}
         >
-          <div className="flex flex-col gap-3">
-            {/* First row: Logo/Title */}
-            <div
-              className={`flex items-center ${
-                isCollapsed ? 'justify-center' : 'justify-start'
-              }`}
+          <Menu aria-hidden="true" />
+          Tools
+        </Button>
+      </header>
+      <aside className="hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-card xl:flex">
+        <div className="px-6 py-5">{brand}</div>
+        {navigation}
+      </aside>
+      <dialog
+        ref={dialog}
+        id="tools-drawer"
+        aria-labelledby="tools-drawer-title"
+        onCancel={close}
+        onClose={close}
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          if (
+            event.target === event.currentTarget &&
+            (event.clientX < rect.left ||
+              event.clientX > rect.right ||
+              event.clientY < rect.top ||
+              event.clientY > rect.bottom)
+          )
+            close()
+        }}
+        className="tool-drawer fixed inset-y-0 left-0 m-0 h-dvh max-h-none w-80 max-w-[calc(100vw-24px)] border-0 border-r border-border bg-card p-0 text-foreground shadow-xl backdrop:bg-black/40"
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 id="tools-drawer-title" className="text-lg font-semibold">
+              Choose a tool
+            </h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Close tools menu"
+              onClick={close}
             >
-              <Link
-                to="/"
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-              >
-                <div
-                  className={`${
-                    isCollapsed ? 'w-8 h-8' : 'w-12 h-12'
-                  } bg-linear-to-br from-primary/20 to-primary/10 ${
-                    isCollapsed ? 'rounded-xl' : 'rounded-2xl'
-                  } flex items-center justify-center`}
-                >
-                  <Hammer
-                    className={`${
-                      isCollapsed ? 'w-4 h-4' : 'w-6 h-6'
-                    } text-primary`}
-                  />
-                </div>
-                {!isCollapsed && (
-                  <h2 className="text-heading text-foreground">Toolbox</h2>
-                )}
-              </Link>
-            </div>
-
-            {/* Second row: Collapse Button and Theme Toggle */}
-            <div className="pl-2 flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleSidebar}
-                className="h-8 w-8 p-0 hover:bg-accent/50"
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4" />
-                )}
-              </Button>
-              {!isCollapsed && <ThemeToggle />}
-            </div>
+              <X aria-hidden="true" />
+            </Button>
           </div>
+          {navigation}
         </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className={`py-2 ${isCollapsed ? 'px-1' : 'px-2'}`}>
-              {/* Tool categories */}
-              <div className="flex flex-col gap-2">
-                {toolCategories.map((category) => (
-                  <div key={category.name} className="flex flex-col">
-                    {/* Category header */}
-                    <Link to={category.route} className="w-full">
-                      <div
-                        className={`flex items-center rounded-lg transition-colors group cursor-pointer ${
-                          isCollapsed ? 'p-2 justify-center' : 'gap-3 p-3'
-                        } ${
-                          isProcessing
-                            ? 'opacity-50 cursor-not-allowed'
-                            : 'hover:bg-accent/50'
-                        }`}
-                        onClick={(e) => {
-                          if (isProcessing) {
-                            e.preventDefault()
-                          }
-                        }}
-                        title={isCollapsed ? category.name : ''}
-                      >
-                        <div
-                          className={`${isCollapsed ? 'w-8 h-8' : 'w-10 h-10'} ${category.bgColor} rounded-xl flex items-center justify-center ${
-                            isProcessing ? '' : 'group-hover:scale-110'
-                          } transition-transform`}
-                        >
-                          <category.icon
-                            className={`${isCollapsed ? 'h-4 w-4' : 'h-5 w-5'} ${category.color}`}
-                          />
-                        </div>
-                        {!isCollapsed && (
-                          <div className="flex-1">
-                            <h3
-                              className={`font-semibold text-foreground transition-colors ${
-                                isProcessing ? '' : 'group-hover:text-primary'
-                              }`}
-                            >
-                              {category.name}
-                            </h3>
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-
-                    {/* Tool list */}
-                    {!isCollapsed && (
-                      <div className="ml-12 flex flex-col gap-1">
-                        {category.tools.map((tool) => {
-                          const isActive = isToolActive(tool.route)
-
-                          return (
-                            <div
-                              key={tool.name}
-                              ref={isActive ? activeToolRef : null}
-                            >
-                              {tool.underConstruction ? (
-                                <Button
-                                  variant="ghost"
-                                  className="w-full justify-start h-auto p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg cursor-not-allowed opacity-60"
-                                  disabled
-                                >
-                                  <Construction className="w-3 h-3 mr-2" />
-                                  {tool.name}
-                                </Button>
-                              ) : (
-                                <Link
-                                  to={tool.route}
-                                  className="w-full"
-                                  onClick={(e) => {
-                                    if (isProcessing) {
-                                      e.preventDefault()
-                                    }
-                                    // Close sidebar on mobile when navigating
-                                    if (isMobile) {
-                                      setIsCollapsed(true)
-                                    }
-                                  }}
-                                >
-                                  <Button
-                                    variant="ghost"
-                                    disabled={isProcessing}
-                                    className={`w-full justify-start h-auto p-2 text-sm rounded-lg ${
-                                      isActive
-                                        ? 'bg-primary/10 text-primary border border-primary/20'
-                                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                                    } ${
-                                      isProcessing
-                                        ? 'opacity-50 cursor-not-allowed'
-                                        : 'cursor-pointer'
-                                    }`}
-                                  >
-                                    <tool.icon className="w-3 h-3 mr-2" />
-                                    {tool.name}
-                                  </Button>
-                                </Link>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </ScrollArea>
-        </div>
-      </div>
+      </dialog>
     </>
   )
 }

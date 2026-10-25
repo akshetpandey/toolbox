@@ -6,6 +6,7 @@ export interface VideoToolsContextType {
   metadata: Record<string, VideoMetadata>
   ffmpegProcessor: FFmpegProcessor | null
   isProcessing: boolean
+  isPreparing: boolean
   progress: number
   progressStartTime: number | null
   estimatedTimeRemaining: string | null
@@ -20,7 +21,7 @@ export interface VideoToolsContextType {
   setElapsedTime: (time: string | null) => void
   setShowSlowProcessingWarning: (show: boolean) => void
   setCurrentAbortController: (controller: AbortController | null) => void
-  getFfmpegProcessor: () => Promise<FFmpegProcessor>
+  getFfmpegProcessor: (file?: VideoFile) => Promise<FFmpegProcessor>
   setIsProcessing: (processing: boolean) => void
   cancelProcessing: () => void
 }

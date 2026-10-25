@@ -3,6 +3,7 @@ import type { PDFFile } from '@/lib/pdf'
 
 export interface PDFToolsContextType {
   selectedFiles: PDFFile[]
+  pageCounts: Record<string, number | null>
   isProcessing: boolean
   handleFileSelect: (files: FileList) => void
   removeFile: (id: string) => void

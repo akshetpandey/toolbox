@@ -1,0 +1,489 @@
+{
+  "title": "Toolbox UI and UX review",
+  "date": "2026-10-25",
+  "commit": "80c1c71",
+  "environment": "Production build served by Vite preview at http://127.0.0.1:4173, operated in the Codex in-app browser on macOS.",
+  "viewports": [
+    "1440 × 1000 desktop",
+    "1024 × 768 landscape/tablet",
+    "768 × 1024 portrait/tablet",
+    "390 × 844 phone",
+    "375 × 667 small phone"
+  ],
+  "assessment": "Desktop workflows are usable and the privacy proposition is clear. Mobile needs a structural layout pass: the navigation rail and large file cards consume scarce space, while some essential actions extend outside the visible workspace. Fix reachability and task feedback before polishing decoration.",
+  "overall_design_review": {
+    "title": "Overall design direction: calm, capable, and easy to finish",
+    "verdict": "The app already has an approachable identity, useful previews, familiar controls, and a strong reason to exist: private file processing without an account. Its current presentation feels more like a collection of component examples than one finished product. Large rounded cards, nested borders, soft shadows, repeated navigation, and changing action colors compete for attention. The next design pass should make the current task, file, and outcome immediately clear. A modern appearance will come from consistent hierarchy, restrained surfaces, and confident interaction states.",
+    "preserve": "Keep the simple Toolbox identity, recognizable category icons, plain-language privacy promise, file details, and immediate access without signup. Use the existing components as a foundation, then reduce the number of competing treatments.",
+    "principles": [
+      {
+        "title": "Give each screen one clear job",
+        "guidance": "Name the actual task in the page heading: Resize image, Merge PDFs, or Convert document to PDF. Put the selected file and the next action in the same visual reading path. Category navigation, theme controls, project links, and advanced options should be quieter."
+      },
+      {
+        "title": "Make the file the working material",
+        "guidance": "Before selection, make the picker inviting and specific about accepted files. After selection, replace the large drop zone with a compact file summary. Give the saved space to the preview, canvas, ordered document list, or relevant controls."
+      },
+      {
+        "title": "Make the next step predictable",
+        "guidance": "Use a shared progression: choose file, adjust, process, inspect result, download. Simple tasks can process and download in one action, but should still leave a visible result and Download again. Avoid a wizard that adds clicks to a two-field task."
+      },
+      {
+        "title": "Design each screen for its available space",
+        "guidance": "Use a phone layout with its own navigation and control order. Expand into useful columns on larger screens only when each column has enough room. Keep task state when a layout changes."
+      }
+    ],
+    "visual_system": [
+      {
+        "area": "Hierarchy and page titles",
+        "critique": "Image Tools and repeated category navigation dominate while the active task is mostly identified by a tab.",
+        "proposal": "Lead with the task name, a short purpose sentence when needed, a compact selected-file row, then the working controls. Use one dominant action per stage. Keep secondary actions such as Replace and Reset visibly secondary.",
+        "benefit": "A visitor can identify the task and next step without scanning two navigation systems."
+      },
+      {
+        "area": "Typography",
+        "critique": "Headings, field labels, metadata, and helper text do not consistently distinguish the task from surrounding interface chrome.",
+        "proposal": "Use one UI type family with a deliberate scale: roughly 28–32 px task headings on desktop, 24–28 px on phones, 16 px body and input text, and 14 px labels or secondary metadata. Use 1.4–1.6 line height and reserve semibold for headings, labels, and key values. Keep filenames readable; use monospace only where useful, such as hashes.",
+        "benefit": "Clearer scanning, fewer tiny labels on phones, and a more intentional visual rhythm."
+      },
+      {
+        "area": "Spacing and density",
+        "critique": "The upload panel and nested cards consume substantial space even when the remaining task is just a few fields.",
+        "proposal": "Use a 4/8 px spacing scale as a starting point: about 16 px phone gutters, 24–32 px desktop gutters, 8–12 px within related controls, 16 px between field groups, and 24–32 px between sections. Keep useful whitespace around the task while reducing padding inside nested containers.",
+        "benefit": "Controls become easier to associate without making the screen feel crowded or sparse."
+      },
+      {
+        "area": "Surfaces, borders, and depth",
+        "critique": "Multiple large rounded surfaces, inset dashed frames, and soft shadows give similar prominence to every region.",
+        "proposal": "Use a neutral page background and one main work surface. Separate internal groups with alignment, spacing, or a fine divider. Reserve dashed borders for a drop target awaiting files, shadows for overlays or a deliberately raised surface, and a restrained 8–12 px corner radius for most containers.",
+        "benefit": "The working content becomes the focal point and the interface feels cleaner and more precise."
+      },
+      {
+        "area": "Color and brand",
+        "critique": "Primary actions change from purple to blue to green across tools, while category colors and status colors add more competing signals.",
+        "proposal": "Choose one primary action color, with the existing blue as a practical starting point. Keep category tints in small icons or navigation accents. Use green for success, amber for caution, and red for errors or destructive actions, always with text or an icon explaining the meaning.",
+        "benefit": "People learn one action language while the category identity remains recognizable."
+      },
+      {
+        "area": "Controls and icons",
+        "critique": "Button sizes, long labels, icon-only actions, and small tabs create inconsistent emphasis and touch comfort.",
+        "proposal": "Define shared primary, secondary, quiet, and destructive button styles. Align input and button heights around 44–48 px where appropriate, including their hit areas. Prefer concrete verbs such as Resize image or Merge 3 PDFs. Keep Lucide icon size and stroke treatment consistent, pair unfamiliar icons with text, and provide visible focus, selected, disabled, and loading states.",
+        "benefit": "Actions look related, are easier to hit, and explain what will happen."
+      },
+      {
+        "area": "Dark mode",
+        "critique": "The dark trim screen retains a pale pink error surface that feels disconnected from the surrounding theme.",
+        "proposal": "Create explicit dark tokens for page, surface, border, muted text, focus, and semantic states. Give error and success messages compatible dark surfaces. Check text, control, and focus contrast in both themes rather than mechanically inverting colors.",
+        "benefit": "Dark mode feels designed and status messages remain legible without excessive glare."
+      },
+      {
+        "area": "Motion and perceived quality",
+        "critique": "Loading, navigation, and completion need a consistent interaction language; performance was not benchmarked in this review.",
+        "proposal": "Use brief, purposeful transitions, around 150–200 ms as a starting point, for drawers and status changes. Respect reduced motion, retain focus, and avoid shifting the primary action during loading. Show Preparing video, Processing, and Ready as distinct states; use indeterminate progress when no reliable percentage exists.",
+        "benefit": "The interface communicates progress without making the person wait through decoration or misread what is running."
+      }
+    ],
+    "product_experience": [
+      {
+        "title": "Turn the homepage into a useful starting point",
+        "guidance": "Lead with a short benefit such as Private file tools, right in your browser, followed by a clearly labeled task search and popular tasks: Resize image, Compress image, Merge PDFs, Convert to PDF, and Extract archive. Show category groups below. Keep the privacy reassurance near the first action; move release history, implementation libraries, and project links lower. A first-time visitor should be able to choose a task immediately. Search should match everyday terms such as shrink photo as well as tool names.",
+        "related_findings": ["04", "05", "17"]
+      },
+      {
+        "title": "Use familiar goals before technical parameters",
+        "guidance": "Prefill real image dimensions and valid video ranges. Offer understandable presets such as Smaller file, Balanced, and Best quality, with a short explanation of the tradeoff. Put CRF, codec, encoder speed, and other expert settings in Advanced. Show units, output format, and the effect of a setting near the control. Keep advanced settings available for people who need precision.",
+        "related_findings": ["08", "13"]
+      },
+      {
+        "title": "Give each workflow an appropriate work area",
+        "guidance": "Use a large canvas with a compact wrapping toolbar for redaction; a timeline, playback preview, and valid start/end controls for trim; an ordered list with filenames and page counts for PDF merging; and clear name, type, size, and download actions for archives. Share navigation, file summaries, buttons, and status patterns across tools while allowing their main work areas to differ.",
+        "related_findings": ["01", "03", "09", "19"]
+      },
+      {
+        "title": "Treat completion as a product screen",
+        "guidance": "Retain a result summary showing the filename, format, size, and relevant dimensions, duration, or page count. Offer Download again and a clear next task that can reuse the result when supported. Compression should show before and after sizes and percentage change, including a neutral explanation when the result is larger. Distinguish the source file from the generated output. Avoid claiming a file was saved to disk when the app can only initiate a download.",
+        "related_findings": ["06", "15"]
+      },
+      {
+        "title": "Make recovery and privacy understandable",
+        "guidance": "Use plain-language errors with the most useful next action: Choose another file, Change settings, or Try again. Put raw diagnostics in an optional details area. Preserve completed edits when navigating where practical; otherwise warn before discarding them. Explain what Remove metadata affects, and label actions separately when they only remove a file from the current workspace. Keep the local-processing reassurance short and close to file selection.",
+        "related_findings": ["07", "10", "14", "16"]
+      },
+      {
+        "title": "Make accessibility part of the shared interaction model",
+        "guidance": "Use one focus stop per action, named navigation and main regions, accessible names for icon controls, and a logical focus order. Make selected states and validation understandable without color. Announce processing, completion, and errors without stealing focus. Provide keyboard alternatives to dragging PDFs or drawing where feasible, and verify zoom, text enlargement, long filenames, and narrow layouts alongside pointer use.",
+        "related_findings": ["11", "12"]
+      }
+    ],
+    "responsive_patterns": [
+      {
+        "area": "Navigation",
+        "desktop": "A restrained sidebar with readable labels; expand the active category when helpful. Avoid presenting the same full tool list again as a prominent tab strip.",
+        "mobile": "A compact top bar with a labeled Tools menu and the current task. Keep the content width available for the job; do not retain a permanent icon rail."
+      },
+      {
+        "area": "Files and preview",
+        "desktop": "A compact file summary plus a useful preview beside settings. Give editing canvases most of the available width.",
+        "mobile": "A compact file row first. Place a useful preview where the task needs it; avoid making a large decorative preview a prerequisite to reaching two fields."
+      },
+      {
+        "area": "Controls",
+        "desktop": "Group related controls and use two columns only when labels, values, and helper text fit comfortably.",
+        "mobile": "Stack fields and action groups. Let mode tools wrap or use a named selector. Preserve full filenames or offer expansion when space is tight."
+      },
+      {
+        "area": "Primary action and results",
+        "desktop": "Align the action with the settings and show the result in the same work area.",
+        "mobile": "Keep the action reachable after settings. Consider a bottom action region only after checking safe areas, scrolling, and the soft keyboard. Results must remain visible and reusable after downloading."
+      },
+      {
+        "area": "Tablet and orientation",
+        "desktop": "Let content width determine when a sidebar and split workspace fit together; 1024 px is not automatically a comfortable full-desktop layout.",
+        "mobile": "Use the same compact navigation on a constrained tablet and preserve edits across orientation or layout changes. Test real touch and keyboard behavior."
+      }
+    ],
+    "validation": {
+      "note": "These are proposed product acceptance checks and starting values, not measured usability outcomes or a claim of accessibility conformance. Validate the design with first-time users and actual phones.",
+      "checks": [
+        "From the homepage, a new visitor can find and start a named task without needing the sidebar explained. Observe task choice, wrong turns, and hesitation in a small usability session.",
+        "At 375, 390, 768, 1024, and 1440 px, the current task, selected file, required settings, and primary action form a coherent reading order with no clipped actions.",
+        "Every tool follows a recognizable empty, selected, processing, result, and recoverable-error pattern, with clear output details and Download again where a file is produced.",
+        "A token and component review confirms the same heading scale, spacing rhythm, action colors, control variants, focus treatment, and semantic states across all six families in both themes.",
+        "Keyboard-only and screen-reader checks cover selection, settings, processing, results, errors, and navigation. Real iOS and Android checks cover file picking, touch targets, redaction, soft keyboards, safe areas, and orientation.",
+        "First-time users can complete representative image, PDF, and video tasks and explain what happened to their file. Record completion, recovery, and confidence before and after the redesign rather than judging success from screenshots alone."
+      ]
+    }
+  },
+  "limitations": [
+    "Phone and tablet checks used resized desktop browser viewports. They do not establish physical touch behavior, iOS or Android compatibility, native mobile file-picker behavior, soft-keyboard behavior, or safe-area handling.",
+    "Used small repository fixtures and disposable synthetic PDFs, an XLSX, and a damaged DOCX. Large-file memory pressure, slow networks, offline behavior, cancellation under load, and long-running jobs were not benchmarked.",
+    "This is a qualitative design review with selected DOM, geometry, and keyboard checks. It is not a complete screen-reader audit, contrast audit, or WCAG conformance assessment.",
+    "Some captures intentionally show transient loading states. A one-off sidebar click during a viewport transition was retried successfully and is not reported as an application defect."
+  ],
+  "strengths": [
+    "The privacy message is prominent, understandable, and appropriate for the product. No account or signup wall interrupted the tested tasks.",
+    "Selected-file names, sizes, dimensions, and previews provide useful context. Switching tools within a category preserves the selected file.",
+    "Aspect-locked resize correctly updated height when width changed. A 350 × 208 image exported at 700 × 416.",
+    "PDF pointer reordering worked and the order summary updated. Two PDFs containing one and two pages produced a three-page merged document.",
+    "Archive creation shows the exact output filename before processing. Extraction exposes individual file downloads and a download-all action.",
+    "DOCX and the synthetic XLSX both converted successfully. The Office success screen gives a clearer completion state than the image and video tools.",
+    "Checksum values wrap on phone layouts, a matching expected checksum is recognized, and a mismatch produces explicit No match text.",
+    "Keyboard focus rings are visible, the Choose file button opens with Enter, and the current page link exposes aria-current."
+  ],
+  "workflows": [
+    [
+      "Images",
+      "Upload PNG; resize with aspect lock; download; draw a redaction; leave and return",
+      "Resize output verified at 700 × 416. Redaction drawing worked with a pointer. Returning from Home lost the file and redaction state."
+    ],
+    [
+      "Video",
+      "Upload three-second WebM; compress to MP4; inspect Trim; try First 30s",
+      "MP4 downloaded. Import briefly appeared as compression. Trim opened with a ten-second end and the preset changed it to thirty seconds, both invalid for this clip."
+    ],
+    [
+      "PDF",
+      "Select two PDFs one at a time; reorder; merge; visit Split",
+      "Reordering and three-page output verified. Picker is single-select; Change file appends. Split is available as a tab despite being disabled in the sidebar."
+    ],
+    [
+      "Office",
+      "Convert DOCX and XLSX; select a deliberately damaged DOCX",
+      "Both normal files converted. Damaged input produced a raw Typst/ZIP error instead of a plain-language recovery message."
+    ],
+    [
+      "Archives",
+      "Select two PDFs together; name and create ZIP; extract that ZIP",
+      "Multi-select works here. Correct filenames and two extracted files were shown. Mobile names were truncated severely."
+    ],
+    [
+      "Utilities",
+      "Hash sample.txt; verify matching and mismatching MD5; inspect metadata",
+      "Hash verification worked. No copy actions are offered. The non-image file still gets an EXIF panel and metadata-removal action."
+    ],
+    [
+      "Navigation and themes",
+      "Open/close mobile drawer; change categories; use Back; switch light/dark/system; traverse with Tab",
+      "Drawer closes after choosing a tool. System theme restored. Keyboard trace confirms duplicate link/button stops and missing main/navigation landmarks."
+    ]
+  ],
+  "findings": [
+    {
+      "id": "01",
+      "priority": "P1",
+      "surface": "Mobile · Redaction and metadata",
+      "effort": "M",
+      "title": "Essential actions are clipped outside the phone workspace",
+      "observed": "At 375 px, Pixelate extended to x=401, Emoji to x=481, and Download Without Metadata occupied x=401–663. The document width remained 375 px. The user sees a clipped toolbar, a partially visible Download, and no visible privacy-download action. Utilities metadata repeats the wide-action problem at 390 px.",
+      "impact": "A user can prepare a privacy edit and then fail to discover or reach the required export option. This blocks completion on phones and undermines the app's privacy purpose.",
+      "recommendation": "Make mode controls wrap or use a labeled mode selector. Stack export actions at narrow widths, shorten the privacy action to Remove metadata and download, and allow its label to wrap. Keep all actions within the content column; do not hide overflow to conceal an oversized row.",
+      "acceptance": "At 375 and 390 px, every redaction mode and both export actions are fully visible and operable with no horizontal page pan or keyboard workaround. Repeat with an image selected in metadata and with long button labels.",
+      "screenshots": [
+        "10-mobile-redaction-controls.jpg",
+        "11-mobile-redaction-drawn.jpg",
+        "41-mobile-file-metadata.jpg"
+      ]
+    },
+    {
+      "id": "02",
+      "priority": "P2",
+      "surface": "Mobile and tablet · Shared navigation",
+      "effort": "L",
+      "title": "Navigation takes too much space at the breakpoints that need it most",
+      "observed": "The 64 px icon rail uses about 17% of a 375 px phone before content padding. At 768 px the full 288 px sidebar occupies 37.5% of the viewport. At 1024 px the sidebar and two-column tool layout leave an extremely narrow file panel, wrapping ordinary filenames across several lines.",
+      "impact": "Tasks feel cramped on tablets and phones even when the page has little actual content. Icon-only categories also make first-time navigation harder to understand.",
+      "recommendation": "Use a compact top app bar with a named Tools menu on phones. Keep tablet navigation collapsed until the workspace has enough width for both file and settings panels. Reserve the full sidebar for wide desktops, and consider expanding only the active category's tools.",
+      "acceptance": "Review 375, 390, 768, 1024, and 1440 px layouts. The tool workspace should remain the dominant region. A tablet file row must fit a normal filename and its actions without forced multi-line fragmentation.",
+      "screenshots": [
+        "06-mobile-resize-loaded.jpg",
+        "25-tablet-pdf.jpg",
+        "26-tablet-landscape-pdf.jpg"
+      ]
+    },
+    {
+      "id": "03",
+      "priority": "P2",
+      "surface": "Mobile · Shared file selection",
+      "effort": "M",
+      "title": "The upload card stays oversized after selection",
+      "observed": "On a small phone the selected-image preview, nested borders, and padding consume most of the first screen. Tool tabs and settings follow below. PDF and archive screens similarly repeat selected-file information before the actual operation or results.",
+      "impact": "The user has completed file selection, but the layout continues giving that step the most space. Settings and completion actions require unnecessary scrolling, especially on a 667 px-tall phone.",
+      "recommendation": "After selection, collapse the upload area into a compact file summary with name, size, dimensions, Replace, and Remove. Make the preview expandable. Redaction should devote the main area to its editable canvas rather than showing the same image twice. Consider a compact sticky action area after controls are valid.",
+      "acceptance": "On a 375 × 667 screen, the selected-file summary and the first useful task controls fit together in the initial viewport. Results should follow the task controls without another duplicate file-summary card.",
+      "screenshots": [
+        "07-mobile-small-resize.jpg",
+        "24-mobile-pdf-merge.jpg",
+        "35-mobile-archive-extracted.jpg"
+      ]
+    },
+    {
+      "id": "04",
+      "priority": "P2",
+      "surface": "Mobile · Tool selection",
+      "effort": "M",
+      "title": "The horizontal tab strip hides capabilities without explaining how to find them",
+      "observed": "Five image tabs share a narrow phone content column. Metadata and Resize are visible while later labels are cut off. Tabs measure about 27 px high. The page heading remains Image Tools, so the selected operation is communicated mainly by this small strip.",
+      "impact": "A new user may never discover Compress or Redact, and switching tools requires an unadvertised horizontal scroll or opening the global drawer.",
+      "recommendation": "Use a labeled tool selector or a wrapping tool grid on phones. Keep the active operation as the page title, such as Resize image. If scrolling tabs remain, provide clear overflow cues and ensure the active tab scrolls completely into view. Use a full-width grid only where all labels fit.",
+      "acceptance": "At 375 px, all available tools are discoverable without guessing a swipe gesture. The current task name is visible independently of the tab strip, and labels are never cut mid-word.",
+      "screenshots": ["06-mobile-resize-loaded.jpg", "09-mobile-redaction.jpg"]
+    },
+    {
+      "id": "05",
+      "priority": "P2",
+      "surface": "Desktop and mobile · Landing page",
+      "effort": "M",
+      "title": "The landing page promotes project links before helping someone choose a task",
+      "observed": "The three prominent hero actions are View on GitHub, Report Issue, and Request Tool. The main content then explains client-side processing, WASM, open source, and release history. There is no main-content tool chooser or primary start action. On phones the first viewport contains project links and the beginning of a feature card.",
+      "impact": "Users must interpret the sidebar or unlabeled mobile icons to find the product's actual capabilities. The page explains implementation before helping a non-technical visitor accomplish something.",
+      "recommendation": "Keep the privacy promise, then offer a searchable or scannable set of task cards: Resize image, Compress video, Merge PDFs, Convert document to PDF, Create ZIP, and Verify a file. Move project/community links and release history below the task chooser. Put library details in an About section.",
+      "acceptance": "At desktop and phone sizes, the initial screen provides an obvious route into at least the most common tasks. GitHub links remain available but have secondary visual weight.",
+      "screenshots": ["01-desktop-home.jpg", "12-mobile-home.jpg"]
+    },
+    {
+      "id": "06",
+      "priority": "P2",
+      "surface": "All tools · Completion and output",
+      "effort": "L",
+      "title": "A successful download often leaves no visible result or useful comparison",
+      "observed": "After image resize, video compression, and PDF merge, the page largely returns to its prior controls with no persistent result card. The tested video grew from 203,313 to 210,600 bytes, about 3.6%, without a visible size comparison. Office does show success and output size, but its recovery action is Convert Again rather than Download again.",
+      "impact": "Users cannot easily confirm what changed, locate the result, or recover a missed download. A larger compression result can appear successful while failing the user's real goal of saving space.",
+      "recommendation": "Create a shared result panel with output name, type, dimensions or duration, before/after size, a clear Download action, Download again, and Process another file. Retain the generated result for re-download. If compression produces a larger file, say so and offer a sensible next step without claiming a size reduction.",
+      "acceptance": "Every completed operation leaves a persistent, clearly labeled result. A user can re-download without rerunning WASM work. Compression reports positive or negative size change accurately.",
+      "screenshots": [
+        "05-desktop-resize-after-download.jpg",
+        "17-desktop-video-after-compress.jpg",
+        "29-desktop-office-success.jpg"
+      ]
+    },
+    {
+      "id": "07",
+      "priority": "P2",
+      "surface": "Video · Loading and processing",
+      "effort": "M",
+      "title": "Importing a video is presented as an operation the user has not started",
+      "observed": "Immediately after selecting a WebM on the compression screen, the page showed Compressing Video, 0.0%, Cancel, and Compressing..., even though Compress Video had not been clicked. The state disappeared after metadata preparation finished.",
+      "impact": "The app seems to start encoding automatically, and the user cannot distinguish downloading tools, reading metadata, preparing a file, and performing the requested operation. A percentage that does not represent the active stage damages trust.",
+      "recommendation": "Model preparation and processing as distinct visible stages: Preparing video tools, Reading video information, Ready, and Compressing video. Show determinate progress only when the measurement belongs to that stage. Display Cancel only when it cancels the operation actually in progress.",
+      "acceptance": "Selecting a video never claims compression has started. The label and progress indicator remain accurate through first-load, metadata extraction, encoding, success, and failure.",
+      "screenshots": [
+        "15-desktop-video-selected.jpg",
+        "16-desktop-video-ready.jpg"
+      ]
+    },
+    {
+      "id": "08",
+      "priority": "P2",
+      "surface": "Video · Trim",
+      "effort": "M",
+      "title": "Trim starts in an invalid state and its presets can make that state worse",
+      "observed": "The tested three-second video opened Trim with an end time of ten seconds and an End time exceeds video duration error before any editing. Clicking First 30s set the end to thirty seconds rather than clamping it to the clip. The primary action remained disabled.",
+      "impact": "The user is asked to correct an error introduced by the interface. Manual HH:MM:SS fields also make a visual editing task feel unnecessarily technical.",
+      "recommendation": "Initialize the selection from zero to the actual duration. Hide, disable, or clamp presets that exceed the clip. Add a simple timeline with draggable in/out handles and keep precise time fields as an optional companion. Associate validation directly with the affected field.",
+      "acceptance": "A valid short clip opens with a valid selectable range and no error. Every enabled preset produces a valid range. The user can choose a section without manually calculating timestamps.",
+      "screenshots": [
+        "18-desktop-video-trim.jpg",
+        "19-desktop-dark-trim.jpg",
+        "20-mobile-trim-dark.jpg"
+      ]
+    },
+    {
+      "id": "09",
+      "priority": "P2",
+      "surface": "PDF · File selection and merge",
+      "effort": "S",
+      "title": "The merge uploader contradicts the batch task",
+      "observed": "The empty state says Supports multiple PDF files, but the native picker was single-select. After one PDF, the only picker action was Change file; choosing another PDF appended it. Archive creation, by comparison, correctly uses a multiple-file picker.",
+      "impact": "Users cannot select their documents in one step, and the control suggests replacement when it actually adds another file. A two-file merge requires discovering an unexpected behavior.",
+      "recommendation": "Enable multi-select for PDF merging. Use Choose PDF files initially and Add PDFs after selection. Separate Replace and Remove actions where needed. Keep the current order preview, but add page counts and a clear total.",
+      "acceptance": "A user can select two or more PDFs in one picker operation. Add PDFs preserves existing files, and no control labeled Change or Replace silently appends.",
+      "screenshots": [
+        "21-desktop-pdf-empty.jpg",
+        "22-desktop-pdf-one-file.jpg",
+        "23-desktop-pdf-two-files.jpg"
+      ]
+    },
+    {
+      "id": "10",
+      "priority": "P2",
+      "surface": "Navigation · Working state",
+      "effort": "M",
+      "title": "Leaving a category silently discards a working edit",
+      "observed": "After drawing a redaction, selecting Home and then using Back returned to an empty redaction screen. The image and drawn area were gone. No warning or recovery was offered.",
+      "impact": "Exploring the app can erase work. This is especially costly for multiple redactions or carefully configured tasks, and users may confuse a lost edit with a processing failure.",
+      "recommendation": "Keep the active workspace in memory across ordinary navigation, or warn when leaving a modified, unexported task. Give users an explicit Reset action. Avoid requiring persistent storage of file contents; the current browser session can retain state without uploading it.",
+      "acceptance": "Home then Back either restores the selected file and edits or asks before discarding them. A completed download and an unexported modified file should be treated differently.",
+      "screenshots": [
+        "11-mobile-redaction-drawn.jpg",
+        "13-mobile-redaction-after-back.jpg"
+      ]
+    },
+    {
+      "id": "11",
+      "priority": "P2",
+      "surface": "Accessibility · Shared navigation and controls",
+      "effort": "M",
+      "title": "Keyboard and assistive navigation carry avoidable friction",
+      "observed": "Tab traversal focused the Image Metadata link and then its nested button, followed by the Resize Image link and its nested button. The document exposed zero main and zero navigation landmarks. The drawer toggle is unnamed in the accessibility snapshot; collapsed category links have no link name in that snapshot. Several PDF drag/remove controls and video quality controls also lack clear accessible names.",
+      "impact": "Keyboard users traverse duplicate stops before reaching the task, while assistive users lack dependable structural shortcuts and names for important controls. The drawer's icon is a poor substitute for a meaningful action label.",
+      "recommendation": "Render each navigation item as a single styled link. Add navigation and main landmarks plus a skip-to-content link. Name the drawer toggle and expose its expanded state. Label every icon action and form control. Give PDF reordering clear move-up/down alternatives and human-readable announcements instead of raw draggable IDs.",
+      "acceptance": "Each tool contributes one Tab stop. A keyboard user can skip navigation, open the picker, operate controls, and download. Accessibility snapshots expose meaningful names and landmarks, and PDF reordering is understandable without pointer input.",
+      "screenshots": [
+        "42-desktop-keyboard-focus.jpg",
+        "08-mobile-menu-expanded.jpg"
+      ]
+    },
+    {
+      "id": "12",
+      "priority": "P2",
+      "surface": "Mobile · Touch ergonomics",
+      "effort": "S",
+      "title": "Interactive controls are undersized for comfortable phone use",
+      "observed": "On the 375 px resize screen, tabs were 27 px high, Clear and Change file were 32 px high, the navigation toggle was 32 × 32 px, and Download was 36 px high. The visible checkbox control was 16 × 16 px, although its associated text provides an additional click target.",
+      "impact": "Small, closely packed controls increase precision demands when users are also handling a file picker, scrolling, or working one-handed. Tiny reorder and remove affordances add difficulty to batch tasks.",
+      "recommendation": "Use 44–48 px interactive rows and button targets for the phone layout, with sufficient separation. Expand checkbox and icon-button hit areas without enlarging every icon. Make drag handles and removal actions persistent and named on touch layouts.",
+      "acceptance": "The primary phone controls have comfortable hit areas and spacing at 375 and 390 px. Confirm the result on actual touch devices; viewport geometry alone does not verify finger interaction.",
+      "screenshots": ["07-mobile-small-resize.jpg", "24-mobile-pdf-merge.jpg"]
+    },
+    {
+      "id": "13",
+      "priority": "P2",
+      "surface": "Images and video · Defaults and terminology",
+      "effort": "M",
+      "title": "The default controls assume knowledge the target audience may not have",
+      "observed": "Video compression leads with Quality (CRF), a numeric scale, and Ultrafast. The helper calls 23 the default while the actual value is 28. Image resize initially shows empty fields with 800 and 600 placeholders even after loading a 350 × 208 image; Download stays disabled until a value is entered.",
+      "impact": "Non-technical users have to infer what a safe choice is and may mistake examples for active values. The apparent compression preset optimizes encoding speed without clearly expressing the effect on the goal of reducing size.",
+      "recommendation": "Lead with goal-based choices such as Smaller file, Balanced, and Higher quality, and move CRF/preset details into Advanced. Keep helper text consistent with the selected default. Prefill resize with actual dimensions and add percentage or common-size shortcuts. Use explicit action labels such as Resize and download PNG.",
+      "acceptance": "A first-time user can choose an understandable default and produce an output without learning CRF. Numeric defaults match their explanatory text, and resize fields show actual values rather than misleading placeholders.",
+      "screenshots": [
+        "03-desktop-resize-loaded.jpg",
+        "14-desktop-video-empty.jpg",
+        "16-desktop-video-ready.jpg"
+      ]
+    },
+    {
+      "id": "14",
+      "priority": "P2",
+      "surface": "Office · Error and recovery",
+      "effort": "S",
+      "title": "Technical failure details are shown as the main explanation",
+      "observed": "A deliberately damaged DOCX produced: Conversion to Typst failed — no output received, followed by an unpacking error and end of central directory signature terminology. The primary retry action still offered Convert to PDF on the same damaged file.",
+      "impact": "The message exposes implementation details without telling a non-technical user whether they should retry, choose another file, or repair the document. Retrying the unchanged damaged input is unlikely to help.",
+      "recommendation": "Show a plain-language summary such as This document could not be opened. It may be damaged or may not be a valid DOCX file. Offer Choose another file and a specific repair suggestion. Put the original error in an expandable Technical details section. Use consistent success/error/loading components across tools.",
+      "acceptance": "A damaged-file error identifies the likely user-facing problem and a useful next action. The full technical message remains available for issue reports without dominating the interface.",
+      "screenshots": ["31-desktop-office-error.jpg"]
+    },
+    {
+      "id": "15",
+      "priority": "P2",
+      "surface": "Utilities · Hash results",
+      "effort": "S",
+      "title": "Hashes are readable but unnecessarily difficult to reuse",
+      "observed": "MD5, SHA1, and SHA256 values are displayed as text without copy buttons. A matching expected hash shows a check and MD5, while a mismatch says No match. The layout wraps long hashes on phones, which is useful, but copying requires manual text selection.",
+      "impact": "Copying and comparing checksums is the purpose of the tool. Manual selection of 32–64 characters is tedious on a phone and invites partial copies. A positive match should be stated as clearly as a negative one.",
+      "recommendation": "Give each digest a named Copy action, brief Copied feedback, and an optional Copy all action. Say Matches MD5 or Does not match any calculated hash in a live status region. Keep selectable monospace text and show the full value on demand.",
+      "acceptance": "Each complete checksum can be copied with one action. Verification produces explicit positive and negative messages, announced without moving focus. Confirm clipboard behavior on desktop and real mobile browsers.",
+      "screenshots": [
+        "38-desktop-hash-ready.jpg",
+        "39-mobile-hash-match.jpg",
+        "40-mobile-hash-mismatch.jpg"
+      ]
+    },
+    {
+      "id": "16",
+      "priority": "P2",
+      "surface": "Utilities · Metadata relevance",
+      "effort": "S",
+      "title": "The metadata screen offers irrelevant image guidance for a selected text file",
+      "observed": "For sample.txt, File Metadata shows MIME type and size, but a second EXIF Metadata card says Select an image file to view EXIF metadata and still offers Download Without Metadata. The interface does not explain what, if anything, would be removed from this text file.",
+      "impact": "The user has already selected a valid file, yet part of the page behaves as if the selection is missing. A privacy action without a clear scope can create false expectations about what it cleans.",
+      "recommendation": "Condition metadata panels on the selected file's capabilities. For a text file, show This file type has no image EXIF metadata instead of requesting another selection. Show removal actions only with a clear explanation of their scope, supported formats, and relevant metadata.",
+      "acceptance": "A valid non-image selection has no contradictory Select an image instruction. Metadata removal explains its scope before the user invokes it, and irrelevant sections do not displace useful information.",
+      "screenshots": ["41-mobile-file-metadata.jpg"]
+    },
+    {
+      "id": "17",
+      "priority": "P3",
+      "surface": "PDF · Capability availability",
+      "effort": "S",
+      "title": "Unavailable tools have inconsistent affordances",
+      "observed": "Split and Compress are disabled in the PDF sidebar, but the same tools are enabled tabs. Selecting Split opens a Coming soon page while the user's files remain visible.",
+      "impact": "The interface gives conflicting answers about whether the task can be completed. Users can invest effort choosing files before discovering that a visible tool is unavailable.",
+      "recommendation": "Use one availability policy everywhere: hide unfinished tools from task navigation, or show an explicit Coming soon badge with a consistent non-actionable state. Keep release-roadmap information separate from the active processing workflow.",
+      "acceptance": "Sidebar, tool chooser, and tabs communicate the same availability. A user does not enter a tool that looks operational and only then discover it has no implementation.",
+      "screenshots": [
+        "27-desktop-pdf-unavailable.jpg",
+        "23-desktop-pdf-two-files.jpg"
+      ]
+    },
+    {
+      "id": "18",
+      "priority": "P3",
+      "surface": "Visual system · All surfaces",
+      "effort": "M",
+      "title": "Visual hierarchy is dominated by containers rather than the task",
+      "observed": "Large shadows, rounded cards inside rounded cards, dashed borders around already-selected files, and generous repeated padding occupy much of each screen. Image Download is purple while most actions are blue and archive extraction is green. Office has a full-width single Convert tab. Dark mode retains a very bright pale error panel.",
+      "impact": "The interface feels heavier than its small control sets require, and action styling does not consistently communicate hierarchy. Decorative surface treatment consumes valuable mobile space and competes with result or error information.",
+      "recommendation": "Define a small set of surface, border, spacing, button, status, and typography tokens. Use one primary action treatment; reserve category color for navigation and status colors for outcomes. Remove redundant nested containers and single-option tabs. Give dark mode semantic error surfaces that fit its palette while remaining readable.",
+      "acceptance": "A user can distinguish primary action, secondary action, input, and status consistently across all six families. Small screens lose redundant container padding, and light/dark states preserve the same information hierarchy.",
+      "screenshots": [
+        "02-desktop-resize-empty.jpg",
+        "19-desktop-dark-trim.jpg",
+        "28-desktop-office-empty.jpg",
+        "33-desktop-archive-ready.jpg"
+      ]
+    },
+    {
+      "id": "19",
+      "priority": "P2",
+      "surface": "Mobile · Archive results",
+      "effort": "S",
+      "title": "File rows sacrifice the information needed to choose the right download",
+      "observed": "At 390 px, the extraction list reduced 01-invoice.pdf to 01-in... and 02-project-notes.pdf to 02-p..., while the Download label retained most of the row width. These are short, ordinary filenames rather than an extreme stress test.",
+      "impact": "Users cannot confidently identify which file they are downloading. The problem grows with archives containing similar names or many files.",
+      "recommendation": "Put the full or wrapping filename on the first line and size plus a compact download action on the second. Preserve the extension and meaningful end of a truncated name. Give the action an accessible label containing the full filename and provide an easy way to reveal the complete name.",
+      "acceptance": "At 375 and 390 px, ordinary filenames remain distinguishable and their extensions stay visible. Similar prefixes, long names, and multiple rows can be selected without relying on a desktop-only hover tooltip.",
+      "screenshots": ["36-mobile-archive-file-actions.jpg"]
+    }
+  ]
+}

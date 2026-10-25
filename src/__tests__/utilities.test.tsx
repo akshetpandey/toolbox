@@ -1,34 +1,47 @@
+import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { ExifMetadata, FileHashes, FileMetadata } from '@/lib/metadata'
 import { ProcessingProvider, useProcessing } from '@/contexts/ProcessingContext'
 import { useUtilities } from '@/contexts/UtilitiesContext'
 
-const { calculateFileHashes, extractFileMetadata, extractExifMetadata } =
-  vi.hoisted(() => ({
-    calculateFileHashes:
-      vi.fn<
-        (
-          file: File,
-          onProgress?: (progress: number) => void,
-        ) => Promise<FileHashes>
-      >(),
-    extractFileMetadata: vi.fn<(file: File) => Promise<FileMetadata>>(),
-    extractExifMetadata:
-      vi.fn<
-        (
-          file: File,
-          onExtracting?: (extracting: boolean) => void,
-        ) => Promise<ExifMetadata>
-      >(),
-  }))
+const {
+  calculateFileHashes,
+  extractFileMetadata,
+  extractExifMetadata,
+  stripFileMetadata,
+  download,
+} = vi.hoisted(() => ({
+  calculateFileHashes:
+    vi.fn<
+      (
+        file: File,
+        onProgress?: (progress: number) => void,
+      ) => Promise<FileHashes>
+    >(),
+  stripFileMetadata: vi.fn<(file: File) => Promise<Blob>>(),
+  download: vi.fn<(blob: Blob, filename: string) => void>(),
+  extractFileMetadata: vi.fn<(file: File) => Promise<FileMetadata>>(),
+  extractExifMetadata:
+    vi.fn<
+      (
+        file: File,
+        onExtracting?: (extracting: boolean) => void,
+      ) => Promise<ExifMetadata>
+    >(),
+}))
 
 vi.mock('@/lib/metadata', () => ({
   calculateFileHashes,
   extractFileMetadata,
   extractExifMetadata,
   formatFileSize: (size: number) => `${size} Bytes`,
-  stripFileMetadata: vi.fn(),
+  stripFileMetadata,
+}))
+
+vi.mock('@/lib/shared', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/shared')>()),
+  downloadBlob: download,
 }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
@@ -102,6 +115,7 @@ function selectFile(name: string, type = 'text/plain') {
 }
 
 beforeEach(() => {
+  resetWorkspaceState()
   vi.resetAllMocks()
   calculateFileHashes.mockImplementation((file) =>
     Promise.resolve(hashes(file.name)),
@@ -110,6 +124,9 @@ beforeEach(() => {
     Promise.resolve(metadata(file.name)),
   )
   extractExifMetadata.mockResolvedValue({})
+  stripFileMetadata.mockResolvedValue(
+    new Blob(['clean'], { type: 'image/jpeg' }),
+  )
   const UtilitiesLayout = UtilitiesRoute.options.component!
   render(
     <ProcessingProvider>
@@ -118,7 +135,10 @@ beforeEach(() => {
   )
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('utility file selection', () => {
   test('old hashes and progress cannot overwrite a replacement or finish its busy state', async () => {
@@ -301,4 +321,128 @@ describe('utility file selection', () => {
         expect(extractExifMetadata).not.toHaveBeenCalled()
     },
   )
+})
+
+test('copies complete digests and announces explicit verification results', async () => {
+  const writeText = vi
+    .fn<(value: string) => Promise<void>>()
+    .mockResolvedValue(undefined)
+  vi.stubGlobal('navigator', { clipboard: { writeText } })
+  selectFile('sample.txt')
+  await screen.findByText('sample.txt-md5')
+  for (const label of ['MD5', 'SHA1', 'SHA256']) {
+    fireEvent.click(screen.getByRole('button', { name: `Copy ${label}` }))
+    await screen.findByText(`${label} copied`)
+    expect(writeText).toHaveBeenLastCalledWith(
+      `sample.txt-${label.toLowerCase()}`,
+    )
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Copy all checksums' }))
+  await screen.findByText('All checksums copied')
+  expect(writeText).toHaveBeenLastCalledWith(
+    'MD5: sample.txt-md5\nSHA1: sample.txt-sha1\nSHA256: sample.txt-sha256',
+  )
+  fireEvent.change(screen.getByLabelText('Expected hash (optional)'), {
+    target: { value: ' SAMPLE.TXT-MD5 ' },
+  })
+  expect(screen.getByText('Matches MD5').getAttribute('role')).toBe('status')
+  fireEvent.change(screen.getByLabelText('Expected hash (optional)'), {
+    target: { value: 'different-checksum' },
+  })
+  expect(
+    screen
+      .getByText('Does not match any calculated hash')
+      .getAttribute('aria-live'),
+  ).toBe('polite')
+})
+
+test('non-image metadata describes its scope without an irrelevant EXIF panel or cleanup action', async () => {
+  selectFile('sample.txt')
+  await screen.findByText('sample.txt metadata')
+  expect(
+    screen.queryByRole('heading', { name: 'Image EXIF metadata' }),
+  ).toBeNull()
+  expect(
+    screen.queryByRole('button', { name: 'Download Without Metadata' }),
+  ).toBeNull()
+  expect(
+    screen.getByText(/This file type has no image EXIF metadata/),
+  ).toBeTruthy()
+  expect(
+    screen.queryByText('Select an image file to view EXIF metadata'),
+  ).toBeNull()
+})
+
+test('completed file analysis survives leaving and returning to the workspace', async () => {
+  selectFile('retained.txt')
+  await screen.findByText('retained.txt metadata')
+  cleanup()
+  const UtilitiesLayout = UtilitiesRoute.options.component!
+  render(
+    <ProcessingProvider>
+      <UtilitiesLayout />
+    </ProcessingProvider>,
+  )
+  expect(screen.getByText('retained.txt')).toBeTruthy()
+  expect(screen.getByText('retained.txt-md5')).toBeTruthy()
+  expect(screen.getByText('retained.txt metadata')).toBeTruthy()
+})
+
+test('metadata removal for a replaced file cannot download or finish replacement analysis', async () => {
+  const stripping = deferred<Blob>()
+  stripFileMetadata.mockReturnValueOnce(stripping.promise)
+  selectFile('first.jpg', 'image/jpeg')
+  await screen.findByText('first.jpg metadata')
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  )
+  const replacementHashes = deferred<FileHashes>()
+  calculateFileHashes.mockReturnValueOnce(replacementHashes.promise)
+  selectFile('second.jpg', 'image/jpeg')
+  expect(screen.getByLabelText('Processing').textContent).toBe('true')
+  await act(async () => {
+    stripping.resolve(new Blob(['obsolete'], { type: 'image/jpeg' }))
+    await stripping.promise
+  })
+  expect(download).not.toHaveBeenCalled()
+  expect(screen.queryByRole('region', { name: 'Result' })).toBeNull()
+  expect(screen.getByLabelText('Processing').textContent).toBe('true')
+
+  await act(async () => {
+    replacementHashes.resolve(hashes('second.jpg'))
+    await replacementHashes.promise
+  })
+  await screen.findByText('second.jpg metadata')
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  )
+  await screen.findByRole('region', { name: 'Result' })
+  expect(download).toHaveBeenCalledTimes(1)
+  expect(download.mock.calls[0][1]).toBe('no-metadata_second.jpg')
+})
+
+test('metadata removal completing after navigation cannot publish a stale result or download', async () => {
+  const stripping = deferred<Blob>()
+  stripFileMetadata.mockReturnValueOnce(stripping.promise)
+  selectFile('first.jpg', 'image/jpeg')
+  await screen.findByText('first.jpg metadata')
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  )
+  cleanup()
+  await act(async () => {
+    stripping.resolve(new Blob(['obsolete'], { type: 'image/jpeg' }))
+    await stripping.promise
+  })
+  expect(download).not.toHaveBeenCalled()
+  const UtilitiesLayout = UtilitiesRoute.options.component!
+  render(
+    <ProcessingProvider>
+      <UtilitiesLayout />
+    </ProcessingProvider>,
+  )
+  expect(screen.queryByRole('region', { name: 'Result' })).toBeNull()
+  expect(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  ).toBeTruthy()
 })

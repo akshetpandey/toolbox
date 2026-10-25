@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,10 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ResultCard } from '@/components/ResultCard'
 import { Loader2, Package } from 'lucide-react'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useArchiveTools } from '@/contexts/ArchiveToolsContext'
-import { type CompressionFormat } from '@/lib/archive'
+import { type CompressionFormat, formatFileSize } from '@/lib/archive'
 
 export const Route = createFileRoute('/archives/compress')({
   component: CompressPage,
@@ -56,112 +58,190 @@ function CompressPage() {
     setArchiveName,
     compressFiles,
     isInitialized,
+    isInitializing,
+    initializationError,
+    initializeProcessor,
+    compressionResult,
+    clearFiles,
   } = useArchiveTools()
-
+  const [error, setError] = useState('')
+  const operation = useRef(0)
+  const busy = useRef(false)
+  useEffect(
+    () => () => {
+      operation.current++
+      if (busy.current) {
+        busy.current = false
+        setIsProcessing(false)
+      }
+    },
+    [setIsProcessing],
+  )
+  useEffect(() => {
+    setError('')
+  }, [selectedFiles])
+  const extension = compressionFormat === 'gzip' ? 'tar.gz' : compressionFormat
+  const filename = `${archiveName.trim() || 'archive'}.${extension}`
   const handleCompress = async () => {
-    if (selectedFiles.length === 0 || !isInitialized) {
-      console.warn(
-        '🗜️ CompressTool: No files selected or processor not initialized',
-      )
+    if (
+      !selectedFiles.length ||
+      !isInitialized ||
+      !archiveName.trim() ||
+      isProcessing
+    )
       return
-    }
-
+    const request = ++operation.current
+    busy.current = true
     setIsProcessing(true)
-
+    setError('')
     try {
-      console.log('🗜️ CompressTool: Starting compression', {
-        fileCount: selectedFiles.length,
-        format: compressionFormat,
-        archiveName,
-      })
-
       await compressFiles()
-
-      console.log('🗜️ CompressTool: Compression completed successfully')
-    } catch (error) {
-      console.error('🗜️ CompressTool: Error during compression:', error)
-      alert('Compression failed. Please try again.')
+    } catch (cause) {
+      if (operation.current === request)
+        setError(
+          cause instanceof Error ? cause.message : 'Archive creation failed',
+        )
     } finally {
-      setIsProcessing(false)
+      if (operation.current === request) {
+        busy.current = false
+        setIsProcessing(false)
+      }
     }
   }
-
   return (
-    <Card className="glass-card border-0">
-      <CardContent className="p-6 flex flex-col gap-4">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-            <div className="flex-1">
-              <Label htmlFor="archive-name">Archive Name</Label>
-              <Input
-                id="archive-name"
-                value={archiveName}
-                onChange={(e) => setArchiveName(e.target.value)}
-                placeholder="Enter archive name"
-                className="mt-1"
-                disabled={isProcessing}
-              />
+    <div className="space-y-4">
+      <Card className="shadow-none">
+        <CardContent className="p-4 sm:p-6">
+          <form
+            aria-label="Create archive"
+            className="space-y-5"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handleCompress()
+            }}
+          >
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">
+                Pack files into one archive
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                ZIP works with most devices. Choose another format if you need
+                it.
+              </p>
             </div>
-            <div className="flex-1">
-              <Label htmlFor="compression-format">Compression Format</Label>
-              <Select
-                value={compressionFormat}
-                onValueChange={(value) =>
-                  setCompressionFormat(value as CompressionFormat)
-                }
-                disabled={isProcessing}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7z">7Z</SelectItem>
-                  <SelectItem value="zip">ZIP</SelectItem>
-                  <SelectItem value="tar">TAR</SelectItem>
-                  <SelectItem value="gzip">GZIP</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {selectedFiles.length > 0 && (
-            <div className="p-4 bg-muted/30 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-foreground">
-                  {selectedFiles.length} file
-                  {selectedFiles.length > 1 ? 's' : ''} selected
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Total size:{' '}
-                  {selectedFiles.reduce((sum, file) => sum + file.size, 0)}{' '}
-                  bytes
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Will create: {archiveName}.
-                {compressionFormat === 'gzip' ? 'tar.gz' : compressionFormat}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-center">
-            <Button
-              onClick={() => void handleCompress()}
-              disabled={
-                selectedFiles.length === 0 || isProcessing || !isInitialized
-              }
-              className="gap-2 bg-blue-500 hover:bg-blue-600"
+            <fieldset
+              disabled={isProcessing}
+              className="grid min-w-0 gap-4 sm:grid-cols-2"
             >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="archive-name">Archive name</Label>
+                <Input
+                  id="archive-name"
+                  required
+                  value={archiveName}
+                  onChange={(event) => setArchiveName(event.target.value)}
+                  placeholder="archive"
+                  aria-describedby="archive-output"
+                />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="compression-format">Archive format</Label>
+                <Select
+                  value={compressionFormat}
+                  onValueChange={(value) =>
+                    setCompressionFormat(value as CompressionFormat)
+                  }
+                  disabled={isProcessing}
+                >
+                  <SelectTrigger id="compression-format" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="zip">ZIP — widely supported</SelectItem>
+                    <SelectItem value="7z">7Z — smaller archives</SelectItem>
+                    <SelectItem value="tar">TAR — bundle files</SelectItem>
+                    <SelectItem value="gzip">
+                      TAR.GZ — compressed bundle
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </fieldset>
+            <div className="space-y-1 rounded-lg bg-muted/40 p-4 text-sm">
+              <p className="font-medium">
+                {selectedFiles.length}{' '}
+                {selectedFiles.length === 1 ? 'file' : 'files'} ·{' '}
+                {formatFileSize(
+                  selectedFiles.reduce((sum, file) => sum + file.size, 0),
+                )}
+              </p>
+              <p
+                id="archive-output"
+                className="text-muted-foreground [overflow-wrap:anywhere]"
+              >
+                Output: {filename}
+              </p>
+            </div>
+            {initializationError && (
+              <div role="alert" className="space-y-2 text-sm">
+                <p>
+                  Archive tools could not be loaded. Check your connection and
+                  try again.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void initializeProcessor()}
+                >
+                  Try loading again
+                </Button>
+              </div>
+            )}
+            {error && (
+              <div
+                role="alert"
+                className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
+              >
+                <p>
+                  This archive could not be created. Try fewer files or another
+                  format.
+                </p>
+                <details>
+                  <summary className="cursor-pointer font-medium">
+                    Technical details
+                  </summary>
+                  <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
+                </details>
+              </div>
+            )}
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={
+                !selectedFiles.length ||
+                isProcessing ||
+                !isInitialized ||
+                !archiveName.trim()
+              }
+            >
+              {isProcessing || isInitializing ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               ) : (
-                <Package className="h-4 w-4" />
+                <Package aria-hidden="true" className="size-4" />
               )}
-              {isProcessing ? 'Compressing...' : 'Compress Files'}
+              {isProcessing
+                ? 'Creating archive…'
+                : `Create ${extension.toUpperCase()} archive`}
             </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+            {isInitializing && (
+              <p role="status" className="text-sm text-muted-foreground">
+                Preparing archive tools…
+              </p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+      <ResultCard result={compressionResult} onReset={clearFiles} />
+    </div>
   )
 }

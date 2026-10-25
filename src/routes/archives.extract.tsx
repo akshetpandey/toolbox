@@ -1,12 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Loader2,
   FileArchive,
-  Download,
-  File as FileIcon,
   Folder,
+  File as FileIcon,
+  Download,
 } from 'lucide-react'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useArchiveTools } from '@/contexts/ArchiveToolsContext'
@@ -52,160 +53,208 @@ function ExtractPage() {
     downloadExtractedFile,
     downloadAllFiles,
     isInitialized,
+    isInitializing,
+    initializationError,
+    initializeProcessor,
+    setUploadedArchive,
   } = useArchiveTools()
-
-  const handleExtract = async () => {
-    if (!uploadedArchive || !isInitialized) {
-      console.warn(
-        '🗜️ ExtractTool: No archive selected or processor not initialized',
-      )
+  const [error, setError] = useState('')
+  const [activity, setActivity] = useState('')
+  const version = useRef(0)
+  const busy = useRef(false)
+  useEffect(() => {
+    setError('')
+  }, [uploadedArchive])
+  useEffect(
+    () => () => {
+      version.current++
+      if (busy.current) {
+        busy.current = false
+        setIsProcessing(false)
+      }
+    },
+    [setIsProcessing],
+  )
+  const run = async (action: 'extract' | 'download') => {
+    if (
+      !isInitialized ||
+      isProcessing ||
+      (action === 'extract'
+        ? !uploadedArchive
+        : !extractedFiles.some((file) => !file.isDirectory))
+    )
       return
-    }
-
+    const request = ++version.current
+    busy.current = true
     setIsProcessing(true)
-
+    setActivity(action)
+    setError('')
     try {
-      console.log('🗜️ ExtractTool: Starting extraction', {
-        archiveName: uploadedArchive.name,
-        size: uploadedArchive.size,
-      })
-
-      await decompressArchive()
-
-      console.log('🗜️ ExtractTool: Extraction completed successfully')
-    } catch (error) {
-      console.error('🗜️ ExtractTool: Error during extraction:', error)
-      alert('Extraction failed. Please try again.')
+      if (action === 'extract') await decompressArchive()
+      else await downloadAllFiles()
+    } catch (cause) {
+      if (version.current === request)
+        setError(
+          cause instanceof Error ? cause.message : 'Archive operation failed',
+        )
     } finally {
-      setIsProcessing(false)
+      if (version.current === request) {
+        busy.current = false
+        setIsProcessing(false)
+        setActivity('')
+      }
     }
   }
-
-  const handleDownloadAll = async () => {
-    if (extractedFiles.length === 0) return
-
-    setIsProcessing(true)
-
-    try {
-      await downloadAllFiles()
-      console.log('🗜️ ExtractTool: All files downloaded successfully')
-    } catch (error) {
-      console.error('🗜️ ExtractTool: Error downloading all files:', error)
-      alert('Failed to download all files. Please try again.')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
+  const fileCount = extractedFiles.filter((file) => !file.isDirectory).length
+  const folderCount = extractedFiles.length - fileCount
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="glass-card border-0">
-        <CardContent className="p-6 flex flex-col gap-4">
-          <div className="flex flex-col gap-4">
-            {uploadedArchive && (
-              <div className="p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">
-                    Selected Archive
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatFileSize(uploadedArchive.size)}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {uploadedArchive.name}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-center gap-4 flex-wrap">
-              <Button
-                onClick={() => void handleExtract()}
-                disabled={!uploadedArchive || isProcessing || !isInitialized}
-                className="gap-2 bg-green-500 hover:bg-green-600"
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FileArchive className="h-4 w-4" />
-                )}
-                {isProcessing ? 'Extracting...' : 'Extract Files'}
-              </Button>
-
-              {extractedFiles.length > 0 && (
-                <Button
-                  onClick={() => void handleDownloadAll()}
-                  disabled={isProcessing}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Download All as ZIP
-                </Button>
-              )}
-            </div>
+    <div className="space-y-4">
+      <Card className="shadow-none">
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">Open an archive</h2>
+            <p className="text-sm text-muted-foreground">
+              Choose a ZIP, 7Z, TAR, GZIP, or RAR file. Then download the files
+              you need.
+            </p>
           </div>
+          {initializationError && (
+            <div role="alert" className="space-y-2 text-sm">
+              <p>
+                Archive tools could not be loaded. Check your connection and try
+                again.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => void initializeProcessor()}
+              >
+                Try loading again
+              </Button>
+            </div>
+          )}
+          {error && (
+            <div
+              role="alert"
+              className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
+            >
+              <p>
+                This archive could not be opened or downloaded. Choose another
+                copy and make sure it is not password-protected.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => setUploadedArchive(null)}
+              >
+                Choose another archive
+              </Button>
+              <details>
+                <summary className="cursor-pointer font-medium">
+                  Technical details
+                </summary>
+                <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
+              </details>
+            </div>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button
+              onClick={() => void run('extract')}
+              disabled={!uploadedArchive || isProcessing || !isInitialized}
+            >
+              {activity === 'extract' ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : (
+                <FileArchive aria-hidden="true" className="size-4" />
+              )}
+              {activity === 'extract' ? 'Extracting files…' : 'Extract files'}
+            </Button>
+            {fileCount > 0 && (
+              <Button
+                onClick={() => void run('download')}
+                disabled={isProcessing}
+                variant="outline"
+              >
+                {activity === 'download' ? (
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                ) : (
+                  <Download aria-hidden="true" className="size-4" />
+                )}
+                {activity === 'download'
+                  ? 'Preparing ZIP…'
+                  : 'Download all as ZIP'}
+              </Button>
+            )}
+          </div>
+          {(isInitializing || activity) && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {isInitializing
+                ? 'Preparing archive tools…'
+                : activity === 'extract'
+                  ? 'Reading files from the archive…'
+                  : 'Preparing your download…'}
+            </p>
+          )}
         </CardContent>
       </Card>
-
-      {/* Extracted Files Display */}
       {extractedFiles.length > 0 && (
-        <Card className="glass-card border-0">
-          <CardContent className="p-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">
-                  Extracted Files (
-                  {extractedFiles.filter((f) => !f.isDirectory).length} files,{' '}
-                  {extractedFiles.filter((f) => f.isDirectory).length} folders)
-                </h3>
-                <div className="text-sm text-muted-foreground">
-                  Total size:{' '}
-                  {formatFileSize(
-                    extractedFiles.reduce((sum, f) => sum + f.size, 0),
-                  )}
-                </div>
-              </div>
-
-              <div className="max-h-96 overflow-auto border rounded-lg">
-                <div className="flex flex-col gap-1 p-2">
-                  {extractedFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                    >
-                      {file.isDirectory ? (
-                        <Folder className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                      ) : (
-                        <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {file.name}
-                        </p>
-                        {!file.isDirectory && (
-                          <p className="text-xs text-muted-foreground">
-                            {formatFileSize(file.size)}
-                          </p>
-                        )}
-                      </div>
-                      {!file.isDirectory && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => downloadExtractedFile(file)}
-                          className="gap-2 flex-shrink-0"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <Card className="shadow-none">
+          <CardContent className="space-y-4 p-4 sm:p-6">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">Extracted files</h2>
+              <p role="status" className="text-sm text-muted-foreground">
+                {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                {folderCount > 0 &&
+                  ` · ${folderCount} ${folderCount === 1 ? 'folder' : 'folders'}`}{' '}
+                ·{' '}
+                {formatFileSize(
+                  extractedFiles.reduce((sum, file) => sum + file.size, 0),
+                )}
+              </p>
             </div>
+            <ul
+              aria-label="Extracted files"
+              className="max-h-[36rem] space-y-2 overflow-y-auto"
+            >
+              {extractedFiles.map((file, index) => (
+                <li
+                  key={`${index}-${file.name}`}
+                  className="min-w-0 rounded-lg border p-3"
+                >
+                  <div className="flex min-w-0 items-start gap-2">
+                    {file.isDirectory ? (
+                      <Folder
+                        aria-hidden="true"
+                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                      />
+                    ) : (
+                      <FileIcon
+                        aria-hidden="true"
+                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                      />
+                    )}
+                    <p className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                      {file.name}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 pl-6">
+                    <p className="text-sm text-muted-foreground">
+                      {file.isDirectory ? 'Folder' : formatFileSize(file.size)}
+                    </p>
+                    {!file.isDirectory && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-11 shrink-0"
+                        aria-label={`Download ${file.name}`}
+                        disabled={isProcessing}
+                        onClick={() => downloadExtractedFile(file)}
+                      >
+                        <Download aria-hidden="true" className="size-4" />
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}

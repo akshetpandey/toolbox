@@ -4,6 +4,8 @@ import {
   useState,
   useCallback,
   useMemo,
+  useRef,
+  useEffect,
   type ReactNode,
 } from 'react'
 import {
@@ -12,12 +14,28 @@ import {
   type ExtractedFile,
   type CompressionFormat,
 } from '@/lib/archive'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import { useToolResult, type ToolResult } from '@/components/ResultCard'
+import { downloadBlob } from '@/lib/shared'
+
+// All processor instances share one WASM filesystem, including after navigation.
+let archiveQueue = Promise.resolve()
+function runArchiveOperation<T>(run: () => T | Promise<T>): Promise<T> {
+  const operation = archiveQueue.then(run)
+  archiveQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  )
+  return operation
+}
 
 export interface ArchiveToolsContextType {
   // Archive processor
   archiveProcessor: ArchiveProcessor
   isInitialized: boolean
   isInitializing: boolean
+  initializationError: string
+  compressionResult: ToolResult | null
   initializeProcessor: () => Promise<void>
 
   // File management
@@ -52,201 +70,214 @@ const ArchiveToolsContext = createContext<ArchiveToolsContextType | undefined>(
 
 export function useArchiveTools() {
   const context = useContext(ArchiveToolsContext)
-  if (!context) {
+  if (!context)
     throw new Error(
       'useArchiveTools must be used within an ArchiveToolsProvider',
     )
-  }
   return context
 }
 
-interface ArchiveToolsProviderProps {
-  children: ReactNode
-}
-
-export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
+export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState<ArchiveFile[]>([])
-  const [uploadedArchive, setUploadedArchive] = useState<File | null>(null)
-  const [extractedFiles, setExtractedFiles] = useState<ExtractedFile[]>([])
+  const [initializationError, setInitializationError] = useState('')
+  const [selectedFiles, updateSelectedFiles] = useWorkspaceState<ArchiveFile[]>(
+    'archives.files',
+    [],
+  )
+  const [uploadedArchive, updateUploadedArchive] =
+    useWorkspaceState<File | null>('archives.uploaded', null)
+  const [extractedFiles, setExtractedFiles] = useWorkspaceState<
+    ExtractedFile[]
+  >('archives.extracted', [])
   const [compressionFormat, setCompressionFormat] =
-    useState<CompressionFormat>('zip')
-  const [archiveName, setArchiveName] = useState('archive')
-
-  // Create archive processor instance
+    useWorkspaceState<CompressionFormat>('archives.format', 'zip')
+  const [archiveName, setArchiveName] = useWorkspaceState(
+    'archives.name',
+    'archive',
+  )
+  const { result: compressionResult, setResult: setCompressionResult } =
+    useToolResult(selectedFiles, 'archives.compress')
+  const { result: extractedZip, setResult: setExtractedZip } = useToolResult(
+    extractedFiles,
+    'archives.extractedZip',
+  )
   const archiveProcessor = useMemo(() => new ArchiveProcessor(), [])
+  const initialization = useRef<Promise<void> | null>(null)
+  const mounted = useRef(true)
+  const filesRef = useRef(selectedFiles)
+  const archiveRef = useRef(uploadedArchive)
+  filesRef.current = selectedFiles
+  archiveRef.current = uploadedArchive
 
-  // Initialize the archive processor
-  const initializeProcessor = useCallback(async () => {
-    if (!isInitialized && !isInitializing) {
-      setIsInitializing(true)
-      try {
-        await archiveProcessor.init()
-        setIsInitialized(true)
-        console.log(
-          '🗜️ ArchiveTools: Archive processor initialized successfully',
-        )
-      } catch (error) {
-        console.error(
-          '🗜️ ArchiveTools: Failed to initialize archive processor:',
-          error,
-        )
-      } finally {
-        setIsInitializing(false)
-      }
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
     }
-  }, [isInitialized, isInitializing, archiveProcessor])
-
-  // File management functions
-  const addFiles = useCallback((files: ArchiveFile[]) => {
-    setSelectedFiles((prev) => [...prev, ...files])
   }, [])
-
-  const removeFile = useCallback((index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-  }, [])
-
-  const clearFiles = useCallback(() => {
-    setSelectedFiles([])
-  }, [])
-
-  // Compress files
-  const compressFiles = useCallback(async () => {
-    if (selectedFiles.length === 0 || !isInitialized) return
-
-    try {
-      console.log('🗜️ ArchiveTools: Starting compression', {
-        fileCount: selectedFiles.length,
-        format: compressionFormat,
-        archiveName,
+  const initializeProcessor = useCallback(async () => {
+    if (initialization.current) return initialization.current
+    setIsInitializing(true)
+    setInitializationError('')
+    initialization.current = archiveProcessor
+      .init()
+      .then(() => {
+        if (mounted.current) setIsInitialized(true)
       })
+      .catch((error: unknown) => {
+        initialization.current = null
+        if (mounted.current)
+          setInitializationError(
+            error instanceof Error
+              ? error.message
+              : 'Archive tools could not be loaded',
+          )
+      })
+      .finally(() => {
+        if (mounted.current) setIsInitializing(false)
+      })
+    return initialization.current
+  }, [archiveProcessor])
 
-      const compressedData = await archiveProcessor.compress(
+  useEffect(() => {
+    if (selectedFiles.length || uploadedArchive) void initializeProcessor()
+  }, [selectedFiles, uploadedArchive, initializeProcessor])
+
+  const setSelectedFiles = useCallback(
+    (files: ArchiveFile[]) => {
+      filesRef.current = files
+      updateSelectedFiles(files)
+    },
+    [updateSelectedFiles],
+  )
+  const addFiles = useCallback(
+    (files: ArchiveFile[]) => {
+      updateSelectedFiles((previous) => {
+        const next = [...previous, ...files]
+        filesRef.current = next
+        return next
+      })
+    },
+    [updateSelectedFiles],
+  )
+  const removeFile = useCallback(
+    (index: number) => {
+      updateSelectedFiles((previous) => {
+        const next = previous.filter((_, i) => i !== index)
+        filesRef.current = next
+        return next
+      })
+    },
+    [updateSelectedFiles],
+  )
+  const clearFiles = useCallback(() => setSelectedFiles([]), [setSelectedFiles])
+  const setUploadedArchive = useCallback(
+    (file: File | null) => {
+      archiveRef.current = file
+      updateUploadedArchive(file)
+      setExtractedFiles([])
+    },
+    [updateUploadedArchive, setExtractedFiles],
+  )
+
+  const compressFiles = useCallback(async () => {
+    if (!selectedFiles.length || !isInitialized) return
+    const compressed = await runArchiveOperation(() =>
+      archiveProcessor.compress(
         selectedFiles,
         compressionFormat,
-        archiveName,
-      )
-
-      const extension =
-        compressionFormat === 'gzip' ? 'tar.gz' : compressionFormat
-      const filename = `${archiveName}.${extension}`
-
-      // Create download
-      const blob = new Blob([compressedData.buffer as ArrayBuffer], {
-        type: 'application/octet-stream',
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-
-      console.log('🗜️ ArchiveTools: Compression completed successfully')
-    } catch (error) {
-      console.error('🗜️ ArchiveTools: Compression failed:', error)
-      throw error
+        archiveName.trim(),
+      ),
+    )
+    if (!mounted.current || filesRef.current !== selectedFiles) return
+    const extension =
+      compressionFormat === 'gzip' ? 'tar.gz' : compressionFormat
+    const filename = `${archiveName.trim()}.${extension}`
+    const types = {
+      zip: 'application/zip',
+      tar: 'application/x-tar',
+      gzip: 'application/gzip',
+      '7z': 'application/x-7z-compressed',
     }
+    const blob = new Blob([compressed.slice()], {
+      type: types[compressionFormat],
+    })
+    setCompressionResult({
+      blob,
+      filename,
+      sourceSize: selectedFiles.reduce((sum, file) => sum + file.size, 0),
+      details: [
+        `${selectedFiles.length} ${selectedFiles.length === 1 ? 'file' : 'files'} in ${extension.toUpperCase()} format`,
+      ],
+    })
+    downloadBlob(blob, filename)
   }, [
     selectedFiles,
     isInitialized,
+    archiveProcessor,
     compressionFormat,
     archiveName,
-    archiveProcessor,
+    setCompressionResult,
   ])
 
-  // Decompress archive
   const decompressArchive = useCallback(async () => {
     if (!uploadedArchive || !isInitialized) return
+    const data = new Uint8Array(await uploadedArchive.arrayBuffer())
+    const extracted = await runArchiveOperation(() =>
+      archiveProcessor.decompress(data, uploadedArchive.name),
+    )
+    if (mounted.current && archiveRef.current === uploadedArchive)
+      setExtractedFiles(extracted)
+  }, [uploadedArchive, isInitialized, archiveProcessor, setExtractedFiles])
 
-    try {
-      console.log('🗜️ ArchiveTools: Starting decompression', {
-        archiveName: uploadedArchive.name,
-        size: uploadedArchive.size,
-      })
-
-      const archiveData = new Uint8Array(await uploadedArchive.arrayBuffer())
-      const extractedFiles = archiveProcessor.decompress(
-        archiveData,
-        uploadedArchive.name,
-      )
-
-      setExtractedFiles(extractedFiles)
-
-      console.log('🗜️ ArchiveTools: Decompression completed successfully', {
-        extractedCount: extractedFiles.length,
-      })
-    } catch (error) {
-      console.error('🗜️ ArchiveTools: Decompression failed:', error)
-      throw error
-    }
-  }, [uploadedArchive, isInitialized, archiveProcessor])
-
-  // Download individual file
   const downloadExtractedFile = useCallback((file: ExtractedFile) => {
     if (file.isDirectory) return
-
-    const mimeType = file.name.endsWith('.txt')
-      ? 'text/plain'
-      : 'application/octet-stream'
-    const blob = new Blob([file.data.buffer as ArrayBuffer], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.name
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([file.data.slice()], {
+        type: file.name.endsWith('.txt')
+          ? 'text/plain'
+          : 'application/octet-stream',
+      }),
+      file.name,
+    )
   }, [])
 
-  // Download all extracted files as ZIP
   const downloadAllFiles = useCallback(async () => {
-    if (extractedFiles.length === 0 || !isInitialized) return
-
-    try {
-      const nonDirectoryFiles = extractedFiles.filter((f) => !f.isDirectory)
-      const archiveFiles: ArchiveFile[] = nonDirectoryFiles.map((f) => ({
-        file: new File([f.data.buffer as ArrayBuffer], f.name, {
-          type: 'application/octet-stream',
-        }),
-        name: f.name,
-        size: f.size,
+    if (!extractedFiles.length || !isInitialized) return
+    if (extractedZip) {
+      downloadBlob(extractedZip.blob, extractedZip.filename)
+      return
+    }
+    const files: ArchiveFile[] = extractedFiles
+      .filter((file) => !file.isDirectory)
+      .map((file) => ({
+        file: new File([file.data.slice()], file.name),
+        name: file.name,
+        size: file.size,
         type: 'application/octet-stream',
       }))
-
-      const compressedData = await archiveProcessor.compress(
-        archiveFiles,
-        'zip',
-        'extracted_files',
-      )
-
-      const blob = new Blob([compressedData.buffer as ArrayBuffer], {
-        type: 'application/zip',
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'extracted_files.zip'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-
-      console.log('🗜️ ArchiveTools: All files downloaded successfully')
-    } catch (error) {
-      console.error('🗜️ ArchiveTools: Failed to download all files:', error)
-      throw error
-    }
-  }, [extractedFiles, isInitialized, archiveProcessor])
+    const compressed = await runArchiveOperation(() =>
+      archiveProcessor.compress(files, 'zip', 'extracted_files'),
+    )
+    if (!mounted.current) return
+    const blob = new Blob([compressed.slice()], { type: 'application/zip' })
+    setExtractedZip({ blob, filename: 'extracted_files.zip' })
+    downloadBlob(blob, 'extracted_files.zip')
+  }, [
+    extractedFiles,
+    isInitialized,
+    extractedZip,
+    archiveProcessor,
+    setExtractedZip,
+  ])
 
   const value: ArchiveToolsContextType = {
     archiveProcessor,
     isInitialized,
     isInitializing,
+    initializationError,
+    compressionResult,
     initializeProcessor,
     selectedFiles,
     setSelectedFiles,
@@ -266,7 +297,6 @@ export function ArchiveToolsProvider({ children }: ArchiveToolsProviderProps) {
     downloadExtractedFile,
     downloadAllFiles,
   }
-
   return (
     <ArchiveToolsContext.Provider value={value}>
       {children}

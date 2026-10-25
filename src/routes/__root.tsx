@@ -4,30 +4,55 @@ import {
   createRootRoute,
   Link,
   HeadContent,
+  useLocation,
 } from '@tanstack/react-router'
+import { useEffect, useRef } from 'react'
 import { ToolSidebar } from '@/components/ToolSidebar'
 
 export const Route = createRootRoute({
   component: RootDocument,
   notFoundComponent: () => {
     return (
-      <div>
-        <p>This is the notFoundComponent configured on root route</p>
-        <Link to="/">Start Over</Link>
+      <div className="mx-auto max-w-xl space-y-4 p-8">
+        <h1 className="text-2xl font-semibold">This tool could not be found</h1>
+        <p className="text-muted-foreground">
+          Choose another task from the toolbox.
+        </p>
+        <Link to="/" className="text-primary underline">
+          Browse all tools
+        </Link>
       </div>
     )
   },
 })
 
 function RootDocument() {
+  const { pathname } = useLocation()
+  const previousPath = useRef(pathname)
+  useEffect(() => {
+    if (previousPath.current === pathname) return
+    previousPath.current = pathname
+    // Wait for a mobile dialog to close before moving focus into the new task.
+    const frame = requestAnimationFrame(() =>
+      document.getElementById('main-content')?.focus({ preventScroll: true }),
+    )
+    return () => cancelAnimationFrame(frame)
+  }, [pathname])
   return (
     <>
       <HeadContent />
-      <div className="flex h-screen overflow-hidden bg-background">
+      <a href="#main-content" className="skip-link">
+        Skip to workspace
+      </a>
+      <div className="flex h-dvh overflow-hidden bg-background">
         <ToolSidebar />
-        <div className="flex-1 overflow-hidden ml-16 lg:ml-0">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-w-0 flex-1 overflow-hidden pt-16 outline-none xl:pt-0"
+        >
           <Outlet />
-        </div>
+        </main>
       </div>
       <Scripts />
     </>

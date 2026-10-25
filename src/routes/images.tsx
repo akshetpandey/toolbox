@@ -5,6 +5,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useState, useCallback, useMemo } from 'react'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
@@ -75,10 +76,22 @@ function ImageToolsLayout() {
   const { isProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedFiles, setSelectedFiles] = useState<ImageFile[]>([])
-  const [metadata, setMetadata] = useState<Record<string, ImageMetadata>>({})
-  const [exifMetadata, setExifMetadata] = useState<ExifMetadata>({})
+  const [selectedFiles, setSelectedFiles] = useWorkspaceState<ImageFile[]>(
+    'images.files',
+    [],
+  )
+  const [metadata, setMetadata] = useWorkspaceState<
+    Record<string, ImageMetadata>
+  >('images.metadata', {})
+  const [exifMetadata, setExifMetadata] = useWorkspaceState<ExifMetadata>(
+    'images.exif',
+    {},
+  )
   const [isExtractingExif, setIsExtractingExif] = useState(false)
+
+  const [selection] = useWorkspaceState('images.selection', () => ({
+    file: null as File | null,
+  }))
 
   // Create ImageMagick processor instance - use useMemo to prevent recreation on every render
   const imageMagickProcessor = useMemo(() => new ImageMagickProcessor(), [])
@@ -121,6 +134,7 @@ function ImageToolsLayout() {
           type: file.type,
         })
 
+        selection.file = file
         const preview = URL.createObjectURL(file)
 
         // Get image dimensions
@@ -132,6 +146,10 @@ function ImageToolsLayout() {
           },
         )
 
+        if (selection.file !== file) {
+          URL.revokeObjectURL(preview)
+          return
+        }
         console.log('🖼️ ImageTools: Image dimensions extracted', dimensions)
 
         const imageFile = {
@@ -143,7 +161,10 @@ function ImageToolsLayout() {
           dimensions,
         }
 
-        setSelectedFiles([imageFile])
+        setSelectedFiles((previous) => {
+          previous.forEach((image) => URL.revokeObjectURL(image.preview))
+          return [imageFile]
+        })
         setMetadata({})
         setExifMetadata({})
         setIsExtractingExif(false)
@@ -180,7 +201,8 @@ function ImageToolsLayout() {
     try {
       const meta = await imageMagickProcessor.extractMetadata(imageFile)
       console.log('🖼️ ImageTools: Metadata extraction successful', meta)
-      setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
+      if (selection.file === imageFile.file)
+        setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
     } catch (error) {
       console.error('🖼️ ImageTools: Error extracting metadata:', error)
       // Fallback to basic metadata
@@ -194,7 +216,8 @@ function ImageToolsLayout() {
         compression: 'None',
       }
       console.log('🖼️ ImageTools: Using fallback metadata', meta)
-      setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
+      if (selection.file === imageFile.file)
+        setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
     }
   }
 
@@ -203,17 +226,23 @@ function ImageToolsLayout() {
     try {
       const exifData = await extractExifMetadata(
         imageFile.file,
-        setIsExtractingExif,
+        (extracting) => {
+          if (selection.file === imageFile.file) setIsExtractingExif(extracting)
+        },
       )
-      setExifMetadata((prev) => ({ ...prev, ...exifData }))
+      if (selection.file === imageFile.file) setExifMetadata(exifData)
     } catch (error) {
       console.error('🖼️ ImageTools: Error extracting EXIF metadata:', error)
-      setExifMetadata((prev) => ({ ...prev, ...{} }))
+      if (selection.file === imageFile.file) setExifMetadata({})
     }
   }
 
   const clearSelectedFile = useCallback(() => {
-    setSelectedFiles([])
+    selection.file = null
+    setSelectedFiles((previous) => {
+      previous.forEach((image) => URL.revokeObjectURL(image.preview))
+      return []
+    })
     setMetadata({})
     setExifMetadata({})
     setIsExtractingExif(false)
@@ -271,6 +300,7 @@ function ImageToolsLayout() {
       }))}
       onFileSelect={(files) => void handleFileSelect(files)}
       onClearFiles={clearSelectedFile}
+      disabled={isProcessing}
       acceptedTypes="image/*"
       title="Drop an image here"
       description="Supports JPG, PNG, WebP, GIF"
@@ -281,26 +311,21 @@ function ImageToolsLayout() {
       {selectedFiles.length > 0 && (
         <div className="flex flex-col gap-2">
           {selectedFiles.map((file) => (
-            <div key={file.name} className="flex flex-col gap-2">
-              <div className="relative">
-                <img
-                  src={file.preview}
-                  alt={file.name}
-                  className="w-full max-h-48 lg:max-h-64 object-contain rounded-lg bg-muted/20"
-                  style={{
-                    minHeight:
-                      file.dimensions &&
-                      file.dimensions.height > file.dimensions.width
-                        ? '150px'
-                        : '120px',
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <p className="font-medium text-foreground truncate text-sm">
+            <div key={file.name} className="flex min-w-0 items-start gap-3">
+              {currentTab !== 'redact' && (
+                <div className="shrink-0">
+                  <img
+                    src={file.preview}
+                    alt={file.name}
+                    className="h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-lg bg-muted/20"
+                  />
+                </div>
+              )}
+              <div className="min-w-0 flex flex-col gap-1">
+                <p className="font-medium text-foreground break-all text-sm">
                   {file.name}
                 </p>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                   <span>{formatFileSize(file.size)}</span>
                   {file.dimensions && (
                     <span>
@@ -330,7 +355,15 @@ function ImageToolsLayout() {
   return (
     <ImageToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title="Image Tools"
+        title={
+          {
+            metadata: 'Image metadata',
+            resize: 'Resize image',
+            convert: 'Convert image',
+            compress: 'Compress image',
+            redact: 'Redact image',
+          }[currentTab]
+        }
         icon={ImageIcon}
         iconColor="text-blue-500"
         iconBgColor="bg-gradient-to-br from-blue-500/10 to-blue-500/5"

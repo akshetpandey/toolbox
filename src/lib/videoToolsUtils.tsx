@@ -1,4 +1,13 @@
-import { Play, Globe, Archive, Monitor } from 'lucide-react'
+import { Play, Globe, Archive, Monitor, Square } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import { useVideoTools } from '@/contexts/VideoToolsContext'
+import { useToolResult } from '@/components/ResultCard'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { downloadBlob } from '@/lib/shared'
+import type { FFmpegProcessor } from '@/lib/ffmpeg'
 
 // Format and codec compatibility definitions
 export const formatOptions = [
@@ -313,5 +322,217 @@ export function CodecRadioGroup<T extends string>({
         })}
       </div>
     </div>
+  )
+}
+
+/** Keep settings across navigation, resetting them when the source changes. */
+export function useVideoSettings<T>(
+  key: string,
+  initial: T,
+): readonly [T, Dispatch<SetStateAction<T>>] {
+  const source = useVideoTools().selectedFile?.file
+  const [state, setState] = useWorkspaceState(key, { source, value: initial })
+  useEffect(() => {
+    if (state.source !== source) setState({ source, value: initial })
+  }, [source, state.source, initial, setState])
+  const update = useCallback<Dispatch<SetStateAction<T>>>(
+    (next) => {
+      setState((previous) => ({
+        source,
+        value:
+          typeof next === 'function'
+            ? (next as (previous: T) => T)(
+                previous.source === source ? previous.value : initial,
+              )
+            : next,
+      }))
+    },
+    [source, initial, setState],
+  )
+  return [state.source === source ? state.value : initial, update]
+}
+
+/** Shared completion/error behavior for video actions; importing stays separate. */
+export function useVideoAction(workspaceKey: string, failureMessage: string) {
+  const context = useVideoTools()
+  const { result, setResult, clearResult } = useToolResult(
+    context.selectedFile?.file,
+    workspaceKey,
+  )
+  const [error, setError] = useState<string | null>(null)
+  const [diagnostic, setDiagnostic] = useState<string | null>(null)
+  const operationVersion = useRef(0)
+  const activeController = useRef<AbortController | null>(null)
+  const currentSource = useRef(context.selectedFile?.file)
+  currentSource.current = context.selectedFile?.file
+  const { setIsProcessing, setCurrentAbortController, setProgressStartTime } =
+    context
+  useEffect(
+    () => () => {
+      operationVersion.current++
+      const controller = activeController.current
+      if (controller) {
+        activeController.current = null
+        controller.abort()
+        setIsProcessing(false)
+        setCurrentAbortController(null)
+        setProgressStartTime(null)
+      }
+    },
+    [
+      context.selectedFile?.file,
+      setIsProcessing,
+      setCurrentAbortController,
+      setProgressStartTime,
+    ],
+  )
+  useEffect(() => {
+    setError(null)
+    setDiagnostic(null)
+  }, [context.selectedFile?.file])
+  const run = async (
+    operation: (
+      processor: FFmpegProcessor,
+      signal: AbortSignal,
+    ) => Promise<{ blob: Blob; filename: string; details?: string[] }>,
+  ) => {
+    if (
+      !context.selectedFile ||
+      context.isPreparing ||
+      context.isProcessing ||
+      activeController.current
+    )
+      return
+    const source = context.selectedFile
+    const version = ++operationVersion.current
+    const controller = new AbortController()
+    activeController.current = controller
+    const isCurrent = () =>
+      operationVersion.current === version &&
+      currentSource.current === source.file &&
+      activeController.current === controller
+    context.setCurrentAbortController(controller)
+    context.setIsProcessing(true)
+    context.setProgress(0)
+    context.setProgressStartTime(Date.now())
+    context.setEstimatedTimeRemaining(null)
+    context.setElapsedTime(null)
+    context.setShowSlowProcessingWarning(false)
+    setError(null)
+    setDiagnostic(null)
+    try {
+      const processor = await context.getFfmpegProcessor()
+      if (!isCurrent()) return
+      const output = await operation(processor, controller.signal)
+      if (!isCurrent()) return
+      setResult({ ...output, sourceSize: source.size })
+      downloadBlob(output.blob, output.filename)
+      context.setProgress(100)
+    } catch (cause) {
+      if (!isCurrent()) return
+      if (
+        controller.signal.aborted ||
+        (cause instanceof Error && cause.name === 'AbortError')
+      ) {
+        setError(
+          'Processing was cancelled. Your original video is unchanged; you can try again.',
+        )
+      } else {
+        setError(failureMessage)
+        setDiagnostic(cause instanceof Error ? cause.message : String(cause))
+      }
+    } finally {
+      if (isCurrent()) {
+        activeController.current = null
+        context.setIsProcessing(false)
+        context.setCurrentAbortController(null)
+        context.setProgressStartTime(null)
+      }
+    }
+  }
+  return {
+    ...context,
+    result,
+    clearResult,
+    run,
+    error,
+    diagnostic,
+    busy: context.isPreparing || context.isProcessing,
+  }
+}
+
+export function VideoActionStatus({
+  label,
+  error,
+  diagnostic,
+  cancellable = true,
+}: {
+  label: string
+  error: string | null
+  diagnostic: string | null
+  cancellable?: boolean
+}) {
+  const {
+    isProcessing,
+    progress,
+    elapsedTime,
+    estimatedTimeRemaining,
+    showSlowProcessingWarning,
+    cancelProcessing,
+  } = useVideoTools()
+  return (
+    <>
+      {isProcessing && (
+        <section aria-label={label} className="space-y-3 rounded-lg border p-4">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex flex-wrap items-center justify-between gap-2 text-sm"
+          >
+            <span className="font-medium">{label}</span>
+            <span>{progress.toFixed(1)}%</span>
+          </div>
+          <Progress aria-label={label} value={progress} />
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+            <span>
+              {elapsedTime
+                ? `Elapsed: ${elapsedTime}`
+                : 'Processing locally in your browser.'}
+            </span>
+            {estimatedTimeRemaining && (
+              <span>About {estimatedTimeRemaining} remaining</span>
+            )}
+            {cancellable && (
+              <Button variant="outline" size="sm" onClick={cancelProcessing}>
+                <Square aria-hidden="true" />
+                Cancel processing
+              </Button>
+            )}
+          </div>
+          {showSlowProcessingWarning && (
+            <p className="text-sm text-muted-foreground">
+              Large videos can take a while in a browser. Keep this page open
+              while processing.
+            </p>
+          )}
+        </section>
+      )}
+      {error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-foreground"
+        >
+          <p>{error}</p>
+          {diagnostic && (
+            <details className="mt-2">
+              <summary className="cursor-pointer">Technical details</summary>
+              <p className="mt-2 break-words text-muted-foreground">
+                {diagnostic}
+              </p>
+            </details>
+          )}
+        </div>
+      )}
+    </>
   )
 }

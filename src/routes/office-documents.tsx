@@ -1,14 +1,8 @@
-import {
-  createFileRoute,
-  Outlet,
-  useLocation,
-  useNavigate,
-} from '@tanstack/react-router'
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { useCallback, useMemo, useRef, useEffect } from 'react'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
-import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   OfficeToolsContext,
   type OfficeToolsContextType,
@@ -23,9 +17,7 @@ import {
   Building,
 } from 'lucide-react'
 import { isOfficeFile, createOfficeFile, type OfficeFile } from '@/lib/pandoc'
-import { formatFileSize, truncateFilename } from '@/lib/shared'
-
-const officeTabs = [{ value: 'convert', label: 'Convert', icon: FileText }]
+import { formatFileSize } from '@/lib/shared'
 
 export const Route = createFileRoute('/office-documents')({
   component: OfficeDocumentsLayout,
@@ -59,17 +51,28 @@ export const Route = createFileRoute('/office-documents')({
 })
 
 function OfficeDocumentsLayout() {
-  const { isProcessing } = useProcessing()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [selectedFile, updateSelectedFile] = useState<OfficeFile | null>(null)
-  const selectedFileRef = useRef<OfficeFile | null>(null)
-  const [conversionStatus, setConversionStatus] = useState<string>('')
+  const [selectedFile, updateSelectedFile] =
+    useWorkspaceState<OfficeFile | null>('office.file', null)
+  const selectedFileRef = useRef<OfficeFile | null>(selectedFile)
+  const fileUploadRef = useRef<HTMLDivElement>(null)
+  const [conversionStatus, setConversionStatus] = useWorkspaceState<string>(
+    'office.status',
+    '',
+  )
 
-  const setSelectedFile = useCallback((file: OfficeFile | null) => {
-    selectedFileRef.current = file
-    updateSelectedFile(file)
-    setConversionStatus('')
+  const setSelectedFile = useCallback(
+    (file: OfficeFile | null) => {
+      selectedFileRef.current = file
+      updateSelectedFile(file)
+      setConversionStatus('')
+    },
+    [updateSelectedFile, setConversionStatus],
+  )
+
+  const chooseAnotherFile = useCallback(() => {
+    fileUploadRef.current
+      ?.querySelector<HTMLInputElement>('input[type=file]')
+      ?.click()
   }, [])
 
   const isCurrentFile = useCallback(
@@ -77,32 +80,12 @@ function OfficeDocumentsLayout() {
     [],
   )
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    selectedFileRef.current = selectedFile
+    return () => {
       selectedFileRef.current = null
-    },
-    [],
-  )
-
-  // Determine current tab from URL path
-  const currentTab = useMemo(() => {
-    const path = location.pathname
-    if (path.includes('/convert')) return 'convert'
-    // Add more tabs here as needed
-    return 'convert' // default
-  }, [location.pathname])
-
-  // Handle tab changes
-  const handleTabChange = useCallback(
-    (value: string) => {
-      if (isProcessing) return // Prevent tab changes while processing
-
-      void navigate({
-        to: `/office-documents/${value}`,
-      })
-    },
-    [navigate, isProcessing],
-  )
+    }
+  }, [selectedFile])
 
   const clearSelectedFile = useCallback(() => {
     setSelectedFile(null)
@@ -157,6 +140,7 @@ function OfficeDocumentsLayout() {
       conversionStatus,
       setConversionStatus,
       clearSelectedFile,
+      chooseAnotherFile,
     }),
     [
       selectedFile,
@@ -164,69 +148,61 @@ function OfficeDocumentsLayout() {
       clearSelectedFile,
       setSelectedFile,
       isCurrentFile,
+      chooseAnotherFile,
     ],
   )
 
   const officeFileUpload = (
-    <FileUpload
-      selectedFiles={
-        selectedFile
-          ? [
-              {
-                name: selectedFile.name,
-                size: selectedFile.size,
-                type: selectedFile.type,
-              },
-            ]
-          : []
-      }
-      onFileSelect={(files) => void handleFileSelect(files)}
-      onClearFiles={clearSelectedFile}
-      acceptedTypes=".docx,.doc,.pptx,.ppt,.xlsx,.xls"
-      title="Drop an office file here"
-      description="Supports Word, PowerPoint, Excel"
-      supportedFormats={['Word', 'PowerPoint', 'Excel']}
-      emptyStateIcon={Upload}
-      selectedFileIcon={FileText}
-    >
-      {selectedFile && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-            {getFileIcon(selectedFile.name)}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {truncateFilename(selectedFile.name, 25)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatFileSize(selectedFile.size)}
-              </p>
+    <div ref={fileUploadRef}>
+      <FileUpload
+        selectedFiles={
+          selectedFile
+            ? [
+                {
+                  name: selectedFile.name,
+                  size: selectedFile.size,
+                  type: selectedFile.type,
+                },
+              ]
+            : []
+        }
+        onFileSelect={(files) => void handleFileSelect(files)}
+        onClearFiles={clearSelectedFile}
+        acceptedTypes=".docx,.doc,.pptx,.ppt,.xlsx,.xls"
+        title="Drop an office file here"
+        description="Supports Word, PowerPoint, Excel"
+        supportedFormats={['Word', 'PowerPoint', 'Excel']}
+        emptyStateIcon={Upload}
+        selectedFileIcon={FileText}
+      >
+        {selectedFile && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start gap-3">
+              {getFileIcon(selectedFile.name)}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+                  {selectedFile.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatFileSize(selectedFile.size)}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </FileUpload>
-  )
-
-  const officeToolsNav = (
-    <div className="w-full">
-      <ResponsiveTabs
-        tabs={officeTabs}
-        currentTab={currentTab}
-        onTabChange={handleTabChange}
-        isProcessing={isProcessing}
-      />
+        )}
+      </FileUpload>
     </div>
   )
 
   return (
     <OfficeToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title="Office Documents"
+        title="Convert document to PDF"
         icon={Building}
-        iconColor="text-indigo-500"
-        iconBgColor="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5"
+        iconColor="text-primary"
+        iconBgColor="bg-primary/10"
         fileUploadComponent={officeFileUpload}
-        toolsComponent={officeToolsNav}
+        toolsComponent={null}
       >
         <Outlet />
       </ToolLayout>

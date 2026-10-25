@@ -1,0 +1,291 @@
+{
+  "date": "2026-10-25",
+  "baseline_commit": "80c1c71",
+  "status": "Implemented in the working tree",
+  "checks": {
+    "pnpm check": "passed",
+    "pnpm format:check": "passed",
+    "pnpm test": {
+      "node": 380,
+      "chromium": 29,
+      "total": 409
+    },
+    "pnpm build": "passed"
+  },
+  "findings": [
+    {
+      "id": "01",
+      "title": "Essential actions are clipped outside the phone workspace",
+      "status": "implemented",
+      "change": "Responsive redaction modes, keyboard area bounds, wrapping exports, and metadata content.",
+      "source_files": [
+        "src/routes/images.redact.tsx",
+        "src/routes/images.metadata.tsx",
+        "src/routes/utilities.metadata.tsx"
+      ],
+      "regression_tests": ["src/__tests__/image-mobile.browser.test.tsx"]
+    },
+    {
+      "id": "02",
+      "title": "Navigation takes too much space at the breakpoints that need it most",
+      "status": "implemented",
+      "change": "Compact modal Tools menu below 1280px; workspace dominates tablet and phone layouts.",
+      "source_files": [
+        "src/components/ToolSidebar.tsx",
+        "src/components/ToolLayout.tsx",
+        "src/routes/__root.tsx"
+      ],
+      "regression_tests": ["src/__tests__/workspace.browser.test.tsx"]
+    },
+    {
+      "id": "03",
+      "title": "The upload card stays oversized after selection",
+      "status": "implemented",
+      "change": "Selected-file summaries use compact action rows and 64px phone thumbnails; redaction omits duplicate preview.",
+      "source_files": [
+        "src/components/FileUpload.tsx",
+        "src/routes/images.tsx",
+        "src/routes/videos.tsx"
+      ],
+      "regression_tests": ["src/__tests__/workspace.browser.test.tsx"]
+    },
+    {
+      "id": "04",
+      "title": "The horizontal tab strip hides capabilities without explaining how to find them",
+      "status": "implemented",
+      "change": "Labeled native tool selector exposes all available tools on constrained layouts; task headings identify the active operation.",
+      "source_files": [
+        "src/components/ui/responsive-tabs.tsx",
+        "src/components/ToolLayout.tsx"
+      ],
+      "regression_tests": ["src/__tests__/workspace.browser.test.tsx"]
+    },
+    {
+      "id": "05",
+      "title": "The landing page promotes project links before helping someone choose a task",
+      "status": "implemented",
+      "change": "Search, popular task cards, and a complete available-tool directory lead the homepage.",
+      "source_files": ["src/routes/index.tsx", "src/lib/tools.ts"],
+      "regression_tests": [
+        "src/components/__tests__/ResultCard.test.tsx",
+        "src/__tests__/workspace.browser.test.tsx"
+      ]
+    },
+    {
+      "id": "06",
+      "title": "A successful download often leaves no visible result or useful comparison",
+      "status": "implemented",
+      "change": "Persistent source-bound outputs include format, relevant details, size comparison, and Download again without processing again.",
+      "source_files": [
+        "src/components/ResultCard.tsx",
+        "src/hooks/useWorkspaceState.ts"
+      ],
+      "regression_tests": [
+        "src/components/__tests__/ResultCard.test.tsx",
+        "src/__tests__/image-workspace.test.tsx",
+        "src/__tests__/videos.compress.test.tsx",
+        "src/__tests__/office-documents.test.tsx",
+        "src/__tests__/pdf-workspace.browser.test.tsx",
+        "src/__tests__/archive-workspace.test.tsx"
+      ]
+    },
+    {
+      "id": "07",
+      "title": "Importing a video is presented as an operation the user has not started",
+      "status": "implemented",
+      "change": "Video preparation and information reading are distinct from user-started processing.",
+      "source_files": [
+        "src/routes/videos.tsx",
+        "src/contexts/VideoToolsContext.tsx"
+      ],
+      "regression_tests": ["src/__tests__/videos.test.tsx"]
+    },
+    {
+      "id": "08",
+      "title": "Trim starts in an invalid state and its presets can make that state worse",
+      "status": "implemented",
+      "change": "Trim defaults to actual duration, clamps shortcuts, validates precise values, and offers labeled range controls.",
+      "source_files": ["src/routes/videos.trim.tsx"],
+      "regression_tests": ["src/__tests__/videos.compress.test.tsx"]
+    },
+    {
+      "id": "09",
+      "title": "The merge uploader contradicts the batch task",
+      "status": "implemented",
+      "change": "PDF picker allows multiple files; Add files appends; page counts and ordered files are explicit.",
+      "source_files": ["src/routes/pdfs.tsx", "src/routes/pdfs.merge.tsx"],
+      "regression_tests": [
+        "src/__tests__/pdf-workspace.test.tsx",
+        "src/__tests__/pdf-workspace.browser.test.tsx"
+      ]
+    },
+    {
+      "id": "10",
+      "title": "Leaving a category silently discards a working edit",
+      "status": "implemented",
+      "change": "Selections, settings, edits, and completed outputs survive route navigation in session memory; obsolete work is invalidated.",
+      "source_files": [
+        "src/hooks/useWorkspaceState.ts",
+        "src/contexts/FileOperation.ts"
+      ],
+      "regression_tests": [
+        "src/__tests__/image-selection.test.tsx",
+        "src/__tests__/image-workspace.test.tsx",
+        "src/__tests__/workspace.browser.test.tsx",
+        "src/__tests__/videos.test.tsx"
+      ]
+    },
+    {
+      "id": "11",
+      "title": "Keyboard and assistive navigation carry avoidable friction",
+      "status": "implemented",
+      "change": "Single interactive navigation links, named landmarks/controls, skip link, route focus, native dialog focus, and keyboard PDF reordering.",
+      "source_files": [
+        "src/components/ToolSidebar.tsx",
+        "src/routes/__root.tsx",
+        "src/components/ThemeToggle.tsx",
+        "src/routes/pdfs.tsx"
+      ],
+      "regression_tests": [
+        "src/__tests__/workspace.browser.test.tsx",
+        "src/__tests__/pdf-workspace.browser.test.tsx"
+      ]
+    },
+    {
+      "id": "12",
+      "title": "Interactive controls are undersized for comfortable phone use",
+      "status": "implemented",
+      "change": "Shared controls have comfortable minimum hit areas; mode buttons wrap and PDF actions remain visible.",
+      "source_files": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/select.tsx",
+        "src/styles.css"
+      ],
+      "regression_tests": [
+        "src/__tests__/workspace.browser.test.tsx",
+        "src/__tests__/image-mobile.browser.test.tsx"
+      ]
+    },
+    {
+      "id": "13",
+      "title": "The default controls assume knowledge the target audience may not have",
+      "status": "implemented",
+      "change": "Resize uses real dimensions and percentage presets; video uses named quality goals with technical settings in Advanced.",
+      "source_files": [
+        "src/routes/images.resize.tsx",
+        "src/routes/videos.compress.tsx",
+        "src/routes/videos.convert.tsx"
+      ],
+      "regression_tests": [
+        "src/__tests__/image-workspace.test.tsx",
+        "src/__tests__/videos.compress.test.tsx"
+      ]
+    },
+    {
+      "id": "14",
+      "title": "Technical failure details are shown as the main explanation",
+      "status": "implemented",
+      "change": "Office failures use plain recovery guidance, Choose another file, and collapsed technical details.",
+      "source_files": ["src/routes/office-documents.convert.tsx"],
+      "regression_tests": ["src/__tests__/office-documents.test.tsx"]
+    },
+    {
+      "id": "15",
+      "title": "Hashes are readable but unnecessarily difficult to reuse",
+      "status": "implemented",
+      "change": "Copy individual or all checksums, announce copy feedback, and state positive/negative verification explicitly.",
+      "source_files": ["src/routes/utilities.hash.tsx"],
+      "regression_tests": ["src/__tests__/utilities.test.tsx"]
+    },
+    {
+      "id": "16",
+      "title": "The metadata screen offers irrelevant image guidance for a selected text file",
+      "status": "implemented",
+      "change": "Metadata panels reflect file capabilities and explain the scope of supported image metadata removal.",
+      "source_files": [
+        "src/routes/utilities.metadata.tsx",
+        "src/routes/images.metadata.tsx"
+      ],
+      "regression_tests": [
+        "src/__tests__/utilities.test.tsx",
+        "src/lib/__tests__/images.metadata.test.tsx"
+      ]
+    },
+    {
+      "id": "17",
+      "title": "Unavailable tools have inconsistent affordances",
+      "status": "implemented",
+      "change": "Unfinished PDF tools are absent from active navigation; direct URLs explain availability and link to Merge PDFs.",
+      "source_files": [
+        "src/lib/tools.ts",
+        "src/routes/pdfs.tsx",
+        "src/routes/pdfs.split.tsx",
+        "src/routes/pdfs.compress.tsx"
+      ],
+      "regression_tests": [
+        "src/components/__tests__/ResultCard.test.tsx",
+        "src/__tests__/pdf-workspace.test.tsx"
+      ]
+    },
+    {
+      "id": "18",
+      "title": "Visual hierarchy is dominated by containers rather than the task",
+      "status": "implemented",
+      "change": "Shared neutral surfaces, restrained borders, typography, blue primary actions, semantic dark-mode errors, reduced motion, and consistent states.",
+      "source_files": [
+        "src/styles.css",
+        "src/components/ToolLayout.tsx",
+        "src/components/ResultCard.tsx"
+      ],
+      "regression_tests": ["src/__tests__/workspace.browser.test.tsx"]
+    },
+    {
+      "id": "19",
+      "title": "File rows sacrifice the information needed to choose the right download",
+      "status": "implemented",
+      "change": "Archive rows put complete wrapping filenames first, with size and a compact named download action below.",
+      "source_files": ["src/routes/archives.extract.tsx"],
+      "regression_tests": ["src/__tests__/archive-workspace.test.tsx"]
+    }
+  ],
+  "overall_design": [
+    "Task-first homepage with everyday-language search and popular tasks.",
+    "Shared typography, spacing, neutral surfaces, semantic status colors, consistent controls, and reduced motion.",
+    "Desktop workspace columns; compact modal navigation and stacked controls on phones/tablets.",
+    "Compact selected-file summaries, workflow-specific editing controls, useful defaults, and Advanced settings.",
+    "Persistent source-bound results, re-download, size comparisons, and understandable recovery.",
+    "Session-memory work retention, explicit Clear/replacement, and stale async ownership guards."
+  ],
+  "responsive_test_viewports": [
+    "375 × 667",
+    "390 × 844",
+    "768 × 1024",
+    "1024 × 768",
+    "1440 × 1000"
+  ],
+  "manual_production_checks": [
+    "Image: 350 × 208 PNG resized to 700 × 416; downloaded PNG header verified. Redaction area retained through Home → Back; phone export bounds x=33–342 within375px.",
+    "Video: preparation correctly labeled, real WebM compressed to MP4/H.264/AAC; 203313 bytes to124970 bytes (38.5% smaller); First30s on3s clip clamps end to3; invalid10s entry shows inline dark-mode validation.",
+    "PDF: native multi-picker selected two PDFs, page counts1+2, keyboard move-up reversed order, downloaded merged PDF verified as3pages.",
+    "Archive: two PDFs packed into ZIP, extracted, full filenames visible at390px, individual download works.",
+    "Utilities: Copy MD5 produces copied feedback, exact expected checksum produces Matches MD5, text-file metadata has no irrelevant removal action.",
+    "Office: damaged DOCX shows plain recovery; Choose another file opens picker; valid DOCX converts to a1pagePDF and Download again works without reconversion."
+  ],
+  "screenshots": [
+    "implementation-screenshots/01-desktop-home.jpg",
+    "implementation-screenshots/02-mobile-home.jpg",
+    "implementation-screenshots/03-mobile-resize-result.jpg",
+    "implementation-screenshots/04-mobile-redaction.jpg",
+    "implementation-screenshots/05-tablet-pdf-result.jpg",
+    "implementation-screenshots/06-mobile-extracted-files.jpg",
+    "implementation-screenshots/07-mobile-hash-match.jpg",
+    "implementation-screenshots/08-tablet-dark-trim-validation.jpg",
+    "implementation-screenshots/09-document-error-recovery.jpg",
+    "implementation-screenshots/10-desktop-document-result.jpg"
+  ],
+  "limits": [
+    "Responsive checks use desktop browser viewports; physical iOS/Android touch, native pickers, safe areas, and soft keyboards still need real-device validation.",
+    "Qualitative design and selected keyboard/geometry checks are not a complete screen-reader or contrast audit."
+  ]
+}

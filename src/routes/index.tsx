@@ -1,78 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-
-import { Card, CardContent } from '@/components/ui/card'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useState } from 'react'
+import { ArrowRight, Search, ShieldCheck, X, ArrowUpRight } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  Zap,
-  Shield,
-  Globe,
-  Hammer,
-  Bug,
-  MessageCircle,
-  Heart,
-  Calendar,
-} from 'lucide-react'
-import { SiGithub } from '@icons-pack/react-simple-icons'
-
-const features = [
-  {
-    icon: Globe,
-    title: 'Client-Side Processing',
-    description:
-      'All processing happens in your browser - your files never leave your device',
-  },
-  {
-    icon: Zap,
-    title: 'Powered by WASM',
-    description: 'Leverages WebAssembly for fast performance on your browser',
-  },
-  {
-    icon: Shield,
-    title: 'Built on Open Source',
-    description:
-      'Powered by FFmpeg, ImageMagick, 7z, pdf-lib, ExifTool, libmagic, Pandoc, Typst, libimagequant, and more',
-  },
-]
-
-const changelog = [
-  {
-    date: 'Apr 3 2026',
-    entries: ['Added Typst support for converting to PDF'],
-  },
-  {
-    date: 'Aug 19 2025',
-    entries: ['Added libimagequant to compress png'],
-  },
-  {
-    date: 'Aug 7 2025',
-    entries: ['Added metadata stripping for enhanced privacy'],
-  },
-  {
-    date: 'Jul 11 2025',
-    entries: ['Added image redaction tool for privacy protection'],
-  },
-  {
-    date: 'Jul 7 2025',
-    entries: ['Added office document to PDF conversion'],
-  },
-  {
-    date: 'Jul 6 2025',
-    entries: ['Added archive compression and extraction support'],
-  },
-  {
-    date: 'Jul 3 2025',
-    entries: ['Added utilities section with file hashing and metadata tools'],
-  },
-  {
-    date: 'Jul 2 2025',
-    entries: [
-      'Added EXIF data viewing for images',
-      'Added PDF merge tool with reordering capability',
-      'Added basic video tools (convert, trim, metadata)',
-      'Added basic image tools (convert, resize, compress)',
-    ],
-  },
-]
+import { allTools, findTools, toolCategories } from '@/lib/tools'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -109,164 +40,176 @@ export const Route = createFileRoute('/')({
   }),
 })
 
-function App() {
+export function App() {
+  const [query, setQuery] = useState('')
+  const matches = findTools(query)
+  const popularRoutes = [
+    '/images/resize',
+    '/images/compress',
+    '/pdfs/merge',
+    '/office-documents/convert',
+    '/videos/trim',
+    '/archives/extract',
+  ]
+  const popular = popularRoutes.flatMap((route) =>
+    allTools.filter((tool) => tool.route === route),
+  )
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="container mx-auto px-4 sm:px-8 py-8">
-          {/* Hero Section */}
-          <div className="text-center max-w-4xl mx-auto mb-8">
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <div className="w-12 h-12 bg-linear-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center">
-                <Hammer className="w-6 h-6 text-primary" />
-              </div>
-              <h1 className="text-display text-foreground">Toolbox</h1>
-            </div>
-
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              Process files entirely in your browser. Built with privacy and
-              performance in mind.
-              <br />
-              No signup, no ads, no tracking. Your files are never uploaded to
-              our servers.
-            </p>
-
-            <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12 lg:py-16">
+        <header className="max-w-3xl">
+          <p className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-primary">
+            <ShieldCheck aria-hidden="true" className="size-4" />
+            Private by design
+          </p>
+          <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+            Private file tools,
+            <br className="hidden sm:block" /> right in your browser.
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Resize, convert, and organize your files. Everything is processed on
+            your device, with no uploads or account required.
+          </p>
+        </header>
+        <div className="relative mt-8 max-w-2xl">
+          <label
+            htmlFor="tool-search"
+            className="mb-2 block text-sm font-medium"
+          >
+            What would you like to do?
+          </label>
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              id="tool-search"
+              type="search"
+              placeholder="Try “shrink photo” or “merge PDFs”"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-14 rounded-xl bg-card pl-12 pr-12 text-base"
+            />
+            {query && (
               <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="rounded-xl"
+                aria-label="Clear search"
+                variant="ghost"
+                size="icon"
+                onClick={() => setQuery('')}
+                className="absolute right-1 top-1"
               >
-                <a
-                  href="https://github.com/akshetpandey/toolbox"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <SiGithub className="w-4 h-4 mr-2" />
-                  View on GitHub
-                </a>
+                <X aria-hidden="true" />
               </Button>
-
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="rounded-xl"
-              >
-                <a
-                  href="https://github.com/akshetpandey/toolbox/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Bug className="w-4 h-4 mr-2" />
-                  Report Issue
-                </a>
-              </Button>
-
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="rounded-xl"
-              >
-                <a
-                  href="https://github.com/akshetpandey/toolbox/discussions"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Request Tool
-                </a>
-              </Button>
-            </div>
-          </div>
-
-          {/* Features Section */}
-          <div className="mb-8">
-            <div className="grid md:grid-cols-3 gap-6">
-              {features.map((feature) => (
-                <Card key={feature.title} className="flat-card border-0">
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 bg-linear-to-br from-primary/10 to-primary/5 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <feature.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="text-subheading text-foreground mb-2">
-                      {feature.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {feature.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Changelog Section */}
-          <div className="mb-8">
-            <div className="text-center mb-6">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Calendar className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">
-                  Recent Updates
-                </h2>
-              </div>
-            </div>
-
-            <div className="max-w-2xl mx-auto">
-              <Card className="flat-card border-0">
-                <CardContent className="p-4">
-                  <div className="h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
-                    <div className="space-y-3">
-                      {changelog.map((entry, index) => (
-                        <div key={index} className="space-y-1">
-                          <div className="text-xs text-primary/60 font-mono font-medium">
-                            {entry.date}
-                          </div>
-                          <div className="space-y-1 ml-2">
-                            {entry.entries.map((item, itemIndex) => (
-                              <div
-                                key={itemIndex}
-                                className="text-sm text-muted-foreground flex items-center gap-2"
-                              >
-                                <span className="text-primary shrink-0">•</span>
-                                <span>{item}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-center border-t border-border/50 py-8 mt-16">
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 flex-nowrap">
-              <span className="whitespace-nowrap">Made with</span>
-              <Heart className="w-4 h-4 text-red-500 fill-current shrink-0" />
-              <span className="whitespace-nowrap">
-                for the open source community
-              </span>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 text-sm">
-              <a
-                href="https://github.com/akshetpandey/toolbox/blob/main/LICENSE"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                MIT License
-              </a>
-            </div>
+            )}
           </div>
         </div>
+        <section aria-labelledby="popular-tools" className="mt-9">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="popular-tools" className="text-lg font-semibold">
+              {query.trim() ? 'Search results' : 'Popular tools'}
+            </h2>
+            {query.trim() && (
+              <p role="status" className="text-sm text-muted-foreground">
+                {matches.length} {matches.length === 1 ? 'tool' : 'tools'} found
+              </p>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(query.trim() ? matches : popular).map((tool) => (
+              <Link
+                key={tool.route}
+                to={tool.route}
+                className="tool-card group flex min-w-0 flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-accent/30 focus-ring"
+              >
+                <div className="mb-5 flex items-center justify-between">
+                  <span className={`rounded-lg bg-muted p-2.5 ${tool.color}`}>
+                    <tool.icon aria-hidden="true" className="size-5" />
+                  </span>
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1"
+                  />
+                </div>
+                <h3 className="font-semibold">{tool.name}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {tool.description}
+                </p>
+              </Link>
+            ))}
+          </div>
+          {query.trim() && matches.length === 0 && (
+            <div className="rounded-xl border border-border bg-card p-6">
+              <h3 className="font-medium">No tools found</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Try a file type such as image, PDF, or ZIP, or browse the
+                categories below.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setQuery('')}
+              >
+                Show popular tools
+              </Button>
+            </div>
+          )}
+        </section>
+        <section
+          aria-labelledby="all-tools"
+          className="mt-12 border-t border-border pt-8"
+        >
+          <h2 id="all-tools" className="mb-6 text-lg font-semibold">
+            Explore all tools
+          </h2>
+          <div className="grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-3">
+            {toolCategories.map((category) => (
+              <div key={category.path}>
+                <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                  <category.icon
+                    aria-hidden="true"
+                    className={`size-4 ${category.color}`}
+                  />
+                  {category.name}
+                </h3>
+                <ul>
+                  {category.tools.map((tool) => (
+                    <li key={tool.route}>
+                      <Link
+                        to={tool.route}
+                        className="inline-flex min-h-11 items-center text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline focus-ring"
+                      >
+                        {tool.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+        <footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-sm text-muted-foreground">
+          <p>No signup. No ads. Your files stay yours.</p>
+          <div className="flex flex-wrap gap-5">
+            <a
+              className="inline-flex min-h-11 items-center gap-1 hover:text-foreground"
+              href="https://github.com/akshetpandey/toolbox"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+              <ArrowUpRight aria-hidden="true" className="size-3" />
+            </a>
+            <a
+              className="inline-flex min-h-11 items-center hover:text-foreground"
+              href="https://github.com/akshetpandey/toolbox/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Report an issue
+            </a>
+          </div>
+        </footer>
       </div>
     </div>
   )

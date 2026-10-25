@@ -1,5 +1,8 @@
+import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import { ResultCard, useToolResult } from '@/components/ResultCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -182,17 +185,30 @@ export const Route = createFileRoute('/images/redact')({
 })
 
 function RedactPage() {
-  const { selectedFile } = useImageTools()
-  const { isProcessing, setIsProcessing } = useProcessing()
+  const { selectedFile, clearSelectedFile } = useImageTools()
+  const { isProcessing } = useProcessing()
+  const beginOperation = useFileOperation(selectedFile?.file)
 
   // Redaction settings
-  const [redactionMode, setRedactionMode] = useState<
+  const [redactionMode, setRedactionMode] = useWorkspaceState<
     'box' | 'blur' | 'pixelate' | 'emoji'
-  >('box')
-  const [redactionColor, setRedactionColor] = useState('#000000')
-  const [blurRadius, setBlurRadius] = useState(10)
-  const [pixelSize, setPixelSize] = useState(10)
-  const [selectedEmoji, setSelectedEmoji] = useState('\u{1F600}')
+  >('images.redact.mode', 'box')
+  const [redactionColor, setRedactionColor] = useWorkspaceState(
+    'images.redact.color',
+    '#000000',
+  )
+  const [blurRadius, setBlurRadius] = useWorkspaceState(
+    'images.redact.blur',
+    10,
+  )
+  const [pixelSize, setPixelSize] = useWorkspaceState(
+    'images.redact.pixel-size',
+    10,
+  )
+  const [selectedEmoji, setSelectedEmoji] = useWorkspaceState(
+    'images.redact.emoji',
+    '\u{1F600}',
+  )
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [isDrawing, setIsDrawing] = useState(false)
   const [drawingStart, setDrawingStart] = useState<{
@@ -205,7 +221,17 @@ function RedactPage() {
     width: number
     height: number
   } | null>(null)
-  const [redactionAreas, setRedactionAreas] = useState<RedactionArea[]>([])
+  const [redactionAreas, setRedactionAreas] = useWorkspaceState<
+    RedactionArea[]
+  >('images.redact.areas', [])
+  const [redactionSource, setRedactionSource] = useWorkspaceState<File | null>(
+    'images.redact.source',
+    null,
+  )
+  const { result, setResult } = useToolResult(
+    selectedFile?.file,
+    'images.redact',
+  )
   const [scaleFactor, setScaleFactor] = useState({ x: 1, y: 1 })
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
@@ -260,7 +286,9 @@ function RedactPage() {
 
     const img = new Image()
 
+    let cancelled = false
     img.onload = () => {
+      if (cancelled) return
       const maxWidth = 800
       const maxHeight = 600
       let { width, height } = img
@@ -405,6 +433,9 @@ function RedactPage() {
     }
 
     img.src = selectedFile.preview
+    return () => {
+      cancelled = true
+    }
   }, [
     selectedFile,
     currentArea,
@@ -420,13 +451,17 @@ function RedactPage() {
 
   // Reset redaction areas when file changes
   useEffect(() => {
+    const source = selectedFile?.file ?? null
+    if (redactionSource === source) return
+    setRedactionSource(source)
     setRedactionAreas([])
     setCurrentArea(null)
     setSelectedIndex(null)
     setResizeState(null)
     setDragState(null)
     setDownloadError(null)
-  }, [selectedFile])
+    setIsStrippingMetadata(false)
+  }, [selectedFile, redactionSource, setRedactionSource, setRedactionAreas])
 
   // Prevent document scrolling when drawing or resizing
   useEffect(() => {
@@ -935,31 +970,44 @@ function RedactPage() {
   const downloadRedactedImage = async () => {
     if (!selectedFile) return
 
-    setIsProcessing(true)
+    const operation = beginOperation()
     setDownloadError(null)
 
     try {
       const blob = await createRedactedImageBlob()
-      downloadBlob(blob, `redacted_${selectedFile.name}`)
+      if (!operation.isCurrent()) return
+      const filename = `redacted_${selectedFile.name.replace(/\.[^/.]+$/, '')}.${blob.type === 'image/jpeg' ? 'jpg' : blob.type === 'image/webp' ? 'webp' : 'png'}`
+      setResult({
+        blob,
+        filename,
+        sourceSize: selectedFile.size,
+        details: [
+          `${selectedFile.dimensions?.width} × ${selectedFile.dimensions?.height} px`,
+          `${redactionAreas.length} redaction areas`,
+        ],
+      })
+      downloadBlob(blob, filename)
     } catch (error) {
+      if (!operation.isCurrent()) return
       console.error('RedactionTool: Error during download:', error)
       setDownloadError(
         'Failed to redact the image. No file was downloaded. Please try again.',
       )
     } finally {
-      setIsProcessing(false)
+      operation.finish()
     }
   }
 
   const downloadRedactedImageWithMetadataStripped = async () => {
     if (!selectedFile) return
 
-    setIsProcessing(true)
+    const operation = beginOperation()
     setIsStrippingMetadata(true)
     setDownloadError(null)
 
     try {
       const redactedBlob = await createRedactedImageBlob()
+      if (!operation.isCurrent()) return
 
       const redactedFile = new File(
         [redactedBlob],
@@ -968,8 +1016,20 @@ function RedactPage() {
       )
 
       const strippedBlob = await stripFileMetadata(redactedFile)
-      downloadBlob(strippedBlob, `redacted_no-metadata_${selectedFile.name}`)
+      if (!operation.isCurrent()) return
+      const filename = `redacted_no-metadata_${selectedFile.name.replace(/\.[^/.]+$/, '')}.${strippedBlob.type === 'image/jpeg' ? 'jpg' : strippedBlob.type === 'image/webp' ? 'webp' : 'png'}`
+      setResult({
+        blob: strippedBlob,
+        filename,
+        sourceSize: selectedFile.size,
+        details: [
+          `${selectedFile.dimensions?.width} × ${selectedFile.dimensions?.height} px`,
+          'Redacted image with embedded metadata removed; color profile retained.',
+        ],
+      })
+      downloadBlob(strippedBlob, filename)
     } catch (error) {
+      if (!operation.isCurrent()) return
       console.error(
         'RedactionTool: Error during download with metadata stripping:',
         error,
@@ -978,8 +1038,8 @@ function RedactPage() {
         'Failed to strip metadata from the redacted image. No file was downloaded. Please try again.',
       )
     } finally {
-      setIsProcessing(false)
-      setIsStrippingMetadata(false)
+      operation.finish()
+      if (operation.isCurrent()) setIsStrippingMetadata(false)
     }
   }
 
@@ -1020,240 +1080,343 @@ function RedactPage() {
   }
 
   return (
-    <Card className="glass-card border-0">
-      <CardContent className="p-6 flex flex-col gap-4">
-        <div className="flex items-center gap-6 flex-wrap">
-          <div className="flex items-center gap-4">
-            <Label className="text-sm font-medium">Mode:</Label>
-            <div className="flex items-center bg-muted/50 rounded-lg p-1">
-              <button
-                type="button"
-                onClick={() => setRedactionMode('box')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  redactionMode === 'box'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+    <div className="flex min-w-0 flex-col gap-5">
+      <Card>
+        <CardContent className="p-4 sm:p-6 flex min-w-0 flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="flex min-w-0 flex-col gap-2">
+              <Label className="text-sm font-medium">Redaction mode</Label>
+              <div
+                role="group"
+                aria-label="Redaction mode"
+                className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
               >
-                <Square className="w-3 h-3" />
-                Box
-              </button>
-              <button
-                type="button"
-                onClick={() => setRedactionMode('blur')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  redactionMode === 'blur'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Focus className="w-3 h-3" />
-                Blur
-              </button>
-              <button
-                type="button"
-                onClick={() => setRedactionMode('pixelate')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  redactionMode === 'pixelate'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Grid3x3 className="w-3 h-3" />
-                Pixelate
-              </button>
-              <button
-                type="button"
-                onClick={() => setRedactionMode('emoji')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  redactionMode === 'emoji'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Smile className="w-3 h-3" />
-                Emoji
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setRedactionMode('box')}
+                  aria-pressed={redactionMode === 'box'}
+                  disabled={isProcessing}
+                  className={`flex items-center gap-2 min-h-11 justify-center px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    redactionMode === 'box'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Square className="w-3 h-3" />
+                  Box
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRedactionMode('blur')}
+                  aria-pressed={redactionMode === 'blur'}
+                  disabled={isProcessing}
+                  className={`flex items-center gap-2 min-h-11 justify-center px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    redactionMode === 'blur'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Focus className="w-3 h-3" />
+                  Blur
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRedactionMode('pixelate')}
+                  aria-pressed={redactionMode === 'pixelate'}
+                  disabled={isProcessing}
+                  className={`flex items-center gap-2 min-h-11 justify-center px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    redactionMode === 'pixelate'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Grid3x3 className="w-3 h-3" />
+                  Pixelate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRedactionMode('emoji')}
+                  aria-pressed={redactionMode === 'emoji'}
+                  disabled={isProcessing}
+                  className={`flex items-center gap-2 min-h-11 justify-center px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    redactionMode === 'emoji'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Smile className="w-3 h-3" />
+                  Emoji
+                </button>
+              </div>
             </div>
-          </div>
 
-          {redactionMode === 'box' && (
-            <div className="flex items-center gap-4">
-              <Label htmlFor="redaction-color" className="text-sm font-medium">
-                Color:
-              </Label>
-              <div className="flex items-center gap-2">
-                <div className="relative">
+            {redactionMode === 'box' && (
+              <div className="flex items-center gap-4">
+                <Label
+                  htmlFor="redaction-color"
+                  className="text-sm font-medium"
+                >
+                  Color:
+                </Label>
+                <div className="flex items-center gap-2">
                   <input
                     id="redaction-color"
                     type="color"
                     value={redactionColor}
-                    onChange={(e) => setRedactionColor(e.target.value)}
-                    className="sr-only"
+                    onChange={(event) => setRedactionColor(event.target.value)}
+                    className="h-11 w-11 cursor-pointer rounded-md border border-border bg-background p-1"
                   />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      document.getElementById('redaction-color')?.click()
-                    }
-                    className="w-8 h-8 rounded-lg border-2 border-border/50 hover:border-border transition-colors shadow-sm"
-                    style={{ backgroundColor: redactionColor }}
-                  />
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {redactionColor}
+                  </span>
                 </div>
-                <span className="text-sm text-muted-foreground font-mono">
-                  {redactionColor}
-                </span>
               </div>
+            )}
+
+            {redactionMode === 'blur' && (
+              <div className="flex items-center gap-4">
+                <Label htmlFor="blur-radius" className="text-sm font-medium">
+                  Blur:
+                </Label>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <input
+                    id="blur-radius"
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={blurRadius}
+                    onChange={(e) => setBlurRadius(parseInt(e.target.value))}
+                    className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <span className="text-sm text-muted-foreground font-mono min-w-12">
+                    {blurRadius}px
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {redactionMode === 'pixelate' && (
+              <div className="flex items-center gap-4">
+                <Label htmlFor="pixel-size" className="text-sm font-medium">
+                  Pixel Size:
+                </Label>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <input
+                    id="pixel-size"
+                    type="range"
+                    min="2"
+                    max="50"
+                    value={pixelSize}
+                    onChange={(e) => setPixelSize(parseInt(e.target.value))}
+                    className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <span className="text-sm text-muted-foreground font-mono min-w-12">
+                    {pixelSize}px
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {redactionMode === 'emoji' && (
+              <div className="relative flex flex-wrap items-center gap-3">
+                <Label className="text-sm font-medium">Emoji:</Label>
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker((v) => !v)}
+                  aria-label="Choose redaction emoji"
+                  aria-expanded={showEmojiPicker}
+                  className="w-11 h-11 text-2xl rounded-lg border-2 border-border/50 hover:border-border transition-colors flex items-center justify-center bg-background"
+                >
+                  {selectedEmoji}
+                </button>
+                {showEmojiPicker && (
+                  <div className="fixed inset-x-4 top-1/4 z-50 sm:absolute sm:inset-x-auto sm:top-full sm:left-0 sm:mt-2 sm:w-80">
+                    <EmojiPicker
+                      emojiStyle="native"
+                      onEmojiClick={(emojiData: EmojiClickData) => {
+                        setSelectedEmoji(emojiData.emoji)
+                        setShowEmojiPicker(false)
+                      }}
+                      width="100%"
+                      height={400}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() => {
+                const canvas = canvasRef.current
+                if (!canvas) return
+                const area: RedactionArea = {
+                  x: Math.round(canvas.width / 3),
+                  y: Math.round(canvas.height / 3),
+                  width: Math.max(10, Math.round(canvas.width / 3)),
+                  height: Math.max(10, Math.round(canvas.height / 3)),
+                  mode: redactionMode,
+                  color: redactionColor,
+                  blurRadius,
+                  pixelSize,
+                  emoji: selectedEmoji,
+                }
+                setSelectedIndex(redactionAreas.length)
+                setRedactionAreas((previous) => [...previous, area])
+              }}
+            >
+              Add area
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Draw over the image, or add an area and adjust its bounds below.
+            </p>
+          </div>
+          <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-2 sm:p-4 flex justify-center">
+            <canvas
+              ref={canvasRef}
+              aria-label="Image redaction canvas"
+              className="max-w-full max-h-125 border border-border/50 rounded touch-none"
+              style={{ touchAction: 'none', cursor: canvasCursor }}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseUp}
+              onTouchStart={handleCanvasTouchStart}
+              onTouchMove={handleCanvasTouchMove}
+              onTouchEnd={handleCanvasTouchEnd}
+            />
+          </div>
+
+          {redactionAreas.length > 0 && (
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label="Redaction areas"
+            >
+              {redactionAreas.map((area, index) => (
+                <Button
+                  key={index}
+                  variant={selectedIndex === index ? 'default' : 'outline'}
+                  aria-pressed={selectedIndex === index}
+                  onClick={() => setSelectedIndex(index)}
+                >
+                  Area {index + 1} · {area.mode}
+                </Button>
+              ))}
             </div>
           )}
-
-          {redactionMode === 'blur' && (
-            <div className="flex items-center gap-4">
-              <Label htmlFor="blur-radius" className="text-sm font-medium">
-                Blur:
-              </Label>
-              <div className="flex items-center gap-3 min-w-48">
-                <input
-                  id="blur-radius"
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={blurRadius}
-                  onChange={(e) => setBlurRadius(parseInt(e.target.value))}
-                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
-                />
-                <span className="text-sm text-muted-foreground font-mono min-w-12">
-                  {blurRadius}px
-                </span>
-              </div>
-            </div>
-          )}
-
-          {redactionMode === 'pixelate' && (
-            <div className="flex items-center gap-4">
-              <Label htmlFor="pixel-size" className="text-sm font-medium">
-                Pixel Size:
-              </Label>
-              <div className="flex items-center gap-3 min-w-48">
-                <input
-                  id="pixel-size"
-                  type="range"
-                  min="2"
-                  max="50"
-                  value={pixelSize}
-                  onChange={(e) => setPixelSize(parseInt(e.target.value))}
-                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
-                />
-                <span className="text-sm text-muted-foreground font-mono min-w-12">
-                  {pixelSize}px
-                </span>
-              </div>
-            </div>
-          )}
-
-          {redactionMode === 'emoji' && (
-            <div className="relative flex items-center gap-4">
-              <Label className="text-sm font-medium">Emoji:</Label>
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker((v) => !v)}
-                className="w-10 h-10 text-2xl rounded-lg border-2 border-border/50 hover:border-border transition-colors flex items-center justify-center bg-background"
-              >
-                {selectedEmoji}
-              </button>
-              {showEmojiPicker && (
-                <div className="absolute top-full left-0 z-50 mt-2">
-                  <EmojiPicker
-                    emojiStyle="native"
-                    onEmojiClick={(emojiData: EmojiClickData) => {
-                      setSelectedEmoji(emojiData.emoji)
-                      setShowEmojiPicker(false)
+          {selectedIndex !== null && redactionAreas[selectedIndex] && (
+            <fieldset className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <legend className="mb-2 text-sm font-medium">
+                Selected area bounds (preview pixels)
+              </legend>
+              {(['x', 'y', 'width', 'height'] as const).map((field) => (
+                <div key={field} className="space-y-2">
+                  <Label htmlFor={`area-${field}`}>
+                    {field === 'x'
+                      ? 'Left'
+                      : field === 'y'
+                        ? 'Top'
+                        : field === 'width'
+                          ? 'Width'
+                          : 'Height'}
+                  </Label>
+                  <input
+                    id={`area-${field}`}
+                    type="number"
+                    min={field === 'width' || field === 'height' ? 10 : 0}
+                    value={Math.round(redactionAreas[selectedIndex][field])}
+                    className="h-11 min-w-0 w-full rounded-md border bg-background px-3 text-base"
+                    onChange={(event) => {
+                      const value = Number(event.target.value)
+                      if (!Number.isFinite(value)) return
+                      setRedactionAreas((previous) =>
+                        previous.map((area, index) =>
+                          index === selectedIndex
+                            ? {
+                                ...area,
+                                [field]: Math.max(
+                                  field === 'width' || field === 'height'
+                                    ? 10
+                                    : 0,
+                                  value,
+                                ),
+                              }
+                            : area,
+                        ),
+                      )
                     }}
-                    width={350}
-                    height={400}
                   />
                 </div>
-              )}
-            </div>
+              ))}
+            </fieldset>
           )}
-        </div>
+          {selectedIndex !== null && (
+            <p className="text-xs text-muted-foreground text-center">
+              Drag to move. Drag handles to resize. Delete to remove. Escape to
+              deselect.
+            </p>
+          )}
 
-        <div className="border-2 border-dashed border-primary/20 rounded-lg p-4 bg-muted/20 flex justify-center">
-          <canvas
-            ref={canvasRef}
-            className="max-w-full max-h-125 border border-border/50 rounded touch-none"
-            style={{ touchAction: 'none', cursor: canvasCursor }}
-            onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
-            onTouchStart={handleCanvasTouchStart}
-            onTouchMove={handleCanvasTouchMove}
-            onTouchEnd={handleCanvasTouchEnd}
-          />
-        </div>
+          {downloadError && (
+            <p role="alert" className="text-sm text-destructive">
+              {downloadError}
+            </p>
+          )}
 
-        {selectedIndex !== null && (
-          <p className="text-xs text-muted-foreground text-center">
-            Drag to move. Drag handles to resize. Delete to remove. Escape to
-            deselect.
-          </p>
-        )}
-
-        {downloadError && (
-          <p role="alert" className="text-sm text-destructive">
-            {downloadError}
-          </p>
-        )}
-
-        <div className="flex justify-between items-center">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={undoLastRedaction}
-              disabled={redactionAreas.length === 0}
-            >
-              <Undo2 className="h-4 w-4 mr-2" />
-              Undo
-            </Button>
-            <Button
-              variant="outline"
-              onClick={clearAllRedactions}
-              disabled={redactionAreas.length === 0}
-            >
-              Clear All
-            </Button>
+          <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:flex-wrap xl:justify-between">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={undoLastRedaction}
+                disabled={redactionAreas.length === 0}
+              >
+                <Undo2 className="h-4 w-4 mr-2" />
+                Undo
+              </Button>
+              <Button
+                variant="outline"
+                onClick={clearAllRedactions}
+                disabled={redactionAreas.length === 0}
+              >
+                Clear All
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => void downloadRedactedImage()}
+                disabled={isProcessing || redactionAreas.length === 0}
+                className="min-w-0 flex-1 sm:flex-none"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Download
+              </Button>
+              <Button
+                onClick={() => void downloadRedactedImageWithMetadataStripped()}
+                disabled={isProcessing || redactionAreas.length === 0}
+                variant="outline"
+                className="min-w-0 h-auto min-h-11 whitespace-normal flex-1 sm:flex-none"
+              >
+                {isStrippingMetadata ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldOff className="h-4 w-4" />
+                )}
+                <Download className="h-4 w-4" />
+                {isStrippingMetadata
+                  ? 'Stripping...'
+                  : 'Download Without Metadata'}
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => void downloadRedactedImage()}
-              disabled={isProcessing || redactionAreas.length === 0}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Download
-            </Button>
-            <Button
-              onClick={() => void downloadRedactedImageWithMetadataStripped()}
-              disabled={isProcessing || redactionAreas.length === 0}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              {isStrippingMetadata ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ShieldOff className="h-4 w-4" />
-              )}
-              <Download className="h-4 w-4" />
-              {isStrippingMetadata
-                ? 'Stripping...'
-                : 'Download Without Metadata'}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      <ResultCard result={result} onReset={clearSelectedFile} />
+    </div>
   )
 }

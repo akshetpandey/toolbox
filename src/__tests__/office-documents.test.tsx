@@ -1,6 +1,8 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ProcessingProvider, useProcessing } from '@/contexts/ProcessingContext'
+import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
+import { StrictMode } from 'react'
 import type { ConversionResult } from '@/lib/pandoc'
 
 const { convertOfficeToPDF, downloadBlob } = vi.hoisted(() => ({
@@ -76,6 +78,7 @@ function AnotherJob() {
 }
 
 beforeEach(() => {
+  resetWorkspaceState()
   vi.clearAllMocks()
   convertOfficeToPDF.mockReset().mockResolvedValue(success())
   const OfficeLayout = OfficeRoute.options.component!
@@ -91,10 +94,10 @@ afterEach(cleanup)
 describe('office document replacement', () => {
   test('a new document clears the previous success and converts automatically', async () => {
     selectFile('first.docx')
-    await screen.findByText(/✅ first.docx converted/)
+    await screen.findByText(/first.docx converted to PDF/)
     selectFile('second.docx')
-    expect(screen.queryByText(/✅ first.docx converted/)).toBeNull()
-    await screen.findByText(/✅ second.docx converted/)
+    expect(screen.queryByText(/first.docx converted to PDF/)).toBeNull()
+    await screen.findByText(/second.docx converted to PDF/)
 
     expect(convertOfficeToPDF.mock.calls.map(([file]) => file.name)).toEqual([
       'first.docx',
@@ -134,7 +137,7 @@ describe('office document replacement', () => {
         second.resolve(success())
         await second.promise
       })
-      await screen.findByText(/✅ second.docx converted/)
+      await screen.findByText(/second.docx converted to PDF/)
       expect(downloadBlob).toHaveBeenCalledTimes(1)
       expect(downloadBlob.mock.calls[0][1]).toBe('second.pdf')
     },
@@ -156,7 +159,7 @@ describe('office document replacement', () => {
     expect(downloadBlob).not.toHaveBeenCalled()
 
     selectFile('second.docx')
-    await screen.findByText(/✅ second.docx converted/)
+    await screen.findByText(/second.docx converted to PDF/)
     expect(downloadBlob.mock.calls[0][1]).toBe('second.pdf')
   })
 
@@ -180,4 +183,75 @@ describe('office document replacement', () => {
     expect(screen.getByLabelText('Processing').textContent).toBe('true')
     expect(downloadBlob).not.toHaveBeenCalled()
   })
+})
+
+test('a ready PDF can be downloaded again without another conversion', async () => {
+  selectFile('report.docx')
+  await screen.findByText('report.pdf')
+  fireEvent.click(screen.getByRole('button', { name: 'Download again' }))
+  expect(convertOfficeToPDF).toHaveBeenCalledOnce()
+  expect(downloadBlob).toHaveBeenCalledTimes(2)
+  expect(downloadBlob.mock.calls[1][1]).toBe('report.pdf')
+})
+
+test('a damaged document gets plain recovery and optional diagnostics', async () => {
+  convertOfficeToPDF.mockResolvedValueOnce({
+    success: false,
+    error: 'ZIP: end of central directory signature missing',
+  })
+  selectFile('damaged.docx')
+  await screen.findByText('This document could not be opened')
+  const details = screen.getByText('Technical details').closest('details')
+  expect(details?.open).toBe(false)
+  expect(details?.textContent).toContain('end of central directory')
+  expect(downloadBlob).not.toHaveBeenCalled()
+  const input = document.querySelector<HTMLInputElement>('input[type=file]')!
+  const click = vi.spyOn(input, 'click').mockImplementation(() => undefined)
+  fireEvent.click(screen.getByRole('button', { name: 'Choose another file' }))
+  expect(click).toHaveBeenCalledOnce()
+  click.mockRestore()
+  selectFile('repaired.docx')
+  await screen.findByText('repaired.pdf')
+  expect(screen.queryByRole('alert')).toBeNull()
+})
+
+test('selection and generated PDF survive leaving and returning to the workspace', async () => {
+  selectFile('retained.docx')
+  await screen.findByText('retained.pdf')
+  view.unmount()
+  const OfficeLayout = OfficeRoute.options.component!
+  render(
+    <ProcessingProvider>
+      <OfficeLayout />
+    </ProcessingProvider>,
+  )
+  await screen.findByText('retained.pdf')
+  expect(convertOfficeToPDF).toHaveBeenCalledOnce()
+  fireEvent.click(screen.getByRole('button', { name: 'Download again' }))
+  expect(downloadBlob).toHaveBeenCalledTimes(2)
+})
+
+test('returning to an in-progress document in Strict Mode reuses its pending conversion', async () => {
+  const pending = deferred<ConversionResult>()
+  convertOfficeToPDF.mockReturnValueOnce(pending.promise)
+  selectFile('pending.docx')
+  await screen.findByText('Converting pending.docx...')
+  view.unmount()
+  const OfficeLayout = OfficeRoute.options.component!
+  render(
+    <StrictMode>
+      <ProcessingProvider>
+        <OfficeLayout />
+      </ProcessingProvider>
+    </StrictMode>,
+  )
+  await screen.findByText('Converting pending.docx...')
+  expect(convertOfficeToPDF).toHaveBeenCalledOnce()
+  await act(async () => {
+    pending.resolve(success())
+    await pending.promise
+  })
+  await screen.findByText('pending.pdf')
+  expect(convertOfficeToPDF).toHaveBeenCalledOnce()
+  expect(downloadBlob).toHaveBeenCalledOnce()
 })

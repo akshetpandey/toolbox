@@ -135,7 +135,7 @@ src/
 Routes follow TanStack Router file-based conventions:
 
 - `__root.tsx` - Root layout with `ToolSidebar`
-- `index.tsx` - Landing page with feature list and changelog
+- `index.tsx` - Task search, popular tools, and category directory
 - `[category].tsx` - Category layout (wraps child routes in context provider)
 - `[category].index.tsx` - Category overview page
 - `[category].[tool].tsx` - Individual tool page
@@ -143,9 +143,12 @@ Routes follow TanStack Router file-based conventions:
 
 ### Component Patterns
 
-- **ToolLayout** - Wraps tool pages with header and responsive split layout (1/3 upload + 2/3 tools on desktop, stacked on mobile)
-- **FileUpload** - Reusable file upload with drag-and-drop, file preview, badges
-- **ToolSidebar** - Collapsible navigation sidebar with tool categories
+- **ToolLayout** - Task heading and responsive workspace; compact files beside controls on wide desktops, stacked on phones/tablets, full-width redaction canvas
+- **FileUpload** - Keyboard-accessible picker and drop target; compact selected-file summary, explicit Add/Change/Clear actions, and disabled state
+- **ToolSidebar** - Desktop category navigation and a native modal Tools menu on phones/tablets
+- **Tool catalog** - `src/lib/tools.ts` supplies task names, search terms, homepage links, and navigation; only advertise available tools
+- **Session workspaces** - `useWorkspaceState` retains files, settings, and edits in browser memory across route changes. Clear/replacement must release previews and invalidate obsolete work. Do not persist file contents to local storage
+- **Results** - `ResultCard` and `useToolResult` retain output blobs for Download again, show output details and size comparisons, and bind results to the source file. Guard async downloads and shared processing ownership with `useFileOperation` or the equivalent context-specific lifecycle checks
 - **ThemeToggle** - Light/dark/system theme switcher
 - All UI primitives are Shadcn/ui in `src/components/ui/`
 
