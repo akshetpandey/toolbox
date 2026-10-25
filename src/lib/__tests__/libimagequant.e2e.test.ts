@@ -27,13 +27,12 @@ let wasm: WasmModule
 
 beforeAll(async () => {
   // Initialize libimagequant raw WASM
-  const wasmPath = resolve(
-    __dirname,
-    '../../../node_modules/libimagequant-wasm/dist/wasm/libimagequant_wasm_bg.wasm',
+  const wasmPath = new URL(
+    import.meta.resolve('libimagequant-wasm/wasm/libimagequant_wasm_bg.wasm'),
   )
   const wasmBytes = readFileSync(wasmPath)
   wasm = await import('libimagequant-wasm/wasm/libimagequant_wasm.js')
-  await wasm.default(wasmBytes)
+  await wasm.default({ module_or_path: wasmBytes })
 
   // Initialize ImageMagick (needed to decode PNG → RGBA)
   const imWasmPath = new URL(

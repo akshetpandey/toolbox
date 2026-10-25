@@ -14,14 +14,7 @@ vi.mock('libimagequant-wasm', () => ({
   }),
 }))
 
-vi.mock('libimagequant-wasm/worker?worker&url', () => ({
-  default: 'mock-worker-url',
-}))
-
-vi.mock('libimagequant-wasm/wasm/libimagequant_wasm_bg.wasm?url', () => ({
-  default: 'mock-wasm-url',
-}))
-
+import LibImageQuant from 'libimagequant-wasm'
 import { LibImageQuantProcessor } from '../libimagequant'
 
 function makeImageFile(overrides?: Partial<ImageFile>): ImageFile {
@@ -67,8 +60,42 @@ describe('LibImageQuantProcessor.compressPNG', () => {
         quality: { min: 0, target: 80 },
         speed: 3,
         dithering: 0.7,
+        metadata: 'safe',
       }),
     )
+  })
+
+  test('includes the complete PNG byte view without copying unrelated buffer bytes', async () => {
+    const buffer = new Uint8Array([99, 98, 0x89, 0x50, 0x4e, 0x47, 97])
+    const pngBytes = buffer.subarray(2, 6)
+    mockQuantizePng.mockResolvedValue({
+      pngBytes,
+      paletteLength: 4,
+      quality: 80,
+    })
+    const blob = await processor.compressPNG(makeImageFile(), 80)
+    const reader = new FileReader()
+    const bytes = await new Promise<ArrayBuffer>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as ArrayBuffer)
+      reader.onerror = () =>
+        reject(new Error('Could not read the compressed PNG'))
+      reader.readAsArrayBuffer(blob)
+    })
+    expect(new Uint8Array(bytes)).toEqual(pngBytes)
+  })
+
+  test('concurrent first requests share one lazy quantizer', async () => {
+    mockQuantizePng.mockResolvedValue({
+      pngBytes: new Uint8Array(4),
+      paletteLength: 4,
+      quality: 80,
+    })
+    await Promise.all([
+      processor.compressPNG(makeImageFile(), 80),
+      processor.compressPNG(makeImageFile(), 60),
+    ])
+    expect(LibImageQuant).toHaveBeenCalledTimes(1)
+    expect(mockQuantizePng).toHaveBeenCalledTimes(2)
   })
 
   test('passes correct quality options', async () => {
@@ -140,6 +167,14 @@ describe('LibImageQuantProcessor.dispose', () => {
     const freshProcessor = new LibImageQuantProcessor()
     freshProcessor.dispose()
     expect(mockLibDispose).not.toHaveBeenCalled()
+  })
+
+  test('disposal during the lazy import prevents creating an abandoned worker', async () => {
+    const pending = processor.compressPNG(makeImageFile(), 80)
+    processor.dispose()
+    await expect(pending).rejects.toThrow('PNG compression was cancelled')
+    expect(LibImageQuant).not.toHaveBeenCalled()
+    expect(mockQuantizePng).not.toHaveBeenCalled()
   })
 
   test('nullifies the quantizer so it can be re-initialized', async () => {

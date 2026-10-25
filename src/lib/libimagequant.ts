@@ -1,23 +1,36 @@
-import LibImageQuant, { type QuantizationOptions } from 'libimagequant-wasm'
+import type LibImageQuant from 'libimagequant-wasm'
+import type { QuantizationOptions } from 'libimagequant-wasm'
 import type { ImageFile } from './shared'
-import workerUrl from 'libimagequant-wasm/worker?worker&url'
-import wasmUrl from 'libimagequant-wasm/wasm/libimagequant_wasm_bg.wasm?url'
 
 export class LibImageQuantProcessor {
   private quantizer: LibImageQuant | null = null
+  private initializing: Promise<LibImageQuant> | null = null
+  private generation = 0
 
-  private initQuantizer(): LibImageQuant {
-    if (!this.quantizer) {
-      console.log('🎨 LibImageQuant: Initializing quantizer...')
-      this.quantizer = new LibImageQuant({
-        workerUrl: workerUrl,
-        wasmUrl: wasmUrl,
-        initTimeout: 30 * 1000, // 30 seconds init timeout
-        operationTimeout: 3 * 60 * 1000, // 3 minutes operation timeout
+  private async initQuantizer(): Promise<LibImageQuant> {
+    if (this.quantizer) return this.quantizer
+    if (!this.initializing) {
+      const generation = this.generation
+      // 0.5 embeds its worker and WASM in the browser entry. Load that entry
+      // only when PNG compression is requested and share concurrent imports.
+      const initializing = import('libimagequant-wasm').then(
+        ({ default: Quantizer }) => {
+          if (generation !== this.generation) {
+            throw new Error('PNG compression was cancelled')
+          }
+          this.quantizer = new Quantizer({
+            initTimeout: 30 * 1000,
+            operationTimeout: 3 * 60 * 1000,
+          })
+          return this.quantizer
+        },
+      )
+      this.initializing = initializing
+      void initializing.catch(() => {
+        if (this.initializing === initializing) this.initializing = null
       })
-      console.log('🎨 LibImageQuant: Quantizer initialized successfully')
     }
-    return this.quantizer
+    return this.initializing
   }
 
   async compressPNG(
@@ -30,7 +43,7 @@ export class LibImageQuantProcessor {
     })
 
     try {
-      const quantizer = this.initQuantizer()
+      const quantizer = await this.initQuantizer()
 
       const options: QuantizationOptions = {
         maxColors: 256,
@@ -40,6 +53,7 @@ export class LibImageQuantProcessor {
         },
         speed: 3,
         dithering: 0.7,
+        metadata: 'safe',
       }
 
       console.log('🎨 LibImageQuant: Processing PNG', {
@@ -52,12 +66,7 @@ export class LibImageQuantProcessor {
 
       console.log('🎨 LibImageQuant: PNG quantization completed')
 
-      const byteOffset = result.pngBytes.byteOffset
-      const arrayBuffer = result.pngBytes.slice(
-        byteOffset,
-        byteOffset + result.pngBytes.byteLength,
-      )
-      const blob = new Blob([arrayBuffer], { type: 'image/png' })
+      const blob = new Blob([result.pngBytes], { type: 'image/png' })
 
       console.log('🎨 LibImageQuant: PNG compression completed successfully', {
         originalSize: imageFile.size,
@@ -77,6 +86,8 @@ export class LibImageQuantProcessor {
   }
 
   dispose(): void {
+    this.generation++
+    this.initializing = null
     if (this.quantizer) {
       console.log('🎨 LibImageQuant: Disposing quantizer')
       this.quantizer.dispose()
