@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ArrowRight, Search, ShieldCheck, X, ArrowUpRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { allTools, findTools, toolCategories } from '@/lib/tools'
+import { getToolRequestUrl } from '@/lib/toolRequests'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -42,6 +43,11 @@ export const Route = createFileRoute('/')({
 
 export function App() {
   const [query, setQuery] = useState('')
+  const searchInput = useRef<HTMLInputElement>(null)
+  const clearSearch = () => {
+    setQuery('')
+    searchInput.current?.focus()
+  }
   const matches = findTools(query)
   const popularRoutes = [
     '/images/resize',
@@ -84,9 +90,10 @@ export function App() {
               className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
             />
             <Input
+              ref={searchInput}
               id="tool-search"
               type="search"
-              placeholder="Try “shrink photo” or “merge PDFs”"
+              placeholder="Try “JPG to PNG” or “merge PDFs”"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="h-14 rounded-xl bg-card pl-12 pr-12 text-base"
@@ -96,7 +103,7 @@ export function App() {
                 aria-label="Clear search"
                 variant="ghost"
                 size="icon"
-                onClick={() => setQuery('')}
+                onClick={clearSearch}
                 className="absolute right-1 top-1"
               >
                 <X aria-hidden="true" />
@@ -145,12 +152,31 @@ export function App() {
                 Try a file type such as image, PDF, or ZIP, or browse the
                 categories below.
               </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setQuery('')}
-              >
+              <Button variant="outline" className="mt-4" onClick={clearSearch}>
                 Show popular tools
+              </Button>
+            </div>
+          )}
+          {query.trim() && (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">
+                  Missing the tool you need?
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Suggest a feature on GitHub. Your search is included in the
+                  issue draft.
+                </p>
+              </div>
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <a
+                  href={getToolRequestUrl(query)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Request a tool
+                  <ArrowUpRight aria-hidden="true" className="size-4" />
+                </a>
               </Button>
             </div>
           )}

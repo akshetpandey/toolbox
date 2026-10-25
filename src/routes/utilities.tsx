@@ -5,10 +5,14 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import {
+  invalidateWorkspaceState,
+  useWorkspaceState,
+} from '@/hooks/useWorkspaceState'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
+import { Button } from '@/components/ui/button'
 import {
   extractExifMetadata,
   extractFileMetadata,
@@ -26,6 +30,86 @@ import {
 } from '@/contexts/UtilitiesContext'
 
 import { Upload, Hash, Info, FileText, Settings } from 'lucide-react'
+
+interface UtilityAnalysis {
+  hashes?: FileHashes
+  metadata?: FileMetadata
+  exif?: ExifMetadata
+  hashing?: Promise<FileHashes>
+  readingMetadata?: Promise<FileMetadata>
+  readingExif?: Promise<ExifMetadata>
+  progress: number
+  extractingExif: boolean
+  listeners: Set<() => void>
+}
+
+// Pending stages survive route remounts without holding cleared files alive.
+const analyses = new WeakMap<UploadedFile, UtilityAnalysis>()
+function analysisFor(file: UploadedFile): UtilityAnalysis {
+  let analysis = analyses.get(file)
+  if (!analysis) {
+    analysis = { progress: 0, extractingExif: false, listeners: new Set() }
+    analyses.set(file, analysis)
+  }
+  return analysis
+}
+function notifyAnalysis(analysis: UtilityAnalysis) {
+  for (const listener of analysis.listeners) listener()
+}
+function readHashes(file: UploadedFile, analysis: UtilityAnalysis) {
+  analysis.hashing ??= calculateFileHashes(file.file, (progress) => {
+    analysis.progress = progress
+    notifyAnalysis(analysis)
+  }).then(
+    (hashes) => {
+      analysis.hashes = hashes
+      analysis.progress = 0
+      notifyAnalysis(analysis)
+      return hashes
+    },
+    (error: unknown) => {
+      analysis.hashing = undefined
+      throw error
+    },
+  )
+  return analysis.hashing
+}
+function readMetadata(file: UploadedFile, analysis: UtilityAnalysis) {
+  analysis.readingMetadata ??= extractFileMetadata(file.file).then(
+    (metadata) => {
+      analysis.metadata = metadata
+      return metadata
+    },
+    (error: unknown) => {
+      analysis.readingMetadata = undefined
+      throw error
+    },
+  )
+  return analysis.readingMetadata
+}
+function readExif(file: UploadedFile, analysis: UtilityAnalysis) {
+  if (analysis.readingExif) return analysis.readingExif
+  analysis.extractingExif = true
+  notifyAnalysis(analysis)
+  analysis.readingExif = extractExifMetadata(file.file, (extracting) => {
+    analysis.extractingExif = extracting
+    notifyAnalysis(analysis)
+  }).then(
+    (exif) => {
+      analysis.exif = exif
+      analysis.extractingExif = false
+      notifyAnalysis(analysis)
+      return exif
+    },
+    (error: unknown) => {
+      analysis.readingExif = undefined
+      analysis.extractingExif = false
+      notifyAnalysis(analysis)
+      throw error
+    },
+  )
+  return analysis.readingExif
+}
 
 const utilityTabs = [
   { value: 'hash', label: 'Hash', icon: Hash },
@@ -85,12 +169,19 @@ function UtilitiesLayout() {
   )
   const [isExtractingExif, setIsExtractingExif] = useState(false)
   const [hashProgress, setHashProgress] = useState(0)
+  const [analysisError, setAnalysisError] = useState(false)
+  const [analysisAttempt, setAnalysisAttempt] = useState(0)
+  const analysisOwner = useRef<symbol | null>(null)
 
   const setSelectedFile = useCallback(
     (file: UploadedFile | null) => {
-      // Invalidate the previous selection immediately, before its async work
-      // has a chance to publish results into the next render.
+      const previous = selectedFileRef.current
       selectedFileRef.current = file
+      if (previous && previous !== file) analyses.delete(previous)
+      if (analysisOwner.current) {
+        analysisOwner.current = null
+        setIsProcessing(false)
+      }
       updateSelectedFile(file)
       setFileMetadata(null)
       setExifMetadata({})
@@ -98,18 +189,90 @@ function UtilitiesLayout() {
       setExpectedHash('')
       setIsExtractingExif(false)
       setHashProgress(0)
-      setIsProcessing(false)
+      setAnalysisError(false)
+      invalidateWorkspaceState(['result.utilities.'])
     },
-    [setIsProcessing],
+    [
+      updateSelectedFile,
+      setFileMetadata,
+      setExifMetadata,
+      setFileHashes,
+      setExpectedHash,
+      setIsProcessing,
+    ],
   )
 
-  useEffect(
-    () => () => {
-      selectedFileRef.current = null
-      setIsProcessing(false)
-    },
-    [setIsProcessing],
-  )
+  useEffect(() => {
+    selectedFileRef.current = selectedFile
+    if (!selectedFile) return
+    const file = selectedFile
+    const analysis = analysisFor(file)
+    const owner = Symbol('utility analysis')
+    analysisOwner.current = owner
+    let active = true
+    const isCurrent = () =>
+      active &&
+      selectedFileRef.current === file &&
+      analysisOwner.current === owner
+    const updateProgress = () => {
+      if (isCurrent()) {
+        setHashProgress(analysis.progress)
+        setIsExtractingExif(analysis.extractingExif)
+      }
+    }
+    analysis.listeners.add(updateProgress)
+    updateProgress()
+    setAnalysisError(false)
+    const complete =
+      analysis.hashes &&
+      analysis.metadata &&
+      (!file.type.startsWith('image/') || analysis.exif !== undefined)
+    if (!complete) setIsProcessing(true)
+    void (async () => {
+      try {
+        const hashes = analysis.hashes ?? (await readHashes(file, analysis))
+        if (!isCurrent()) return
+        setFileHashes(hashes)
+        const metadata =
+          analysis.metadata ?? (await readMetadata(file, analysis))
+        if (!isCurrent()) return
+        setFileMetadata(metadata)
+        if (file.type.startsWith('image/')) {
+          const exif = analysis.exif ?? (await readExif(file, analysis))
+          if (!isCurrent()) return
+          setExifMetadata(exif)
+        }
+      } catch (error) {
+        if (isCurrent()) {
+          console.error('Utility file analysis failed:', error)
+          setAnalysisError(true)
+        }
+      } finally {
+        if (isCurrent()) {
+          analysisOwner.current = null
+          setHashProgress(0)
+          setIsExtractingExif(false)
+          if (!complete) setIsProcessing(false)
+        }
+      }
+    })()
+    return () => {
+      active = false
+      analysis.listeners.delete(updateProgress)
+      if (selectedFileRef.current === file) selectedFileRef.current = null
+      if (analysisOwner.current === owner) {
+        analysisOwner.current = null
+        if (!complete) setIsProcessing(false)
+      }
+    }
+  }, [
+    selectedFile,
+    analysisAttempt,
+    setFileHashes,
+    setFileMetadata,
+    setExifMetadata,
+    setIsProcessing,
+  ])
 
   // Determine current tab from URL path
   const currentTab = useMemo(() => {
@@ -132,7 +295,7 @@ function UtilitiesLayout() {
   )
 
   const handleFileSelect = useCallback(
-    async (files: FileList) => {
+    (files: FileList) => {
       console.log('🔧 UtilitiesTools: File selection started', {
         fileCount: files.length,
       })
@@ -156,10 +319,8 @@ function UtilitiesLayout() {
         setSelectedFile(uploadedFile)
 
         console.log('🔧 UtilitiesTools: File selection completed successfully')
-
-        await generateHashes(uploadedFile)
-        await extractMetadata(uploadedFile)
       }
+      return Promise.resolve()
     },
     [setSelectedFile],
   )
@@ -180,45 +341,19 @@ function UtilitiesLayout() {
 
   const generateHashes = async (file: UploadedFile) => {
     if (selectedFileRef.current !== file) return
-    setIsProcessing(true)
-    setHashProgress(0)
-
-    try {
-      const hashes = await calculateFileHashes(file.file, (progress) => {
-        if (selectedFileRef.current === file) setHashProgress(progress)
-      })
-      if (selectedFileRef.current === file) setFileHashes(hashes)
-    } catch (error) {
-      console.error('🔧 UtilitiesTools: Error generating hashes:', error)
-    } finally {
-      if (selectedFileRef.current === file) {
-        setIsProcessing(false)
-        setHashProgress(0)
-      }
-    }
+    const hashes = await readHashes(file, analysisFor(file))
+    if (selectedFileRef.current === file) setFileHashes(hashes)
   }
 
   const extractMetadata = async (file: UploadedFile) => {
     if (selectedFileRef.current !== file) return
-    setIsProcessing(true)
-
-    try {
-      // Extract file metadata using wasmagic
-      const metadata = await extractFileMetadata(file.file)
-      if (selectedFileRef.current !== file) return
-      setFileMetadata(metadata)
-
-      // Extract EXIF metadata if it's an image
-      if (file.type.startsWith('image/')) {
-        const exifData = await extractExifMetadata(file.file, (extracting) => {
-          if (selectedFileRef.current === file) setIsExtractingExif(extracting)
-        })
-        if (selectedFileRef.current === file) setExifMetadata(exifData)
-      }
-    } catch (error) {
-      console.error('🔧 UtilitiesTools: Error extracting metadata:', error)
-    } finally {
-      if (selectedFileRef.current === file) setIsProcessing(false)
+    const analysis = analysisFor(file)
+    const metadata = await readMetadata(file, analysis)
+    if (selectedFileRef.current !== file) return
+    setFileMetadata(metadata)
+    if (file.type.startsWith('image/')) {
+      const exif = await readExif(file, analysis)
+      if (selectedFileRef.current === file) setExifMetadata(exif)
     }
   }
 
@@ -309,6 +444,20 @@ function UtilitiesLayout() {
         fileUploadComponent={utilityFileUpload}
         toolsComponent={utilityToolsNav}
       >
+        {analysisError && (
+          <div role="alert" className="space-y-3 text-sm">
+            <p>
+              File analysis could not be completed. Try again or choose another
+              file.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setAnalysisAttempt((attempt) => attempt + 1)}
+            >
+              Try analysis again
+            </Button>
+          </div>
+        )}
         <Outlet />
       </ToolLayout>
     </UtilitiesContext.Provider>

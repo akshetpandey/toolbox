@@ -5,7 +5,10 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useState, useCallback, useMemo } from 'react'
-import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import {
+  invalidateWorkspaceState,
+  useWorkspaceState,
+} from '@/hooks/useWorkspaceState'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
@@ -40,6 +43,19 @@ const imageTabs = [
   { value: 'compress', label: 'Compress', icon: Zap },
   { value: 'redact', label: 'Redact', icon: Eye },
 ]
+
+function invalidateImageWork() {
+  invalidateWorkspaceState(['images.', 'result.images.'], {
+    // These provider-owned values are reset explicitly with each selection.
+    // Keep their setters live for the new file's asynchronous metadata work.
+    preserve: [
+      'images.files',
+      'images.metadata',
+      'images.exif',
+      'images.selection',
+    ],
+  })
+}
 
 export const Route = createFileRoute('/images')({
   component: ImageToolsLayout,
@@ -168,6 +184,7 @@ function ImageToolsLayout() {
         setMetadata({})
         setExifMetadata({})
         setIsExtractingExif(false)
+        invalidateImageWork()
 
         // Initialize ImageMagick if not already initialized
         if (!isInitialized) {
@@ -189,7 +206,14 @@ function ImageToolsLayout() {
         })
       }
     },
-    [isInitialized, init],
+    [
+      isInitialized,
+      init,
+      selection,
+      setSelectedFiles,
+      setMetadata,
+      setExifMetadata,
+    ],
   )
 
   // Extract metadata using ImageMagick
@@ -246,7 +270,8 @@ function ImageToolsLayout() {
     setMetadata({})
     setExifMetadata({})
     setIsExtractingExif(false)
-  }, [])
+    invalidateImageWork()
+  }, [selection, setSelectedFiles, setMetadata, setExifMetadata])
 
   // Create context value
   const contextValue: ImageToolsContextType = {

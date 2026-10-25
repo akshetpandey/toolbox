@@ -147,8 +147,8 @@ Routes follow TanStack Router file-based conventions:
 - **FileUpload** - Keyboard-accessible picker and drop target; compact selected-file summary, explicit Add/Change/Clear actions, and disabled state
 - **ToolSidebar** - Desktop category navigation and a native modal Tools menu on phones/tablets
 - **Tool catalog** - `src/lib/tools.ts` supplies task names, search terms, homepage links, and navigation; only advertise available tools
-- **Session workspaces** - `useWorkspaceState` retains files, settings, and edits in browser memory across route changes. Clear/replacement must release previews and invalidate obsolete work. Do not persist file contents to local storage
-- **Results** - `ResultCard` and `useToolResult` retain output blobs for Download again, show output details and size comparisons, and bind results to the source file. Guard async downloads and shared processing ownership with `useFileOperation` or the equivalent context-specific lifecycle checks
+- **Session workspaces** - `useWorkspaceState` retains files, settings, and edits in browser memory across route changes. Clear/replacement must release previews and call `invalidateWorkspaceState` for dependent settings/results, including unmounted tools. Preserve provider-owned keys only when explicitly resetting their values. Invalidation replaces setter generations to reject obsolete async completions; include workspace setters in memoized callback/effect dependencies. Do not persist file contents to local storage
+- **Results** - `ResultCard` and `useToolResult` retain output blobs for Download again, show output details and size comparisons, and bind results to the source file and any edits that affect the output. Guard async downloads and shared processing ownership with `useFileOperation` or the equivalent context-specific lifecycle checks
 - **ThemeToggle** - Light/dark/system theme switcher
 - All UI primitives are Shadcn/ui in `src/components/ui/`
 

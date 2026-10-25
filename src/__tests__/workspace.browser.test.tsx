@@ -62,8 +62,48 @@ test.each([
   expect(
     screen
       .getByRole('region', { name: 'Search results' })
-      .querySelectorAll('a'),
+      .querySelectorAll('a.tool-card'),
   ).toHaveLength(1)
+  for (const [query, destination] of [
+    ['JPG to PNG', '/images/convert'],
+    ['SHA-256', '/utilities/hash'],
+    ['compres imgae', '/images/compress'],
+  ]) {
+    fireEvent.change(search, { target: { value: query } })
+    const results = screen
+      .getByRole('region', { name: 'Search results' })
+      .querySelectorAll('a.tool-card')
+    expect(results).toHaveLength(1)
+    expect(results[0].getAttribute('href')).toBe(destination)
+    const request = screen.getByRole('link', { name: 'Request a tool' })
+    const issue = new URL(request.getAttribute('href')!)
+    expect(issue.origin + issue.pathname).toBe(
+      'https://github.com/akshetpandey/toolbox/issues/new',
+    )
+    expect(issue.searchParams.get('title')).toBe(`Tool request: ${query}`)
+    expect(request.getAttribute('target')).toBe('_blank')
+    expect(request.getAttribute('rel')).toContain('noopener')
+    expect(request.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
+  }
+  fireEvent.change(search, { target: { value: 'OCR PDF' } })
+  expect(screen.getByRole('status').textContent).toContain('0 tools found')
+  expect(screen.getByRole('heading', { name: 'No tools found' })).toBeTruthy()
+  expect(
+    new URL(
+      screen
+        .getByRole('link', { name: 'Request a tool' })
+        .getAttribute('href')!,
+    ).searchParams.get('body'),
+  ).toContain('OCR PDF')
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
+  await userEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+  expect(document.activeElement).toBe(search)
+  expect((search as HTMLInputElement).value).toBe('')
+  expect(screen.queryByRole('link', { name: 'Request a tool' })).toBeNull()
+  expect(
+    screen.getByRole('region', { name: 'Popular tools' }).querySelectorAll('a'),
+  ).toHaveLength(6)
   const routes = [
     ['/images/resize', 'Resize image'],
     ['/videos/trim', 'Trim video'],

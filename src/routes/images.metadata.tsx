@@ -66,10 +66,11 @@ function MetadataPage() {
 
   useEffect(() => {
     setStripError(null)
-  }, [selectedFile])
+    setIsStrippingMetadata(false)
+  }, [selectedFile?.file])
 
   const handleStripMetadata = async () => {
-    if (!selectedFile) return
+    if (!selectedFile || isProcessing || isStrippingMetadata) return
     setIsStrippingMetadata(true)
     const operation = beginOperation()
     setStripError(null)
@@ -210,7 +211,11 @@ function MetadataPage() {
           )}
         </CardContent>
       </Card>
-      <ResultCard result={result} onReset={clearSelectedFile} />
+      <ResultCard
+        result={result}
+        onReset={clearSelectedFile}
+        disabled={isProcessing || isStrippingMetadata}
+      />
     </div>
   )
 }

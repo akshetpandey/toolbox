@@ -1,6 +1,13 @@
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useCallback, useRef, useEffect } from 'react'
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type Dispatch,
+  type SetStateAction,
+} from 'react'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import { ResultCard, useToolResult } from '@/components/ResultCard'
 import { Card, CardContent } from '@/components/ui/card'
@@ -221,18 +228,37 @@ function RedactPage() {
     width: number
     height: number
   } | null>(null)
-  const [redactionAreas, setRedactionAreas] = useWorkspaceState<
+  const [redactionAreas, saveRedactionAreas] = useWorkspaceState<
     RedactionArea[]
   >('images.redact.areas', [])
+  const latestAreas = useRef(redactionAreas)
+  latestAreas.current = redactionAreas
+  const setRedactionAreas = useCallback<
+    Dispatch<SetStateAction<RedactionArea[]>>
+  >(
+    (update) => {
+      saveRedactionAreas((previous) => {
+        const next = typeof update === 'function' ? update(previous) : update
+        // Invalidate pending exports immediately, including before React renders.
+        latestAreas.current = next
+        return next
+      })
+    },
+    [saveRedactionAreas],
+  )
   const [redactionSource, setRedactionSource] = useWorkspaceState<File | null>(
     'images.redact.source',
     null,
   )
-  const { result, setResult } = useToolResult(
-    selectedFile?.file,
+  // A result belongs to the exact masks that produced it. The persisted array
+  // keeps unchanged exports available across navigation and invalidates edits.
+  const { result: exportedResult, setResult } = useToolResult(
+    redactionAreas,
     'images.redact',
   )
+  const result = redactionSource === selectedFile?.file ? exportedResult : null
   const [scaleFactor, setScaleFactor] = useState({ x: 1, y: 1 })
+  const [isExporting, setIsExporting] = useState(false)
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -274,7 +300,7 @@ function RedactPage() {
       return prev.slice(0, -1)
     })
     setSelectedIndex(null)
-  }, [])
+  }, [setRedactionAreas])
 
   // Canvas setup and drawing
   useEffect(() => {
@@ -460,6 +486,7 @@ function RedactPage() {
     setResizeState(null)
     setDragState(null)
     setDownloadError(null)
+    setIsExporting(false)
     setIsStrippingMetadata(false)
   }, [selectedFile, redactionSource, setRedactionSource, setRedactionAreas])
 
@@ -513,7 +540,7 @@ function RedactPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedIndex, undoLastRedaction])
+  }, [selectedIndex, undoLastRedaction, setRedactionAreas])
 
   // Canvas mouse handlers
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -968,14 +995,21 @@ function RedactPage() {
   }
 
   const downloadRedactedImage = async () => {
-    if (!selectedFile) return
+    if (!selectedFile || isProcessing || isExporting) return
 
     const operation = beginOperation()
+    setIsExporting(true)
     setDownloadError(null)
 
     try {
       const blob = await createRedactedImageBlob()
       if (!operation.isCurrent()) return
+      if (latestAreas.current !== redactionAreas) {
+        setDownloadError(
+          'Your redactions changed while preparing the download. Download again to include your latest edits.',
+        )
+        return
+      }
       const filename = `redacted_${selectedFile.name.replace(/\.[^/.]+$/, '')}.${blob.type === 'image/jpeg' ? 'jpg' : blob.type === 'image/webp' ? 'webp' : 'png'}`
       setResult({
         blob,
@@ -994,14 +1028,16 @@ function RedactPage() {
         'Failed to redact the image. No file was downloaded. Please try again.',
       )
     } finally {
+      if (operation.isCurrent()) setIsExporting(false)
       operation.finish()
     }
   }
 
   const downloadRedactedImageWithMetadataStripped = async () => {
-    if (!selectedFile) return
+    if (!selectedFile || isProcessing || isExporting) return
 
     const operation = beginOperation()
+    setIsExporting(true)
     setIsStrippingMetadata(true)
     setDownloadError(null)
 
@@ -1017,6 +1053,12 @@ function RedactPage() {
 
       const strippedBlob = await stripFileMetadata(redactedFile)
       if (!operation.isCurrent()) return
+      if (latestAreas.current !== redactionAreas) {
+        setDownloadError(
+          'Your redactions changed while preparing the download. Download again to include your latest edits.',
+        )
+        return
+      }
       const filename = `redacted_no-metadata_${selectedFile.name.replace(/\.[^/.]+$/, '')}.${strippedBlob.type === 'image/jpeg' ? 'jpg' : strippedBlob.type === 'image/webp' ? 'webp' : 'png'}`
       setResult({
         blob: strippedBlob,
@@ -1038,6 +1080,7 @@ function RedactPage() {
         'Failed to strip metadata from the redacted image. No file was downloaded. Please try again.',
       )
     } finally {
+      if (operation.isCurrent()) setIsExporting(false)
       operation.finish()
       if (operation.isCurrent()) setIsStrippingMetadata(false)
     }
@@ -1063,7 +1106,7 @@ function RedactPage() {
     setSelectedIndex(null)
     setResizeState(null)
     setDragState(null)
-  }, [])
+  }, [setRedactionAreas])
 
   if (!selectedFile) {
     return (
@@ -1388,7 +1431,9 @@ function RedactPage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={() => void downloadRedactedImage()}
-                disabled={isProcessing || redactionAreas.length === 0}
+                disabled={
+                  isProcessing || isExporting || redactionAreas.length === 0
+                }
                 className="min-w-0 flex-1 sm:flex-none"
               >
                 {isProcessing ? (
@@ -1398,7 +1443,9 @@ function RedactPage() {
               </Button>
               <Button
                 onClick={() => void downloadRedactedImageWithMetadataStripped()}
-                disabled={isProcessing || redactionAreas.length === 0}
+                disabled={
+                  isProcessing || isExporting || redactionAreas.length === 0
+                }
                 variant="outline"
                 className="min-w-0 h-auto min-h-11 whitespace-normal flex-1 sm:flex-none"
               >
@@ -1416,7 +1463,11 @@ function RedactPage() {
           </div>
         </CardContent>
       </Card>
-      <ResultCard result={result} onReset={clearSelectedFile} />
+      <ResultCard
+        result={result}
+        onReset={clearSelectedFile}
+        disabled={isProcessing || isExporting}
+      />
     </div>
   )
 }

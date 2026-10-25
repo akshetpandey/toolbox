@@ -119,3 +119,24 @@ test('obsolete callbacks cannot replace a newer or remounted tool result', () =>
   act(() => abandoned(oldOutput))
   expect(back.result.current.result).toBe(newOutput)
 })
+
+test('busy results disable downloading and clearing until the operation finishes', () => {
+  const reset = vi.fn()
+  const result = { blob: new Blob(['ready']), filename: 'output.png' }
+  const view = render(<ResultCard result={result} onReset={reset} disabled />)
+  const download = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Download again',
+  })
+  const start = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Start another file',
+  })
+  expect(download.disabled).toBe(true)
+  expect(start.disabled).toBe(true)
+  fireEvent.click(download)
+  fireEvent.click(start)
+  expect(downloadBlob).not.toHaveBeenCalled()
+  expect(reset).not.toHaveBeenCalled()
+  view.rerender(<ResultCard result={result} onReset={reset} />)
+  fireEvent.click(start)
+  expect(reset).toHaveBeenCalledOnce()
+})

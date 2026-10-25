@@ -1,6 +1,7 @@
 import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -8,13 +9,14 @@ import {
   waitFor,
 } from '@testing-library/react'
 
-const { mockWriteMetadata, mockDownload, mockSetProcessing } = vi.hoisted(
-  () => ({
+const { mockWriteMetadata, mockDownload, mockSetProcessing, source, clear } =
+  vi.hoisted(() => ({
     mockWriteMetadata: vi.fn(),
     mockDownload: vi.fn(),
     mockSetProcessing: vi.fn(),
-  }),
-)
+    source: { selected: null as { file: File; name: string } | null },
+    clear: vi.fn(),
+  }))
 
 vi.mock('@uswriting/exiftool', () => ({
   parseMetadata: vi.fn(),
@@ -37,10 +39,11 @@ const file = new File(['image with private EXIF'], 'private.jpg', {
 const selectedFile = { file, name: file.name }
 vi.mock('@/contexts/ImageToolsContext', () => ({
   useImageTools: () => ({
-    selectedFile,
+    selectedFile: source.selected,
     metadata: {},
     exifMetadata: { Make: 'Private camera' },
     isExtractingExif: false,
+    clearSelectedFile: clear,
   }),
 }))
 
@@ -51,6 +54,8 @@ if (!MetadataPage) throw new Error('Metadata route component is missing')
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockWriteMetadata.mockReset()
+  source.selected = selectedFile
   resetWorkspaceState()
 })
 afterEach(cleanup)
@@ -95,3 +100,102 @@ test.each(['failed result', 'WASM rejection'])(
     expect(screen.queryByRole('alert')).toBeNull()
   },
 )
+
+test('previous result actions stay disabled during another metadata removal', async () => {
+  mockWriteMetadata.mockResolvedValue({
+    success: true,
+    data: new ArrayBuffer(3),
+  })
+  render(<MetadataPage />)
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  )
+  await screen.findByRole('region', { name: 'Result' })
+
+  let finish!: (result: { success: true; data: ArrayBuffer }) => void
+  mockWriteMetadata.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  )
+  const downloadAgain = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Download again',
+  })
+  const startAnother = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Start another file',
+  })
+  expect(downloadAgain.disabled).toBe(true)
+  expect(startAnother.disabled).toBe(true)
+  fireEvent.click(downloadAgain)
+  fireEvent.click(startAnother)
+  expect(mockDownload).toHaveBeenCalledTimes(1)
+  expect(clear).not.toHaveBeenCalled()
+
+  await act(async () => {
+    finish({ success: true, data: new ArrayBuffer(4) })
+    await Promise.resolve()
+  })
+  await waitFor(() => expect(startAnother.disabled).toBe(false))
+  expect(mockDownload).toHaveBeenCalledTimes(2)
+})
+
+test('replacing a source during metadata removal resets its local progress and discards obsolete output', async () => {
+  let finish!: (result: { success: true; data: ArrayBuffer }) => void
+  mockWriteMetadata.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  const view = render(<MetadataPage />)
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  )
+  await screen.findByRole('button', { name: 'Removing metadata…' })
+
+  source.selected = null
+  view.rerender(<MetadataPage />)
+  const replacement = new File(['new image'], 'replacement.jpg', {
+    type: 'image/jpeg',
+  })
+  source.selected = { file: replacement, name: replacement.name }
+  view.rerender(<MetadataPage />)
+  expect(
+    screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Download Without Metadata',
+    }).disabled,
+  ).toBe(false)
+
+  let finishReplacement!: (result: { success: true; data: ArrayBuffer }) => void
+  mockWriteMetadata.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finishReplacement = resolve
+    }),
+  )
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download Without Metadata' }),
+  )
+  await waitFor(() => expect(mockWriteMetadata).toHaveBeenCalledTimes(2))
+  await act(async () => {
+    finish({ success: true, data: new ArrayBuffer(3) })
+    await Promise.resolve()
+  })
+  expect(mockDownload).not.toHaveBeenCalled()
+  expect(screen.queryByRole('region', { name: 'Result' })).toBeNull()
+  expect(
+    screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Removing metadata…',
+    }).disabled,
+  ).toBe(true)
+  await act(async () => {
+    finishReplacement({ success: true, data: new ArrayBuffer(5) })
+    await Promise.resolve()
+  })
+  await screen.findByRole('region', { name: 'Result' })
+  expect(mockDownload).toHaveBeenCalledExactlyOnceWith(
+    expect.any(Blob),
+    'no-metadata_replacement.jpg',
+  )
+})

@@ -54,6 +54,7 @@ beforeEach(() => {
   const canvas = document.createElement('canvas')
   canvas.width = 350
   canvas.height = 208
+  canvas.getContext('2d')!.fillStyle = '#ffffff'
   canvas.getContext('2d')!.fillRect(0, 0, 350, 208)
   const file = new File(['image'], 'private.png', { type: 'image/png' })
   source.selected = {
@@ -104,6 +105,69 @@ test.each([375, 390])(
     expect(
       screen.getByRole('button', { name: 'Download Without Metadata' }),
     ).toBeTruthy()
+  },
+)
+
+test.each([375, 1440])(
+  'editing masks invalidates the old export and includes new redactions at %s px',
+  async (width) => {
+    await page.viewport(width, 844)
+    const Redact = RedactRoute.options.component!
+    const view = render(
+      <div className="min-w-0 p-4">
+        <Redact />
+      </div>,
+    )
+    await waitFor(() =>
+      expect(view.container.querySelector('canvas')!.width).toBe(350),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Add area' }))
+    for (const [field, value] of [
+      ['Left', '10'],
+      ['Top', '10'],
+      ['Width', '30'],
+      ['Height', '30'],
+    ]) {
+      await userEvent.fill(screen.getByLabelText(field), value)
+    }
+    await userEvent.click(screen.getByRole('button', { name: 'Download' }))
+    await screen.findByRole('region', { name: 'Result' })
+    const originalOutput = download.mock.calls[0][0] as Blob
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add area' }))
+    for (const [field, value] of [
+      ['Left', '100'],
+      ['Top', '10'],
+      ['Width', '30'],
+      ['Height', '30'],
+    ]) {
+      await userEvent.fill(screen.getByLabelText(field), value)
+    }
+    expect(screen.queryByRole('button', { name: 'Download again' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Download' }))
+    await screen.findByRole('region', { name: 'Result' })
+    const currentOutput = download.mock.calls[1][0] as Blob
+    const canvas = document.createElement('canvas')
+    canvas.width = 350
+    canvas.height = 208
+    const ctx = canvas.getContext('2d')!
+    for (const [blob, expectedPixel] of [
+      [originalOutput, 255],
+      [currentOutput, 0],
+    ] as const) {
+      const image = await createImageBitmap(blob)
+      ctx.clearRect(0, 0, 350, 208)
+      ctx.drawImage(image, 0, 0)
+      image.close()
+      expect([...ctx.getImageData(115, 25, 1, 1).data]).toEqual([
+        expectedPixel,
+        expectedPixel,
+        expectedPixel,
+        255,
+      ])
+      expect([...ctx.getImageData(25, 25, 1, 1).data]).toEqual([0, 0, 0, 255])
+    }
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
   },
 )
 

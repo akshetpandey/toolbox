@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-25",
+  "baselineCommit": "57cbd05",
+  "status": "implemented and verified",
+  "fixes": [
+    {
+      "finding": "Redaction Download again retained output from an earlier set of masks",
+      "change": "Bind output to the exact mask snapshot, hide stale results after any edit, and discard an export if masks change during encoding or metadata removal.",
+      "coverage": "Mouse/touch draw, drag, resize, numeric edits, deletion, Undo, Clear All, navigation, pending exports, and replacement while the route stays mounted. Chromium verifies actual exported pixels at 375px and 1440px."
+    },
+    {
+      "finding": "Image metadata removal could remain disabled after resetting during a pending operation",
+      "change": "Disable prior result actions while processing, reset local progress on source changes, and discard obsolete output.",
+      "coverage": "Previous-result controls during a second removal, pending-source replacement, and successful removal for the replacement."
+    },
+    {
+      "finding": "Utility analysis did not resume after navigating away and back",
+      "change": "Keep staged analysis promises and results in a WeakMap, reconnect on remount, guard publication with operation ownership, and allow failed stages to retry.",
+      "coverage": "Leave/return during each hash, metadata, and EXIF stage; resolve while away; Clear/replacement; failed-stage retry; and shared busy-state ownership."
+    },
+    {
+      "finding": "Clear and replacement retained inactive File/Blob references",
+      "change": "Remove retained initial values and invalidate dependent workspace payloads, including unmounted tools. Generation guards reject abandoned setters. Provider-owned sources are explicitly reset, and unrelated categories remain intact.",
+      "coverage": "Mounted and unmounted consumers, multiple subscribers, fresh defaults, obsolete setters, inactive image tools, archive ZIP replacement, and abandoned archive downloads."
+    }
+  ],
+  "search": {
+    "change": "Normalize punctuation, case, diacritics and common digest/archive notation; ignore conversational connector words; match all remaining words against the local curated tool catalog.",
+    "examples": [
+      "JPG to PNG",
+      "How can I convert my JPG to PNG?",
+      "Word to PDF",
+      "MP4 to MP3",
+      "SHA-256",
+      "extract 7-Zip"
+    ],
+    "coverage": "13 catalog tests plus full-app search, correct routes, and clear-button focus at five viewport sizes."
+  },
+  "validation": {
+    "pnpm check": "passed: lint, formatting, TypeScript",
+    "pnpm test": {
+      "status": "passed",
+      "nodeTests": 430,
+      "chromiumTests": 31,
+      "totalTests": 461,
+      "additionalTests": 52
+    },
+    "pnpm build": "passed, including compression of eight WASM assets",
+    "pnpm format:check": "passed",
+    "git diff --check": "passed",
+    "automatedViewportWidths": [375, 390, 768, 1024, 1440],
+    "productionBrowserChecks": [
+      "JPG to PNG returns Convert image; SHA-256 returns File hashes",
+      "Clear search restores focus and six popular tools",
+      "Adding a second mask removes Download again; fresh export reports both masks",
+      "Image metadata removal completes with the real processing library",
+      "Clear from Metadata removes inactive Redact edits and output; Undo works on the new source",
+      "Back and Forward during utility analysis reconnects to progress and reaches completed checksums",
+      "No horizontal overflow at 375px or 1440px; viewport and theme restored after verification"
+    ],
+    "limitations": "Mobile verification uses browser viewport emulation and synthetic touch regression tests, not physical-device testing."
+  },
+  "screenshots": [
+    "regression-screenshots/search-desktop.jpg",
+    "regression-screenshots/search-mobile.jpg",
+    "regression-screenshots/redaction-desktop.jpg",
+    "regression-screenshots/redaction-mobile.jpg",
+    "regression-screenshots/utilities-mobile.jpg"
+  ]
+}

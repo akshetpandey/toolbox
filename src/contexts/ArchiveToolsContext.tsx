@@ -14,7 +14,10 @@ import {
   type ExtractedFile,
   type CompressionFormat,
 } from '@/lib/archive'
-import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import {
+  invalidateWorkspaceState,
+  useWorkspaceState,
+} from '@/hooks/useWorkspaceState'
 import { useToolResult, type ToolResult } from '@/components/ResultCard'
 import { downloadBlob } from '@/lib/shared'
 
@@ -87,7 +90,7 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
   )
   const [uploadedArchive, updateUploadedArchive] =
     useWorkspaceState<File | null>('archives.uploaded', null)
-  const [extractedFiles, setExtractedFiles] = useWorkspaceState<
+  const [extractedFiles, updateExtractedFiles] = useWorkspaceState<
     ExtractedFile[]
   >('archives.extracted', [])
   const [compressionFormat, setCompressionFormat] =
@@ -107,8 +110,10 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
   const mounted = useRef(true)
   const filesRef = useRef(selectedFiles)
   const archiveRef = useRef(uploadedArchive)
+  const extractedRef = useRef(extractedFiles)
   filesRef.current = selectedFiles
   archiveRef.current = uploadedArchive
+  extractedRef.current = extractedFiles
 
   useEffect(() => {
     mounted.current = true
@@ -148,6 +153,7 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
     (files: ArchiveFile[]) => {
       filesRef.current = files
       updateSelectedFiles(files)
+      invalidateWorkspaceState(['result.archives.compress'])
     },
     [updateSelectedFiles],
   )
@@ -158,6 +164,7 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
         filesRef.current = next
         return next
       })
+      invalidateWorkspaceState(['result.archives.compress'])
     },
     [updateSelectedFiles],
   )
@@ -168,10 +175,19 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
         filesRef.current = next
         return next
       })
+      invalidateWorkspaceState(['result.archives.compress'])
     },
     [updateSelectedFiles],
   )
   const clearFiles = useCallback(() => setSelectedFiles([]), [setSelectedFiles])
+  const setExtractedFiles = useCallback(
+    (files: ExtractedFile[]) => {
+      extractedRef.current = files
+      updateExtractedFiles(files)
+      invalidateWorkspaceState(['result.archives.extractedZip'])
+    },
+    [updateExtractedFiles],
+  )
   const setUploadedArchive = useCallback(
     (file: File | null) => {
       archiveRef.current = file
@@ -260,7 +276,7 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
     const compressed = await runArchiveOperation(() =>
       archiveProcessor.compress(files, 'zip', 'extracted_files'),
     )
-    if (!mounted.current) return
+    if (!mounted.current || extractedRef.current !== extractedFiles) return
     const blob = new Blob([compressed.slice()], { type: 'application/zip' })
     setExtractedZip({ blob, filename: 'extracted_files.zip' })
     downloadBlob(blob, 'extracted_files.zip')

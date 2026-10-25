@@ -1,4 +1,5 @@
 import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
+import { StrictMode } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { ExifMetadata, FileHashes, FileMetadata } from '@/lib/metadata'
@@ -114,6 +115,8 @@ function selectFile(name: string, type = 'text/plain') {
   )
 }
 
+let view: ReturnType<typeof render>
+
 beforeEach(() => {
   resetWorkspaceState()
   vi.resetAllMocks()
@@ -128,7 +131,7 @@ beforeEach(() => {
     new Blob(['clean'], { type: 'image/jpeg' }),
   )
   const UtilitiesLayout = UtilitiesRoute.options.component!
-  render(
+  view = render(
     <ProcessingProvider>
       <UtilitiesLayout />
     </ProcessingProvider>,
@@ -445,4 +448,211 @@ test('metadata removal completing after navigation cannot publish a stale result
   expect(
     screen.getByRole('button', { name: 'Download Without Metadata' }),
   ).toBeTruthy()
+})
+
+describe('unfinished utility workspaces', () => {
+  test.each(['hash', 'metadata', 'exif'] as const)(
+    'returning during %s reattaches to its pending stage in Strict Mode',
+    async (stage) => {
+      const pendingHashes = deferred<FileHashes>()
+      const pendingMetadata = deferred<FileMetadata>()
+      const pendingExif = deferred<ExifMetadata>()
+      if (stage === 'hash')
+        calculateFileHashes.mockReturnValueOnce(pendingHashes.promise)
+      if (stage === 'metadata')
+        extractFileMetadata.mockReturnValueOnce(pendingMetadata.promise)
+      if (stage === 'exif')
+        extractExifMetadata.mockReturnValueOnce(pendingExif.promise)
+      selectFile('pending.jpg', 'image/jpeg')
+      if (stage !== 'hash') await screen.findByText('pending.jpg-md5')
+      if (stage === 'exif') await screen.findByText('pending.jpg metadata')
+      if (stage === 'hash')
+        act(() => calculateFileHashes.mock.calls[0][1]?.(42))
+      cleanup()
+      const Layout = UtilitiesRoute.options.component!
+      const restored = render(
+        <StrictMode>
+          <ProcessingProvider>
+            <Layout />
+          </ProcessingProvider>
+        </StrictMode>,
+      )
+      expect(screen.getByText('pending.jpg')).toBeTruthy()
+      expect(screen.getByLabelText('Processing').textContent).toBe('true')
+      if (stage === 'hash') expect(screen.getByText('42%')).toBeTruthy()
+      if (stage === 'exif')
+        expect(screen.getByText('Extracting EXIF metadata...')).toBeTruthy()
+      await act(async () => {
+        pendingHashes.resolve(hashes('pending.jpg'))
+        pendingMetadata.resolve(metadata('pending.jpg'))
+        pendingExif.resolve({ Camera: 'Retained camera' })
+        await Promise.all([
+          pendingHashes.promise,
+          pendingMetadata.promise,
+          pendingExif.promise,
+        ])
+      })
+      await screen.findByText('pending.jpg metadata')
+      if (stage === 'exif') await screen.findByText('Retained camera')
+      expect(screen.getByText('pending.jpg-md5')).toBeTruthy()
+      expect(screen.getByLabelText('Processing').textContent).toBe('false')
+      restored.rerender(
+        <StrictMode>
+          <ProcessingProvider>
+            <Layout />
+          </ProcessingProvider>
+        </StrictMode>,
+      )
+      expect(calculateFileHashes).toHaveBeenCalledOnce()
+      expect(extractFileMetadata).toHaveBeenCalledOnce()
+      expect(extractExifMetadata).toHaveBeenCalledOnce()
+    },
+  )
+
+  test.each(['hash', 'metadata', 'exif'] as const)(
+    '%s finishing while away is reused before the remaining stages resume',
+    async (stage) => {
+      const pendingHashes = deferred<FileHashes>()
+      const pendingMetadata = deferred<FileMetadata>()
+      const pendingExif = deferred<ExifMetadata>()
+      if (stage === 'hash')
+        calculateFileHashes.mockReturnValueOnce(pendingHashes.promise)
+      if (stage === 'metadata')
+        extractFileMetadata.mockReturnValueOnce(pendingMetadata.promise)
+      if (stage === 'exif')
+        extractExifMetadata.mockReturnValueOnce(pendingExif.promise)
+      selectFile('away.jpg', 'image/jpeg')
+      if (stage !== 'hash') await screen.findByText('away.jpg-md5')
+      if (stage === 'exif') await screen.findByText('away.jpg metadata')
+      cleanup()
+      await act(async () => {
+        pendingHashes.resolve(hashes('away.jpg'))
+        pendingMetadata.resolve(metadata('away.jpg'))
+        pendingExif.resolve({ Camera: 'Away camera' })
+        await Promise.all([
+          pendingHashes.promise,
+          pendingMetadata.promise,
+          pendingExif.promise,
+        ])
+      })
+      if (stage === 'hash') expect(extractFileMetadata).not.toHaveBeenCalled()
+      if (stage !== 'exif') expect(extractExifMetadata).not.toHaveBeenCalled()
+      const Layout = UtilitiesRoute.options.component!
+      render(
+        <ProcessingProvider>
+          <Layout />
+        </ProcessingProvider>,
+      )
+      await screen.findByText('away.jpg metadata')
+      if (stage === 'exif') await screen.findByText('Away camera')
+      expect(screen.getByText('away.jpg-md5')).toBeTruthy()
+      expect(calculateFileHashes).toHaveBeenCalledOnce()
+      expect(extractFileMetadata).toHaveBeenCalledOnce()
+      expect(extractExifMetadata).toHaveBeenCalledOnce()
+    },
+  )
+
+  test.each(['clear', 'replace'] as const)(
+    '%s after returning invalidates the restored analysis and its progress',
+    async (action) => {
+      const first = deferred<FileHashes>()
+      const replacement = deferred<FileHashes>()
+      calculateFileHashes.mockReturnValueOnce(first.promise)
+      selectFile('old.jpg', 'image/jpeg')
+      cleanup()
+      const Layout = UtilitiesRoute.options.component!
+      render(
+        <ProcessingProvider>
+          <Layout />
+        </ProcessingProvider>,
+      )
+      if (action === 'clear')
+        fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+      else {
+        calculateFileHashes.mockReturnValueOnce(replacement.promise)
+        selectFile('replacement.txt')
+        act(() => calculateFileHashes.mock.calls[1][1]?.(25))
+      }
+      await act(async () => {
+        calculateFileHashes.mock.calls[0][1]?.(95)
+        first.resolve(hashes('old.jpg'))
+        await first.promise
+      })
+      expect(screen.queryByText('old.jpg-md5')).toBeNull()
+      expect(screen.queryByText('95%')).toBeNull()
+      expect(extractFileMetadata).not.toHaveBeenCalled()
+      if (action === 'clear') {
+        expect(screen.getByLabelText('Processing').textContent).toBe('false')
+        expect(screen.getByText('Drop a file here')).toBeTruthy()
+        cleanup()
+        render(
+          <ProcessingProvider>
+            <Layout />
+          </ProcessingProvider>,
+        )
+        expect(screen.getByText('Drop a file here')).toBeTruthy()
+      } else {
+        expect(screen.getByLabelText('Processing').textContent).toBe('true')
+        expect(screen.getByText('25%')).toBeTruthy()
+        await act(async () => {
+          replacement.resolve(hashes('replacement.txt'))
+          await replacement.promise
+        })
+        await screen.findByText('replacement.txt metadata')
+        expect(screen.getByText('replacement.txt-md5')).toBeTruthy()
+        expect(extractFileMetadata).toHaveBeenCalledOnce()
+      }
+    },
+  )
+
+  test('a failed stage can be retried without repeating completed analysis', async () => {
+    extractExifMetadata.mockRejectedValueOnce(new Error('WASM unavailable'))
+    selectFile('retry.jpg', 'image/jpeg')
+    await screen.findByText(/File analysis could not be completed/)
+    expect(screen.getByText('retry.jpg-md5')).toBeTruthy()
+    expect(screen.getByText('retry.jpg metadata')).toBeTruthy()
+    extractExifMetadata.mockResolvedValueOnce({ Camera: 'Recovered camera' })
+    fireEvent.click(screen.getByRole('button', { name: 'Try analysis again' }))
+    await screen.findByText('Recovered camera')
+    expect(
+      screen.queryByText(/File analysis could not be completed/),
+    ).toBeNull()
+    expect(calculateFileHashes).toHaveBeenCalledOnce()
+    expect(extractFileMetadata).toHaveBeenCalledOnce()
+    expect(extractExifMetadata).toHaveBeenCalledTimes(2)
+    expect(screen.getByLabelText('Processing').textContent).toBe('false')
+  })
+
+  test('abandoned analysis cannot release a different job after navigation', async () => {
+    const pending = deferred<FileHashes>()
+    calculateFileHashes.mockReturnValueOnce(pending.promise)
+    selectFile('old.txt')
+    function OtherJob() {
+      const { isProcessing, setIsProcessing } = useProcessing()
+      return (
+        <>
+          <button onClick={() => setIsProcessing(true)}>
+            Start another job
+          </button>
+          <output aria-label="Other job processing">
+            {String(isProcessing)}
+          </output>
+        </>
+      )
+    }
+    view.rerender(
+      <ProcessingProvider>
+        <OtherJob />
+      </ProcessingProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Start another job' }))
+    await act(async () => {
+      pending.resolve(hashes('old.txt'))
+      await pending.promise
+    })
+    expect(screen.getByLabelText('Other job processing').textContent).toBe(
+      'true',
+    )
+    expect(extractFileMetadata).not.toHaveBeenCalled()
+  })
 })

@@ -45,9 +45,11 @@ export function useToolResult(sourceKey: unknown, workspaceKey = 'current') {
 export function ResultCard({
   result,
   onReset,
+  disabled = false,
 }: {
   result: ToolResult | null
   onReset?: () => void
+  disabled?: boolean
 }) {
   if (!result) return null
   const { blob, filename, sourceSize, details } = result
@@ -96,12 +98,15 @@ export function ResultCard({
         ))}
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button onClick={() => downloadBlob(blob, filename)}>
+        <Button
+          disabled={disabled}
+          onClick={() => downloadBlob(blob, filename)}
+        >
           <Download aria-hidden="true" />
           Download again
         </Button>
         {onReset && (
-          <Button variant="outline" onClick={onReset}>
+          <Button variant="outline" disabled={disabled} onClick={onReset}>
             Start another file
           </Button>
         )}

@@ -3,12 +3,17 @@ import {
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { ProcessingProvider } from '@/contexts/ProcessingContext'
 import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
+import {
+  ArchiveToolsProvider,
+  useArchiveTools,
+} from '@/contexts/ArchiveToolsContext'
 
 const mocks = vi.hoisted(() => ({
   path: '/archives/compress',
@@ -172,4 +177,51 @@ test('returning during archive creation serializes shared WASM work and ignores 
   await screen.findByText('archive.zip', { exact: true })
   expect(mocks.compress).toHaveBeenCalledTimes(2)
   expect(mocks.download).toHaveBeenCalledOnce()
+})
+
+test('replacing extracted files drops the cached ZIP and blocks an earlier ZIP download', async () => {
+  const context = renderHook(() => useArchiveTools(), {
+    wrapper: ArchiveToolsProvider,
+  })
+  await act(() => context.result.current.initializeProcessor())
+  const extracted = [
+    {
+      name: 'first.txt',
+      size: 3,
+      data: new Uint8Array([1, 2, 3]),
+      isDirectory: false,
+    },
+  ]
+  act(() => context.result.current.setExtractedFiles(extracted))
+  await act(() => context.result.current.downloadAllFiles())
+  expect(mocks.compress).toHaveBeenCalledOnce()
+  await act(() => context.result.current.downloadAllFiles())
+  expect(mocks.compress).toHaveBeenCalledOnce()
+  const replacement = [{ ...extracted[0], name: 'second.txt' }]
+  act(() => context.result.current.setExtractedFiles(replacement))
+  let finish!: (bytes: Uint8Array) => void
+  const pending = new Promise<Uint8Array>((resolve) => {
+    finish = resolve
+  })
+  mocks.compress.mockReturnValueOnce(pending)
+  let download!: Promise<void>
+  act(() => {
+    download = context.result.current.downloadAllFiles()
+  })
+  await waitFor(() => expect(mocks.compress).toHaveBeenCalledTimes(2))
+  act(() =>
+    context.result.current.setUploadedArchive(
+      new File(['new archive'], 'replacement.zip'),
+    ),
+  )
+  expect(context.result.current.extractedFiles).toEqual([])
+  await act(async () => {
+    finish(new Uint8Array([9]))
+    await download
+  })
+  expect(mocks.download).toHaveBeenCalledTimes(2)
+  act(() => context.result.current.setExtractedFiles(replacement))
+  await act(() => context.result.current.downloadAllFiles())
+  expect(mocks.compress).toHaveBeenCalledTimes(3)
+  expect(mocks.download).toHaveBeenCalledTimes(3)
 })

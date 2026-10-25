@@ -9,7 +9,10 @@ import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
 import { useInitFFmpeg } from '@/hooks/useInitFFmpeg'
-import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import {
+  invalidateWorkspaceState,
+  useWorkspaceState,
+} from '@/hooks/useWorkspaceState'
 import {
   FFmpegProcessor,
   type VideoFile,
@@ -41,6 +44,12 @@ const videoTabs = [
   { value: 'trim', label: 'Trim', icon: Scissors },
   { value: 'extract', label: 'Extract', icon: Volume2 },
 ]
+
+function invalidateVideoWork() {
+  invalidateWorkspaceState(['videos.', 'result.videos.'], {
+    preserve: ['videos.files', 'videos.metadata'],
+  })
+}
 
 export const Route = createFileRoute('/videos')({
   component: VideoToolsLayout,
@@ -420,6 +429,7 @@ function VideoToolsLayout() {
 
         setSelectedFiles([videoFile])
         setMetadata({})
+        invalidateVideoWork()
 
         await prepareVideoFile(videoFile)
       }
@@ -438,6 +448,7 @@ function VideoToolsLayout() {
     for (const file of selectedFiles) URL.revokeObjectURL(file.preview)
     setSelectedFiles([])
     setMetadata({})
+    invalidateVideoWork()
     setProgress(0)
     setProgressStartTime(null)
     setEstimatedTimeRemaining(null)

@@ -1,6 +1,9 @@
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useState, useCallback, useEffect } from 'react'
-import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import {
+  invalidateWorkspaceState,
+  useWorkspaceState,
+} from '@/hooks/useWorkspaceState'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
 import { useProcessing } from '@/contexts/ProcessingContext'
@@ -220,8 +223,10 @@ function PDFToolsLayout() {
       const pdfFiles = Array.from(files)
         .filter(isPDFFile)
         .map((file) => ({ ...createPDFFile(file), id: crypto.randomUUID() }))
-      if (pdfFiles.length)
+      if (pdfFiles.length) {
         setSelectedFiles((previous) => [...previous, ...pdfFiles])
+        invalidateWorkspaceState(['result.pdfs.'])
+      }
       if (pdfFiles.length !== files.length)
         setSelectionError(
           'Only PDF files were added. Choose PDF files to continue.',
@@ -233,11 +238,14 @@ function PDFToolsLayout() {
   const removeFile = useCallback(
     (id: string) => {
       setSelectedFiles((files) => files.filter((file) => file.id !== id))
+      invalidateWorkspaceState(['result.pdfs.'])
     },
     [setSelectedFiles],
   )
   const clearFiles = useCallback(() => {
     setSelectedFiles([])
+    invalidateWorkspaceState(['result.pdfs.'])
+    setPageCounts({})
     setSelectionError('')
   }, [setSelectedFiles])
   const reorderFiles = useCallback(
@@ -247,6 +255,7 @@ function PDFToolsLayout() {
         const to = items.findIndex((file) => file.id === toId)
         return from < 0 || to < 0 ? items : arrayMove(items, from, to)
       })
+      invalidateWorkspaceState(['result.pdfs.'])
     },
     [setSelectedFiles],
   )

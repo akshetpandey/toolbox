@@ -1,6 +1,9 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { useCallback, useMemo, useRef, useEffect } from 'react'
-import { useWorkspaceState } from '@/hooks/useWorkspaceState'
+import {
+  invalidateWorkspaceState,
+  useWorkspaceState,
+} from '@/hooks/useWorkspaceState'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
 import {
@@ -65,6 +68,7 @@ function OfficeDocumentsLayout() {
       selectedFileRef.current = file
       updateSelectedFile(file)
       setConversionStatus('')
+      invalidateWorkspaceState(['result.office.'])
     },
     [updateSelectedFile, setConversionStatus],
   )
