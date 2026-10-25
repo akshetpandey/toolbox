@@ -27,7 +27,17 @@ declare module '@tanstack/react-router' {
 
 // Sentry.init({
 //   dsn: 'https://38d29462f035766236e6351eab93e25d@o4509596293726208.ingest.us.sentry.io/4509596298575872',
-//   sendDefaultPii: false,
+//   dataCollection: {
+//     userInfo: false,
+//     cookies: false,
+//     httpHeaders: false,
+//     httpBodies: [],
+//     urlQueryParams: false,
+//     genAI: { inputs: false, outputs: false },
+//     databaseQueryData: false,
+//     queues: false,
+//     graphQL: { document: false, variables: false },
+//   },
 //   integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
 //   // Setting a sample rate is required for sending performance data.
 //   // We recommend adjusting this value in production, or using tracesSampler

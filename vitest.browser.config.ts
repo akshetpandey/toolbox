@@ -1,15 +1,21 @@
 import { defineConfig } from 'vitest/config'
 import { playwright } from '@vitest/browser-playwright'
-import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core'
+import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core.ts'
+import { pandocWasmPlugin } from './vite-plugin-pandoc-wasm.ts'
 
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
   optimizeDeps: {
-    exclude: ['@ffmpeg/core-mt', '@ffmpeg/ffmpeg', '@ffmpeg/util'],
+    exclude: [
+      '@ffmpeg/core-mt',
+      '@ffmpeg/ffmpeg',
+      '@ffmpeg/util',
+      'pandoc-wasm',
+    ],
   },
-  plugins: [ffmpegCorePlugin()],
+  plugins: [ffmpegCorePlugin(), pandocWasmPlugin()],
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

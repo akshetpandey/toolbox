@@ -3,7 +3,8 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
-import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core'
+import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core.ts'
+import { pandocWasmPlugin } from './vite-plugin-pandoc-wasm.ts'
 
 export default defineConfig({
   build: {
@@ -64,6 +65,7 @@ export default defineConfig({
   },
   plugins: [
     ffmpegCorePlugin(),
+    pandocWasmPlugin(),
     tailwindcss(),
     tanstackRouter({ target: 'react', autoCodeSplitting: false }),
     react(),

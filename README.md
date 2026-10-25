@@ -2,12 +2,24 @@ Welcome to your new TanStack app!
 
 # Getting Started
 
+Use pnpm and Node.js 22.22.2+, 24.15.0+, or 26+ (see `package.json` for the
+supported version ranges).
+
 To run this application:
 
 ```bash
 pnpm install
-pnpm start
+pnpm dev
 ```
+
+The development server uses port 5050. `pnpm serve` previews a production build
+on port 4173, and `pnpm preview` runs the Cloudflare preview on port 8787.
+
+## Coding agents
+
+[AGENTS.md](./AGENTS.md) contains the shared repository guidance for coding
+agents. `CLAUDE.md` imports it for Claude Code compatibility. Development and
+validation commands live in `package.json` and work from any agent or editor.
 
 # Building For Production
 
@@ -19,11 +31,19 @@ pnpm build
 
 ## Testing
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+This project uses [Vitest](https://vitest.dev/) for Node and browser tests.
+Install the matching Chromium browser before the first run and after Playwright
+upgrades, then run both suites:
 
 ```bash
+pnpm exec playwright install chromium
 pnpm test
 ```
+
+Use `pnpm test:unit` or `pnpm test:browser` to run a suite individually. Run
+`pnpm check` and `pnpm build` to validate formatting, linting, types, and bundling.
+
+Type checking runs TypeScript 7 directly with `tsc`.
 
 ## Styling
 
@@ -31,13 +51,31 @@ This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
 
 ## Linting & Formatting
 
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
+This project uses [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) for
+linting and [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting.
+The following scripts are available:
 
 ```bash
 pnpm lint
+pnpm lint:fix
 pnpm format
+pnpm format:check
 pnpm check
 ```
+
+`.oxlintrc.json` preserves the previous ESLint recommended, TypeScript
+recommended/stylistic type-checked, and React JSX-runtime configuration. It
+retains 112 of the 115 rules previously enabled for TypeScript files, including
+the experimental equivalents of `no-useless-assignment` and
+`typescript/prefer-optional-chain`. The two optional TanStack Router lint rules
+are omitted, and `no-octal` is enforced by the parser. JavaScript's
+`no-dupe-args` is also enforced by the parser.
+Type-aware checks run through `oxlint-tsgolint` with `options.typeAware` enabled.
+
+`.oxfmtrc.json` keeps the existing formatting style: no semicolons, single quotes,
+trailing commas, and an 80-column print width. Package sorting is disabled.
+Generated routes and lockfiles are excluded from formatting; generated routes
+and build scripts are excluded from linting.
 
 ## Shadcn
 

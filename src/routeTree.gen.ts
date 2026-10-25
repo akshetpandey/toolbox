@@ -9,61 +9,41 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VideosRouteImport } from './routes/videos'
-import { Route as UtilitiesRouteImport } from './routes/utilities'
-import { Route as PdfsRouteImport } from './routes/pdfs'
-import { Route as OfficeDocumentsRouteImport } from './routes/office-documents'
-import { Route as ImagesRouteImport } from './routes/images'
-import { Route as ArchivesRouteImport } from './routes/archives'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as VideosIndexRouteImport } from './routes/videos.index'
-import { Route as UtilitiesIndexRouteImport } from './routes/utilities.index'
-import { Route as PdfsIndexRouteImport } from './routes/pdfs.index'
-import { Route as OfficeDocumentsIndexRouteImport } from './routes/office-documents.index'
-import { Route as ImagesIndexRouteImport } from './routes/images.index'
+import { Route as ArchivesRouteImport } from './routes/archives'
+import { Route as ImagesRouteImport } from './routes/images'
+import { Route as OfficeDocumentsRouteImport } from './routes/office-documents'
+import { Route as PdfsRouteImport } from './routes/pdfs'
+import { Route as UtilitiesRouteImport } from './routes/utilities'
+import { Route as VideosRouteImport } from './routes/videos'
 import { Route as ArchivesIndexRouteImport } from './routes/archives.index'
-import { Route as VideosTrimRouteImport } from './routes/videos.trim'
-import { Route as VideosMetadataRouteImport } from './routes/videos.metadata'
-import { Route as VideosExtractRouteImport } from './routes/videos.extract'
-import { Route as VideosConvertRouteImport } from './routes/videos.convert'
-import { Route as VideosCompressRouteImport } from './routes/videos.compress'
-import { Route as UtilitiesMetadataRouteImport } from './routes/utilities.metadata'
-import { Route as UtilitiesHashRouteImport } from './routes/utilities.hash'
-import { Route as PdfsSplitRouteImport } from './routes/pdfs.split'
-import { Route as PdfsMergeRouteImport } from './routes/pdfs.merge'
-import { Route as PdfsCompressRouteImport } from './routes/pdfs.compress'
-import { Route as OfficeDocumentsConvertRouteImport } from './routes/office-documents.convert'
-import { Route as ImagesResizeRouteImport } from './routes/images.resize'
-import { Route as ImagesRedactRouteImport } from './routes/images.redact'
-import { Route as ImagesMetadataRouteImport } from './routes/images.metadata'
-import { Route as ImagesConvertRouteImport } from './routes/images.convert'
-import { Route as ImagesCompressRouteImport } from './routes/images.compress'
-import { Route as ArchivesExtractRouteImport } from './routes/archives.extract'
 import { Route as ArchivesCompressRouteImport } from './routes/archives.compress'
+import { Route as ArchivesExtractRouteImport } from './routes/archives.extract'
+import { Route as ImagesIndexRouteImport } from './routes/images.index'
+import { Route as ImagesCompressRouteImport } from './routes/images.compress'
+import { Route as ImagesConvertRouteImport } from './routes/images.convert'
+import { Route as ImagesMetadataRouteImport } from './routes/images.metadata'
+import { Route as ImagesRedactRouteImport } from './routes/images.redact'
+import { Route as ImagesResizeRouteImport } from './routes/images.resize'
+import { Route as OfficeDocumentsIndexRouteImport } from './routes/office-documents.index'
+import { Route as OfficeDocumentsConvertRouteImport } from './routes/office-documents.convert'
+import { Route as PdfsIndexRouteImport } from './routes/pdfs.index'
+import { Route as PdfsCompressRouteImport } from './routes/pdfs.compress'
+import { Route as PdfsMergeRouteImport } from './routes/pdfs.merge'
+import { Route as PdfsSplitRouteImport } from './routes/pdfs.split'
+import { Route as UtilitiesIndexRouteImport } from './routes/utilities.index'
+import { Route as UtilitiesHashRouteImport } from './routes/utilities.hash'
+import { Route as UtilitiesMetadataRouteImport } from './routes/utilities.metadata'
+import { Route as VideosIndexRouteImport } from './routes/videos.index'
+import { Route as VideosCompressRouteImport } from './routes/videos.compress'
+import { Route as VideosConvertRouteImport } from './routes/videos.convert'
+import { Route as VideosExtractRouteImport } from './routes/videos.extract'
+import { Route as VideosMetadataRouteImport } from './routes/videos.metadata'
+import { Route as VideosTrimRouteImport } from './routes/videos.trim'
 
-const VideosRoute = VideosRouteImport.update({
-  id: '/videos',
-  path: '/videos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UtilitiesRoute = UtilitiesRouteImport.update({
-  id: '/utilities',
-  path: '/utilities',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PdfsRoute = PdfsRouteImport.update({
-  id: '/pdfs',
-  path: '/pdfs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OfficeDocumentsRoute = OfficeDocumentsRouteImport.update({
-  id: '/office-documents',
-  path: '/office-documents',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImagesRoute = ImagesRouteImport.update({
-  id: '/images',
-  path: '/images',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArchivesRoute = ArchivesRouteImport.update({
@@ -71,114 +51,49 @@ const ArchivesRoute = ArchivesRouteImport.update({
   path: '/archives',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ImagesRoute = ImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VideosIndexRoute = VideosIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => VideosRoute,
+const OfficeDocumentsRoute = OfficeDocumentsRouteImport.update({
+  id: '/office-documents',
+  path: '/office-documents',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const UtilitiesIndexRoute = UtilitiesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => UtilitiesRoute,
+const PdfsRoute = PdfsRouteImport.update({
+  id: '/pdfs',
+  path: '/pdfs',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PdfsIndexRoute = PdfsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PdfsRoute,
+const UtilitiesRoute = UtilitiesRouteImport.update({
+  id: '/utilities',
+  path: '/utilities',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const OfficeDocumentsIndexRoute = OfficeDocumentsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => OfficeDocumentsRoute,
-} as any)
-const ImagesIndexRoute = ImagesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ImagesRoute,
+const VideosRoute = VideosRouteImport.update({
+  id: '/videos',
+  path: '/videos',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ArchivesIndexRoute = ArchivesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ArchivesRoute,
 } as any)
-const VideosTrimRoute = VideosTrimRouteImport.update({
-  id: '/trim',
-  path: '/trim',
-  getParentRoute: () => VideosRoute,
+const ArchivesCompressRoute = ArchivesCompressRouteImport.update({
+  id: '/compress',
+  path: '/compress',
+  getParentRoute: () => ArchivesRoute,
 } as any)
-const VideosMetadataRoute = VideosMetadataRouteImport.update({
-  id: '/metadata',
-  path: '/metadata',
-  getParentRoute: () => VideosRoute,
-} as any)
-const VideosExtractRoute = VideosExtractRouteImport.update({
+const ArchivesExtractRoute = ArchivesExtractRouteImport.update({
   id: '/extract',
   path: '/extract',
-  getParentRoute: () => VideosRoute,
+  getParentRoute: () => ArchivesRoute,
 } as any)
-const VideosConvertRoute = VideosConvertRouteImport.update({
-  id: '/convert',
-  path: '/convert',
-  getParentRoute: () => VideosRoute,
-} as any)
-const VideosCompressRoute = VideosCompressRouteImport.update({
-  id: '/compress',
-  path: '/compress',
-  getParentRoute: () => VideosRoute,
-} as any)
-const UtilitiesMetadataRoute = UtilitiesMetadataRouteImport.update({
-  id: '/metadata',
-  path: '/metadata',
-  getParentRoute: () => UtilitiesRoute,
-} as any)
-const UtilitiesHashRoute = UtilitiesHashRouteImport.update({
-  id: '/hash',
-  path: '/hash',
-  getParentRoute: () => UtilitiesRoute,
-} as any)
-const PdfsSplitRoute = PdfsSplitRouteImport.update({
-  id: '/split',
-  path: '/split',
-  getParentRoute: () => PdfsRoute,
-} as any)
-const PdfsMergeRoute = PdfsMergeRouteImport.update({
-  id: '/merge',
-  path: '/merge',
-  getParentRoute: () => PdfsRoute,
-} as any)
-const PdfsCompressRoute = PdfsCompressRouteImport.update({
-  id: '/compress',
-  path: '/compress',
-  getParentRoute: () => PdfsRoute,
-} as any)
-const OfficeDocumentsConvertRoute = OfficeDocumentsConvertRouteImport.update({
-  id: '/convert',
-  path: '/convert',
-  getParentRoute: () => OfficeDocumentsRoute,
-} as any)
-const ImagesResizeRoute = ImagesResizeRouteImport.update({
-  id: '/resize',
-  path: '/resize',
-  getParentRoute: () => ImagesRoute,
-} as any)
-const ImagesRedactRoute = ImagesRedactRouteImport.update({
-  id: '/redact',
-  path: '/redact',
-  getParentRoute: () => ImagesRoute,
-} as any)
-const ImagesMetadataRoute = ImagesMetadataRouteImport.update({
-  id: '/metadata',
-  path: '/metadata',
-  getParentRoute: () => ImagesRoute,
-} as any)
-const ImagesConvertRoute = ImagesConvertRouteImport.update({
-  id: '/convert',
-  path: '/convert',
+const ImagesIndexRoute = ImagesIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => ImagesRoute,
 } as any)
 const ImagesCompressRoute = ImagesCompressRouteImport.update({
@@ -186,15 +101,100 @@ const ImagesCompressRoute = ImagesCompressRouteImport.update({
   path: '/compress',
   getParentRoute: () => ImagesRoute,
 } as any)
-const ArchivesExtractRoute = ArchivesExtractRouteImport.update({
-  id: '/extract',
-  path: '/extract',
-  getParentRoute: () => ArchivesRoute,
+const ImagesConvertRoute = ImagesConvertRouteImport.update({
+  id: '/convert',
+  path: '/convert',
+  getParentRoute: () => ImagesRoute,
 } as any)
-const ArchivesCompressRoute = ArchivesCompressRouteImport.update({
+const ImagesMetadataRoute = ImagesMetadataRouteImport.update({
+  id: '/metadata',
+  path: '/metadata',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesRedactRoute = ImagesRedactRouteImport.update({
+  id: '/redact',
+  path: '/redact',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesResizeRoute = ImagesResizeRouteImport.update({
+  id: '/resize',
+  path: '/resize',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const OfficeDocumentsIndexRoute = OfficeDocumentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OfficeDocumentsRoute,
+} as any)
+const OfficeDocumentsConvertRoute = OfficeDocumentsConvertRouteImport.update({
+  id: '/convert',
+  path: '/convert',
+  getParentRoute: () => OfficeDocumentsRoute,
+} as any)
+const PdfsIndexRoute = PdfsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsCompressRoute = PdfsCompressRouteImport.update({
   id: '/compress',
   path: '/compress',
-  getParentRoute: () => ArchivesRoute,
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsMergeRoute = PdfsMergeRouteImport.update({
+  id: '/merge',
+  path: '/merge',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsSplitRoute = PdfsSplitRouteImport.update({
+  id: '/split',
+  path: '/split',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const UtilitiesIndexRoute = UtilitiesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UtilitiesRoute,
+} as any)
+const UtilitiesHashRoute = UtilitiesHashRouteImport.update({
+  id: '/hash',
+  path: '/hash',
+  getParentRoute: () => UtilitiesRoute,
+} as any)
+const UtilitiesMetadataRoute = UtilitiesMetadataRouteImport.update({
+  id: '/metadata',
+  path: '/metadata',
+  getParentRoute: () => UtilitiesRoute,
+} as any)
+const VideosIndexRoute = VideosIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosCompressRoute = VideosCompressRouteImport.update({
+  id: '/compress',
+  path: '/compress',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosConvertRoute = VideosConvertRouteImport.update({
+  id: '/convert',
+  path: '/convert',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosExtractRoute = VideosExtractRouteImport.update({
+  id: '/extract',
+  path: '/extract',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosMetadataRoute = VideosMetadataRouteImport.update({
+  id: '/metadata',
+  path: '/metadata',
+  getParentRoute: () => VideosRoute,
+} as any)
+const VideosTrimRoute = VideosTrimRouteImport.update({
+  id: '/trim',
+  path: '/trim',
+  getParentRoute: () => VideosRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -399,39 +399,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/videos': {
-      id: '/videos'
-      path: '/videos'
-      fullPath: '/videos'
-      preLoaderRoute: typeof VideosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/utilities': {
-      id: '/utilities'
-      path: '/utilities'
-      fullPath: '/utilities'
-      preLoaderRoute: typeof UtilitiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pdfs': {
-      id: '/pdfs'
-      path: '/pdfs'
-      fullPath: '/pdfs'
-      preLoaderRoute: typeof PdfsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/office-documents': {
-      id: '/office-documents'
-      path: '/office-documents'
-      fullPath: '/office-documents'
-      preLoaderRoute: typeof OfficeDocumentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/images': {
-      id: '/images'
-      path: '/images'
-      fullPath: '/images'
-      preLoaderRoute: typeof ImagesRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/archives': {
@@ -441,47 +413,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArchivesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/images': {
+      id: '/images'
+      path: '/images'
+      fullPath: '/images'
+      preLoaderRoute: typeof ImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/videos/': {
-      id: '/videos/'
-      path: '/'
-      fullPath: '/videos/'
-      preLoaderRoute: typeof VideosIndexRouteImport
-      parentRoute: typeof VideosRoute
+    '/office-documents': {
+      id: '/office-documents'
+      path: '/office-documents'
+      fullPath: '/office-documents'
+      preLoaderRoute: typeof OfficeDocumentsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/utilities/': {
-      id: '/utilities/'
-      path: '/'
-      fullPath: '/utilities/'
-      preLoaderRoute: typeof UtilitiesIndexRouteImport
-      parentRoute: typeof UtilitiesRoute
+    '/pdfs': {
+      id: '/pdfs'
+      path: '/pdfs'
+      fullPath: '/pdfs'
+      preLoaderRoute: typeof PdfsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/pdfs/': {
-      id: '/pdfs/'
-      path: '/'
-      fullPath: '/pdfs/'
-      preLoaderRoute: typeof PdfsIndexRouteImport
-      parentRoute: typeof PdfsRoute
+    '/utilities': {
+      id: '/utilities'
+      path: '/utilities'
+      fullPath: '/utilities'
+      preLoaderRoute: typeof UtilitiesRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/office-documents/': {
-      id: '/office-documents/'
-      path: '/'
-      fullPath: '/office-documents/'
-      preLoaderRoute: typeof OfficeDocumentsIndexRouteImport
-      parentRoute: typeof OfficeDocumentsRoute
-    }
-    '/images/': {
-      id: '/images/'
-      path: '/'
-      fullPath: '/images/'
-      preLoaderRoute: typeof ImagesIndexRouteImport
-      parentRoute: typeof ImagesRoute
+    '/videos': {
+      id: '/videos'
+      path: '/videos'
+      fullPath: '/videos'
+      preLoaderRoute: typeof VideosRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/archives/': {
       id: '/archives/'
@@ -490,109 +455,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArchivesIndexRouteImport
       parentRoute: typeof ArchivesRoute
     }
-    '/videos/trim': {
-      id: '/videos/trim'
-      path: '/trim'
-      fullPath: '/videos/trim'
-      preLoaderRoute: typeof VideosTrimRouteImport
-      parentRoute: typeof VideosRoute
+    '/archives/compress': {
+      id: '/archives/compress'
+      path: '/compress'
+      fullPath: '/archives/compress'
+      preLoaderRoute: typeof ArchivesCompressRouteImport
+      parentRoute: typeof ArchivesRoute
     }
-    '/videos/metadata': {
-      id: '/videos/metadata'
-      path: '/metadata'
-      fullPath: '/videos/metadata'
-      preLoaderRoute: typeof VideosMetadataRouteImport
-      parentRoute: typeof VideosRoute
-    }
-    '/videos/extract': {
-      id: '/videos/extract'
+    '/archives/extract': {
+      id: '/archives/extract'
       path: '/extract'
-      fullPath: '/videos/extract'
-      preLoaderRoute: typeof VideosExtractRouteImport
-      parentRoute: typeof VideosRoute
+      fullPath: '/archives/extract'
+      preLoaderRoute: typeof ArchivesExtractRouteImport
+      parentRoute: typeof ArchivesRoute
     }
-    '/videos/convert': {
-      id: '/videos/convert'
-      path: '/convert'
-      fullPath: '/videos/convert'
-      preLoaderRoute: typeof VideosConvertRouteImport
-      parentRoute: typeof VideosRoute
-    }
-    '/videos/compress': {
-      id: '/videos/compress'
-      path: '/compress'
-      fullPath: '/videos/compress'
-      preLoaderRoute: typeof VideosCompressRouteImport
-      parentRoute: typeof VideosRoute
-    }
-    '/utilities/metadata': {
-      id: '/utilities/metadata'
-      path: '/metadata'
-      fullPath: '/utilities/metadata'
-      preLoaderRoute: typeof UtilitiesMetadataRouteImport
-      parentRoute: typeof UtilitiesRoute
-    }
-    '/utilities/hash': {
-      id: '/utilities/hash'
-      path: '/hash'
-      fullPath: '/utilities/hash'
-      preLoaderRoute: typeof UtilitiesHashRouteImport
-      parentRoute: typeof UtilitiesRoute
-    }
-    '/pdfs/split': {
-      id: '/pdfs/split'
-      path: '/split'
-      fullPath: '/pdfs/split'
-      preLoaderRoute: typeof PdfsSplitRouteImport
-      parentRoute: typeof PdfsRoute
-    }
-    '/pdfs/merge': {
-      id: '/pdfs/merge'
-      path: '/merge'
-      fullPath: '/pdfs/merge'
-      preLoaderRoute: typeof PdfsMergeRouteImport
-      parentRoute: typeof PdfsRoute
-    }
-    '/pdfs/compress': {
-      id: '/pdfs/compress'
-      path: '/compress'
-      fullPath: '/pdfs/compress'
-      preLoaderRoute: typeof PdfsCompressRouteImport
-      parentRoute: typeof PdfsRoute
-    }
-    '/office-documents/convert': {
-      id: '/office-documents/convert'
-      path: '/convert'
-      fullPath: '/office-documents/convert'
-      preLoaderRoute: typeof OfficeDocumentsConvertRouteImport
-      parentRoute: typeof OfficeDocumentsRoute
-    }
-    '/images/resize': {
-      id: '/images/resize'
-      path: '/resize'
-      fullPath: '/images/resize'
-      preLoaderRoute: typeof ImagesResizeRouteImport
-      parentRoute: typeof ImagesRoute
-    }
-    '/images/redact': {
-      id: '/images/redact'
-      path: '/redact'
-      fullPath: '/images/redact'
-      preLoaderRoute: typeof ImagesRedactRouteImport
-      parentRoute: typeof ImagesRoute
-    }
-    '/images/metadata': {
-      id: '/images/metadata'
-      path: '/metadata'
-      fullPath: '/images/metadata'
-      preLoaderRoute: typeof ImagesMetadataRouteImport
-      parentRoute: typeof ImagesRoute
-    }
-    '/images/convert': {
-      id: '/images/convert'
-      path: '/convert'
-      fullPath: '/images/convert'
-      preLoaderRoute: typeof ImagesConvertRouteImport
+    '/images/': {
+      id: '/images/'
+      path: '/'
+      fullPath: '/images/'
+      preLoaderRoute: typeof ImagesIndexRouteImport
       parentRoute: typeof ImagesRoute
     }
     '/images/compress': {
@@ -602,19 +483,138 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImagesCompressRouteImport
       parentRoute: typeof ImagesRoute
     }
-    '/archives/extract': {
-      id: '/archives/extract'
-      path: '/extract'
-      fullPath: '/archives/extract'
-      preLoaderRoute: typeof ArchivesExtractRouteImport
-      parentRoute: typeof ArchivesRoute
+    '/images/convert': {
+      id: '/images/convert'
+      path: '/convert'
+      fullPath: '/images/convert'
+      preLoaderRoute: typeof ImagesConvertRouteImport
+      parentRoute: typeof ImagesRoute
     }
-    '/archives/compress': {
-      id: '/archives/compress'
+    '/images/metadata': {
+      id: '/images/metadata'
+      path: '/metadata'
+      fullPath: '/images/metadata'
+      preLoaderRoute: typeof ImagesMetadataRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/redact': {
+      id: '/images/redact'
+      path: '/redact'
+      fullPath: '/images/redact'
+      preLoaderRoute: typeof ImagesRedactRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/resize': {
+      id: '/images/resize'
+      path: '/resize'
+      fullPath: '/images/resize'
+      preLoaderRoute: typeof ImagesResizeRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/office-documents/': {
+      id: '/office-documents/'
+      path: '/'
+      fullPath: '/office-documents/'
+      preLoaderRoute: typeof OfficeDocumentsIndexRouteImport
+      parentRoute: typeof OfficeDocumentsRoute
+    }
+    '/office-documents/convert': {
+      id: '/office-documents/convert'
+      path: '/convert'
+      fullPath: '/office-documents/convert'
+      preLoaderRoute: typeof OfficeDocumentsConvertRouteImport
+      parentRoute: typeof OfficeDocumentsRoute
+    }
+    '/pdfs/': {
+      id: '/pdfs/'
+      path: '/'
+      fullPath: '/pdfs/'
+      preLoaderRoute: typeof PdfsIndexRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/compress': {
+      id: '/pdfs/compress'
       path: '/compress'
-      fullPath: '/archives/compress'
-      preLoaderRoute: typeof ArchivesCompressRouteImport
-      parentRoute: typeof ArchivesRoute
+      fullPath: '/pdfs/compress'
+      preLoaderRoute: typeof PdfsCompressRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/merge': {
+      id: '/pdfs/merge'
+      path: '/merge'
+      fullPath: '/pdfs/merge'
+      preLoaderRoute: typeof PdfsMergeRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/split': {
+      id: '/pdfs/split'
+      path: '/split'
+      fullPath: '/pdfs/split'
+      preLoaderRoute: typeof PdfsSplitRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/utilities/': {
+      id: '/utilities/'
+      path: '/'
+      fullPath: '/utilities/'
+      preLoaderRoute: typeof UtilitiesIndexRouteImport
+      parentRoute: typeof UtilitiesRoute
+    }
+    '/utilities/hash': {
+      id: '/utilities/hash'
+      path: '/hash'
+      fullPath: '/utilities/hash'
+      preLoaderRoute: typeof UtilitiesHashRouteImport
+      parentRoute: typeof UtilitiesRoute
+    }
+    '/utilities/metadata': {
+      id: '/utilities/metadata'
+      path: '/metadata'
+      fullPath: '/utilities/metadata'
+      preLoaderRoute: typeof UtilitiesMetadataRouteImport
+      parentRoute: typeof UtilitiesRoute
+    }
+    '/videos/': {
+      id: '/videos/'
+      path: '/'
+      fullPath: '/videos/'
+      preLoaderRoute: typeof VideosIndexRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/compress': {
+      id: '/videos/compress'
+      path: '/compress'
+      fullPath: '/videos/compress'
+      preLoaderRoute: typeof VideosCompressRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/convert': {
+      id: '/videos/convert'
+      path: '/convert'
+      fullPath: '/videos/convert'
+      preLoaderRoute: typeof VideosConvertRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/extract': {
+      id: '/videos/extract'
+      path: '/extract'
+      fullPath: '/videos/extract'
+      preLoaderRoute: typeof VideosExtractRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/metadata': {
+      id: '/videos/metadata'
+      path: '/metadata'
+      fullPath: '/videos/metadata'
+      preLoaderRoute: typeof VideosMetadataRouteImport
+      parentRoute: typeof VideosRoute
+    }
+    '/videos/trim': {
+      id: '/videos/trim'
+      path: '/trim'
+      fullPath: '/videos/trim'
+      preLoaderRoute: typeof VideosTrimRouteImport
+      parentRoute: typeof VideosRoute
     }
   }
 }

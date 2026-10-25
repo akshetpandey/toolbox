@@ -18,9 +18,8 @@ const fixturesDir = resolve(__dirname, 'fixtures')
 
 // ─── WASM Setup ─────────────────────────────────────────────────────────────
 
-const WASM_PATH = resolve(
-  __dirname,
-  '../../../node_modules/@imagemagick/magick-wasm/dist/magick.wasm',
+const WASM_PATH = new URL(
+  import.meta.resolve('@imagemagick/magick-wasm/magick.wasm'),
 )
 
 beforeAll(async () => {

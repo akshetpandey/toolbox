@@ -12,6 +12,7 @@ count.txt
 count.txt
 .wrangler
 .vitest-attachments
+.vitest
 __screenshots__
 .dev.vars*
 # Sentry Config File

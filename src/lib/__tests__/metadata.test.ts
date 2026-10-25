@@ -104,7 +104,7 @@ describe('extractExifMetadata', () => {
     const result = await extractExifMetadata(file)
 
     expect(result).toEqual(exifData)
-    /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    /* oxlint-disable typescript/no-unsafe-assignment */
     expect(mockParseMetadata).toHaveBeenCalledWith(
       file,
       expect.objectContaining({
@@ -113,7 +113,7 @@ describe('extractExifMetadata', () => {
         fetch: expect.any(Function),
       }),
     )
-    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+    /* oxlint-enable typescript/no-unsafe-assignment */
   })
 
   test('returns empty object when parseMetadata fails', async () => {
@@ -248,7 +248,7 @@ describe('stripFileMetadata', () => {
 
     expect(result).toBeInstanceOf(Blob)
     expect(result.type).toBe('image/jpeg')
-    /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    /* oxlint-disable typescript/no-unsafe-assignment */
     expect(mockWriteMetadata).toHaveBeenCalledWith(
       file,
       {},
@@ -257,7 +257,7 @@ describe('stripFileMetadata', () => {
         fetch: expect.any(Function),
       }),
     )
-    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+    /* oxlint-enable typescript/no-unsafe-assignment */
   })
 
   test('returns original file when stripping fails', async () => {

@@ -36,9 +36,8 @@ beforeAll(async () => {
   await wasm.default(wasmBytes)
 
   // Initialize ImageMagick (needed to decode PNG → RGBA)
-  const imWasmPath = resolve(
-    __dirname,
-    '../../../node_modules/@imagemagick/magick-wasm/dist/magick.wasm',
+  const imWasmPath = new URL(
+    import.meta.resolve('@imagemagick/magick-wasm/magick.wasm'),
   )
   await initializeImageMagick(readFileSync(imWasmPath))
 }, 30_000)

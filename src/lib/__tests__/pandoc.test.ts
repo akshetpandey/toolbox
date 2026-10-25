@@ -269,11 +269,11 @@ describe('convertOfficeToPDF', () => {
         'input-files': ['report.docx'],
       }),
       null,
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+      /* oxlint-disable typescript/no-unsafe-assignment */
       expect.objectContaining({
         'report.docx': expect.any(Blob),
       }),
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+      /* oxlint-enable typescript/no-unsafe-assignment */
     )
 
     // Verify typst compilation was called with the pandoc output
@@ -410,7 +410,7 @@ describe('convertOfficeDocument', () => {
 
     expect(result.success).toBe(true)
     expect(result.output).toBe('# Converted markdown')
-    /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    /* oxlint-disable typescript/no-unsafe-assignment */
     expect(mockConvert).toHaveBeenCalledWith(
       expect.objectContaining({
         from: 'docx',
@@ -420,7 +420,7 @@ describe('convertOfficeDocument', () => {
       null,
       expect.objectContaining({ 'report.docx': expect.any(Blob) }),
     )
-    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+    /* oxlint-enable typescript/no-unsafe-assignment */
   })
 
   test('passes standalone option when set', async () => {

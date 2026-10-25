@@ -1212,6 +1212,7 @@ function RedactPage() {
               {showEmojiPicker && (
                 <div className="absolute top-full left-0 z-50 mt-2">
                   <EmojiPicker
+                    emojiStyle="native"
                     onEmojiClick={(emojiData: EmojiClickData) => {
                       setSelectedEmoji(emojiData.emoji)
                       setShowEmojiPicker(false)
