@@ -75,14 +75,17 @@ vi.mock('@/contexts/ProcessingContext', async () => {
 vi.mock('@/components/ToolLayout', () => ({
   ToolLayout: ({
     fileUploadComponent,
-    toolsComponent,
+    navigationComponent,
+    children,
   }: {
     fileUploadComponent: ReactNode
-    toolsComponent: ReactNode
+    navigationComponent: ReactNode
+    children: ReactNode
   }) => (
     <>
       {fileUploadComponent}
-      {toolsComponent}
+      {navigationComponent}
+      {children}
     </>
   ),
 }))

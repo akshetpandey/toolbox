@@ -206,7 +206,6 @@ function OfficeDocumentsLayout() {
         iconColor="text-primary"
         iconBgColor="bg-primary/10"
         fileUploadComponent={officeFileUpload}
-        toolsComponent={null}
       >
         <Outlet />
       </ToolLayout>

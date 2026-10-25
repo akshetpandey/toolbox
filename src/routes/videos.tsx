@@ -185,31 +185,6 @@ function VideoFileUpload({
   )
 }
 
-// Video tools component with tabs and outlet
-function VideoTools({
-  currentTab,
-  onTabChange,
-  isProcessing,
-}: {
-  currentTab: string
-  onTabChange: (tab: string) => void
-  isProcessing: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="w-full">
-        <ResponsiveTabs
-          tabs={videoTabs}
-          currentTab={currentTab}
-          onTabChange={onTabChange}
-          isProcessing={isProcessing}
-        />
-      </div>
-      <Outlet />
-    </div>
-  )
-}
-
 function VideoToolsLayout() {
   const { ffmpeg, isInitialized, error, init, setProgressCallback } =
     useInitFFmpeg()
@@ -524,16 +499,14 @@ function VideoToolsLayout() {
         iconColor="text-purple-500"
         iconBgColor="bg-gradient-to-br from-purple-500/10 to-purple-500/5"
         fileUploadComponent={
-          <VideoFileUpload
-            selectedFiles={selectedFiles}
-            onFileSelect={handleFileSelect}
-            onClear={clearSelectedFile}
-            disabled={isPreparing || isProcessing}
-            showPreview={currentTab === 'trim'}
-          />
-        }
-        toolsComponent={
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-3">
+            <VideoFileUpload
+              selectedFiles={selectedFiles}
+              onFileSelect={handleFileSelect}
+              onClear={clearSelectedFile}
+              disabled={isPreparing || isProcessing}
+              showPreview={currentTab === 'trim'}
+            />
             {isPreparing && (
               <div
                 role="status"
@@ -563,14 +536,19 @@ function VideoToolsLayout() {
                   Ready to process. Your video stays on this device.
                 </p>
               )}
-            <VideoTools
-              currentTab={currentTab}
-              onTabChange={handleTabChange}
-              isProcessing={isProcessing}
-            />
           </div>
         }
-      />
+        navigationComponent={
+          <ResponsiveTabs
+            tabs={videoTabs}
+            currentTab={currentTab}
+            onTabChange={handleTabChange}
+            isProcessing={isProcessing}
+          />
+        }
+      >
+        <Outlet />
+      </ToolLayout>
     </VideoToolsContext.Provider>
   )
 }

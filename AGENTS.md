@@ -143,7 +143,7 @@ Routes follow TanStack Router file-based conventions:
 
 ### Component Patterns
 
-- **ToolLayout** - Task heading and responsive workspace; compact files beside controls on wide desktops, stacked on phones/tablets, full-width redaction canvas
+- **ToolLayout** - Task heading and shared responsive workspace; files beside controls with aligned card tops on wide desktops, stacked on phones/tablets. Redaction uses the same columns with a responsive canvas. Keep mobile navigation in `navigationComponent` so hidden selectors cannot leave desktop spacing; controls belong in `children`
 - **FileUpload** - Keyboard-accessible picker and drop target; compact selected-file summary, explicit Add/Change/Clear actions, and disabled state
 - **ToolSidebar** - Desktop category navigation and a native modal Tools menu on phones/tablets
 - **Tool catalog** - `src/lib/tools.ts` supplies task names, search terms, homepage links, and navigation; only advertise available tools

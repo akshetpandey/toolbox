@@ -221,9 +221,6 @@ input[type='range'] {
 .file-summary :where(p, span) {
   overflow-wrap: anywhere;
 }
-.editor-file-summary .file-summary img {
-  max-height: 80px;
-}
 :where([data-slot='checkbox'] + label) {
   min-height: 44px;
   display: inline-flex;

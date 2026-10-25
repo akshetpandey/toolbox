@@ -1108,25 +1108,20 @@ function RedactPage() {
     setDragState(null)
   }, [setRedactionAreas])
 
-  if (!selectedFile) {
-    return (
-      <Card className="glass-card border-0">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center h-24">
-            <div className="text-center text-muted-foreground">
-              <p className="text-sm">Select an image to start redacting</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <Card>
         <CardContent className="p-4 sm:p-6 flex min-w-0 flex-col gap-4">
-          <div className="flex min-w-0 flex-col gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">Redaction settings</h2>
+            <p className="text-sm text-muted-foreground">
+              Choose how to cover private details, then mark areas on the image.
+            </p>
+          </div>
+          <fieldset
+            disabled={!selectedFile || isProcessing}
+            className="flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
+          >
             <div className="flex min-w-0 flex-col gap-2">
               <Label className="text-sm font-medium">Redaction mode</Label>
               <div
@@ -1287,12 +1282,12 @@ function RedactPage() {
                 )}
               </div>
             )}
-          </div>
+          </fieldset>
 
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
-              disabled={isProcessing}
+              disabled={!selectedFile || isProcessing}
               onClick={() => {
                 const canvas = canvasRef.current
                 if (!canvas) return
@@ -1317,21 +1312,27 @@ function RedactPage() {
               Draw over the image, or add an area and adjust its bounds below.
             </p>
           </div>
-          <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-2 sm:p-4 flex justify-center">
-            <canvas
-              ref={canvasRef}
-              aria-label="Image redaction canvas"
-              className="max-w-full max-h-125 border border-border/50 rounded touch-none"
-              style={{ touchAction: 'none', cursor: canvasCursor }}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseUp={handleCanvasMouseUp}
-              onMouseLeave={handleCanvasMouseUp}
-              onTouchStart={handleCanvasTouchStart}
-              onTouchMove={handleCanvasTouchMove}
-              onTouchEnd={handleCanvasTouchEnd}
-            />
-          </div>
+          {selectedFile ? (
+            <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-2 sm:p-4 flex justify-center">
+              <canvas
+                ref={canvasRef}
+                aria-label="Image redaction canvas"
+                className="max-w-full max-h-125 border border-border/50 rounded touch-none"
+                style={{ touchAction: 'none', cursor: canvasCursor }}
+                onMouseDown={handleCanvasMouseDown}
+                onMouseMove={handleCanvasMouseMove}
+                onMouseUp={handleCanvasMouseUp}
+                onMouseLeave={handleCanvasMouseUp}
+                onTouchStart={handleCanvasTouchStart}
+                onTouchMove={handleCanvasTouchMove}
+                onTouchEnd={handleCanvasTouchEnd}
+              />
+            </div>
+          ) : (
+            <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+              Select an image to start redacting
+            </div>
+          )}
 
           {redactionAreas.length > 0 && (
             <div

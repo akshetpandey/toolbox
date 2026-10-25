@@ -263,14 +263,12 @@ function ArchiveToolsContent() {
   )
 
   const archiveToolsNav = (
-    <div className="w-full">
-      <ResponsiveTabs
-        tabs={archiveTabs}
-        currentTab={currentTab}
-        onTabChange={handleTabChange}
-        isProcessing={isProcessing}
-      />
-    </div>
+    <ResponsiveTabs
+      tabs={archiveTabs}
+      currentTab={currentTab}
+      onTabChange={handleTabChange}
+      isProcessing={isProcessing}
+    />
   )
 
   return (
@@ -282,7 +280,7 @@ function ArchiveToolsContent() {
       fileUploadComponent={
         currentTab === 'compress' ? compressFileUpload : extractFileUpload
       }
-      toolsComponent={archiveToolsNav}
+      navigationComponent={archiveToolsNav}
     >
       <Outlet />
     </ToolLayout>

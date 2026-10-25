@@ -424,14 +424,12 @@ function UtilitiesLayout() {
   )
 
   const utilityToolsNav = (
-    <div className="w-full">
-      <ResponsiveTabs
-        tabs={utilityTabs}
-        currentTab={currentTab}
-        onTabChange={handleTabChange}
-        isProcessing={isProcessing}
-      />
-    </div>
+    <ResponsiveTabs
+      tabs={utilityTabs}
+      currentTab={currentTab}
+      onTabChange={handleTabChange}
+      isProcessing={isProcessing}
+    />
   )
 
   return (
@@ -442,7 +440,7 @@ function UtilitiesLayout() {
         iconColor="text-orange-500"
         iconBgColor="bg-gradient-to-br from-orange-500/10 to-orange-500/5"
         fileUploadComponent={utilityFileUpload}
-        toolsComponent={utilityToolsNav}
+        navigationComponent={utilityToolsNav}
       >
         {analysisError && (
           <div role="alert" className="space-y-3 text-sm">

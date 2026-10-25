@@ -48,7 +48,9 @@ test.each([
   [390, 844],
   [768, 1024],
   [1024, 768],
+  [1280, 900],
   [1440, 1000],
+  [1920, 1080],
 ])('workspace and navigation stay usable at %s × %s', async (width, height) => {
   await page.viewport(width, height)
   const router = await openApp()
@@ -106,11 +108,21 @@ test.each([
   ).toHaveLength(6)
   const routes = [
     ['/images/resize', 'Resize image'],
+    ['/images/redact', 'Redact image'],
+    ['/images/convert', 'Convert image'],
+    ['/images/compress', 'Compress image'],
+    ['/images/metadata', 'Image metadata'],
+    ['/videos/compress', 'Compress video'],
+    ['/videos/convert', 'Convert video'],
     ['/videos/trim', 'Trim video'],
+    ['/videos/extract', 'Extract audio'],
+    ['/videos/metadata', 'Video metadata'],
     ['/pdfs/merge', 'Merge PDFs'],
     ['/office-documents/convert', 'Convert document to PDF'],
     ['/archives/extract', 'Extract archive'],
+    ['/archives/compress', 'Create archive'],
     ['/utilities/hash', 'File hashes'],
+    ['/utilities/metadata', 'File metadata'],
   ]
   for (const [to, title] of routes) {
     await act(() => router.navigate({ to }))
@@ -118,6 +130,40 @@ test.each([
       expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(title),
     )
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
+    const upload = screen.getByRole('region', { name: 'Choose files' })
+    const card = document.querySelector<HTMLElement>(
+      '[data-slot="tool-controls"] [data-slot="card"]',
+    )
+    expect(card, `${title}: settings card`).not.toBeNull()
+    const uploadBounds = upload.getBoundingClientRect()
+    const cardBounds = card!.getBoundingClientRect()
+    const cardStyle = getComputedStyle(card!)
+    expect(
+      parseFloat(cardStyle.borderTopWidth),
+      `${title}: card border`,
+    ).toBeGreaterThan(0)
+    expect(cardStyle.backgroundColor, `${title}: card surface`).toBe(
+      getComputedStyle(upload).backgroundColor,
+    )
+    if (width >= 1280) {
+      expect(cardBounds.top, `${title}: aligned card tops`).toBeCloseTo(
+        uploadBounds.top,
+        0,
+      )
+      expect(cardBounds.left, `${title}: side-by-side columns`).toBeGreaterThan(
+        uploadBounds.right,
+      )
+      expect(screen.queryByRole('combobox', { name: 'Tool' })).toBeNull()
+    } else {
+      expect(
+        cardBounds.top,
+        `${title}: stacked mobile cards`,
+      ).toBeGreaterThanOrEqual(uploadBounds.bottom)
+      expect(cardBounds.left, `${title}: consistent mobile edge`).toBeCloseTo(
+        uploadBounds.left,
+        0,
+      )
+    }
     for (const button of screen.getAllByRole('button')) {
       const rect = button.getBoundingClientRect()
       if (rect.width === 0 || rect.height === 0) continue
@@ -155,6 +201,110 @@ test.each([
     expect(screen.queryByRole('dialog')).toBeNull()
   }
 })
+
+test.each([375, 1440])(
+  'populated redaction shares the image workspace at %s px',
+  async (width) => {
+    await page.viewport(width, 1000)
+    const router = await openApp('/images/redact')
+    expect(
+      screen.getByRole('heading', { name: 'Redaction settings' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Add area' })
+        .disabled,
+    ).toBe(true)
+    const response = await fetch(
+      new URL('../lib/__tests__/fixtures/sample-real.png', import.meta.url),
+    )
+    const file = new File([await response.arrayBuffer()], 'photo.png', {
+      type: 'image/png',
+    })
+    fireEvent.change(screen.getByLabelText('Upload file'), {
+      target: { files: [file] },
+    })
+    await waitFor(
+      () =>
+        expect(
+          screen.getByLabelText<HTMLCanvasElement>('Image redaction canvas')
+            .width,
+        ).toBe(350),
+      { timeout: 10000 },
+    )
+    const upload = screen
+      .getByRole('region', { name: 'Selected files' })
+      .getBoundingClientRect()
+    const canvas = screen
+      .getByLabelText('Image redaction canvas')
+      .getBoundingClientRect()
+    const card = document
+      .querySelector('[data-slot="tool-controls"] [data-slot="card"]')!
+      .getBoundingClientRect()
+    expect(screen.getByRole('img', { name: 'photo.png' })).toBeTruthy()
+    expect(canvas.width).toBeLessThanOrEqual(card.width)
+    if (width >= 1280) {
+      expect(card.top).toBeCloseTo(upload.top, 0)
+      expect(card.left).toBeGreaterThan(upload.right)
+    } else {
+      expect(card.top).toBeGreaterThanOrEqual(upload.bottom)
+    }
+    await userEvent.click(screen.getByRole('button', { name: 'Add area' }))
+    expect(screen.getByRole('group', { name: 'Redaction areas' })).toBeTruthy()
+    if (width >= 1280) {
+      expect(
+        screen.getByRole('button', { name: 'Download' }).getBoundingClientRect()
+          .bottom,
+      ).toBeLessThanOrEqual(1000)
+    }
+    await act(() => router.navigate({ to: '/images/resize' }))
+    const resizeUpload = screen
+      .getByRole('region', { name: 'Selected files' })
+      .getBoundingClientRect()
+    expect(resizeUpload.width).toBeCloseTo(upload.width, 0)
+    await act(() => router.navigate({ to: '/images/redact' }))
+    expect(screen.getByRole('button', { name: 'Area 1 · box' })).toBeTruthy()
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
+  },
+)
+
+test.each([375, 1440])(
+  'prepared video keeps its settings card aligned at %s px',
+  async (width) => {
+    await page.viewport(width, 1000)
+    await openApp('/videos/compress')
+    const response = await fetch(
+      new URL('../lib/__tests__/fixtures/sample.webm', import.meta.url),
+    )
+    const file = new File([await response.arrayBuffer()], 'clip.webm', {
+      type: 'video/webm',
+    })
+    fireEvent.change(screen.getByLabelText('Upload file'), {
+      target: { files: [file] },
+    })
+    await screen.findByText(
+      'Ready to process. Your video stays on this device.',
+      {},
+      { timeout: 20000 },
+    )
+    const upload = screen
+      .getByRole('region', { name: 'Selected files' })
+      .getBoundingClientRect()
+    const card = screen
+      .getByRole('heading', { name: 'Compression settings' })
+      .closest('[data-slot="card"]')!
+      .getBoundingClientRect()
+    if (width >= 1280) expect(card.top).toBeCloseTo(upload.top, 0)
+    else expect(card.top).toBeGreaterThanOrEqual(upload.bottom)
+    await userEvent.click(screen.getByRole('radio', { name: /Smaller file/ }))
+    await userEvent.click(
+      screen.getByText('Advanced settings', { exact: true }),
+    )
+    expect(screen.getByLabelText<HTMLInputElement>('Quality (CRF)').value).toBe(
+      '32',
+    )
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
+  },
+)
 
 test('a populated phone workspace stays compact and survives Home and Back', async () => {
   await page.viewport(375, 812)

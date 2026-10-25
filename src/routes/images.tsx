@@ -337,15 +337,13 @@ function ImageToolsLayout() {
         <div className="flex flex-col gap-2">
           {selectedFiles.map((file) => (
             <div key={file.name} className="flex min-w-0 items-start gap-3">
-              {currentTab !== 'redact' && (
-                <div className="shrink-0">
-                  <img
-                    src={file.preview}
-                    alt={file.name}
-                    className="h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-lg bg-muted/20"
-                  />
-                </div>
-              )}
+              <div className="shrink-0">
+                <img
+                  src={file.preview}
+                  alt={file.name}
+                  className="h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-lg bg-muted/20"
+                />
+              </div>
               <div className="min-w-0 flex flex-col gap-1">
                 <p className="font-medium text-foreground break-all text-sm">
                   {file.name}
@@ -367,14 +365,12 @@ function ImageToolsLayout() {
   )
 
   const imageToolsNav = (
-    <div className="w-full">
-      <ResponsiveTabs
-        tabs={imageTabs}
-        currentTab={currentTab}
-        onTabChange={handleTabChange}
-        isProcessing={isProcessing}
-      />
-    </div>
+    <ResponsiveTabs
+      tabs={imageTabs}
+      currentTab={currentTab}
+      onTabChange={handleTabChange}
+      isProcessing={isProcessing}
+    />
   )
 
   return (
@@ -393,7 +389,7 @@ function ImageToolsLayout() {
         iconColor="text-blue-500"
         iconBgColor="bg-gradient-to-br from-blue-500/10 to-blue-500/5"
         fileUploadComponent={imageFileUpload}
-        toolsComponent={imageToolsNav}
+        navigationComponent={imageToolsNav}
       >
         <Outlet />
       </ToolLayout>

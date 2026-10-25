@@ -10,7 +10,7 @@ interface ToolLayoutProps {
   iconColor: string
   iconBgColor: string
   fileUploadComponent: ReactNode
-  toolsComponent: ReactNode
+  navigationComponent?: ReactNode
   children?: ReactNode
 }
 
@@ -19,12 +19,11 @@ export function ToolLayout({
   icon: Icon,
   iconColor,
   fileUploadComponent,
-  toolsComponent,
+  navigationComponent,
   children,
 }: ToolLayoutProps) {
   const { pathname } = useLocation()
   const tool = allTools.find((item) => item.route === pathname)
-  const editor = pathname.endsWith('/redact')
   return (
     <div className="flex h-full min-w-0 flex-col">
       <header className="shrink-0 border-b border-border bg-card px-4 py-5 sm:px-8 sm:py-6">
@@ -52,15 +51,21 @@ export function ToolLayout({
             <span>Processed here. Never uploaded.</span>
           </div>
           <div
-            className={`grid min-w-0 items-start gap-5 ${editor || !fileUploadComponent ? '' : 'xl:grid-cols-[minmax(240px,0.75fr)_minmax(0,1.75fr)]'}`}
+            data-slot="tool-workspace"
+            className={`grid min-w-0 items-start gap-5 ${!fileUploadComponent ? '' : 'xl:grid-cols-[minmax(240px,0.75fr)_minmax(0,1.75fr)]'}`}
           >
             {fileUploadComponent && (
-              <div className={`min-w-0 ${editor ? 'editor-file-summary' : ''}`}>
+              <div data-slot="tool-files" className="min-w-0">
                 {fileUploadComponent}
               </div>
             )}
-            <div className="flex min-w-0 flex-col gap-5">
-              {toolsComponent}
+            <div
+              data-slot="tool-controls"
+              className="flex min-w-0 flex-col gap-5"
+            >
+              {navigationComponent && (
+                <div className="xl:hidden">{navigationComponent}</div>
+              )}
               {children}
             </div>
           </div>

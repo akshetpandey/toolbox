@@ -349,7 +349,6 @@ function PDFToolsLayout() {
         iconColor="text-primary"
         iconBgColor="bg-primary/10"
         fileUploadComponent={unavailable ? null : pdfFileUpload}
-        toolsComponent={null}
       >
         {selectionError && (
           <p role="alert" className="text-sm text-destructive">
