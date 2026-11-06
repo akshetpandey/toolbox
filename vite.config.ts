@@ -10,11 +10,22 @@ import { seoPagesPlugin } from './vite-plugin-seo-pages.ts'
 import { pdfAssetsPlugin } from './vite-plugin-pdf-assets.ts'
 import { toolPrefetchPlugin } from './vite-plugin-tool-prefetch.ts'
 
+const appShellChunk = 'app-shell'
+
 export default defineConfig({
   build: {
     target: ['chrome135', 'safari26', 'firefox140'],
     sourcemap: true,
     modulePreload: { polyfill: false },
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          // Pack the static startup graph together. Routes and engines reached
+          // through dynamic imports still get their own chunks.
+          groups: [{ name: appShellChunk, tags: ['$initial'] }],
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: [
@@ -43,7 +54,7 @@ export default defineConfig({
     ffmpegCorePlugin(),
     pandocWasmPlugin(),
     pdfAssetsPlugin(),
-    toolPrefetchPlugin(),
+    toolPrefetchPlugin(appShellChunk),
     wasmPreviewPlugin(),
     tailwindcss(),
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),

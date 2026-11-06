@@ -95,7 +95,7 @@ const toolEngines = {
 } satisfies Record<keyof typeof toolPaths, (keyof typeof engines)[]>
 
 /** Record the actual hashed assets so runtime hints never import an engine. */
-export function toolPrefetchPlugin(): Plugin {
+export function toolPrefetchPlugin(startupChunk: string): Plugin {
   return {
     name: 'toolbox-engine-prefetch',
     apply: 'build',
@@ -111,7 +111,12 @@ export function toolPrefetchPlugin(): Plugin {
           for (const dep of chunk.imports) addShellChunk(dep)
         }
         for (const entry of entries) {
-          if (entry.type === 'chunk' && entry.isEntry)
+          // Vite can reference the shell directly after removing the empty
+          // HTML entry chunk, in which case the shell is not marked isEntry.
+          if (
+            entry.type === 'chunk' &&
+            (entry.isEntry || entry.name === startupChunk)
+          )
             addShellChunk(entry.fileName)
         }
         const assetsByEngine = new Map<string, Set<string>>()
