@@ -46,16 +46,18 @@ declare module '@tanstack/react-router' {
 // })
 
 // Render the app
-const rootElement = document.getElementById('root')!
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <ThemeProvider>
-        <ProcessingProvider>
-          <RouterProvider router={router} />
-        </ProcessingProvider>
-      </ThemeProvider>
-    </StrictMode>,
-  )
-}
+// The build serves introductory content and metadata before React loads.
+// React replaces the introduction and owns the head during navigation.
+document.head
+  .querySelectorAll('[data-static-seo]')
+  .forEach((tag) => tag.remove())
+const root = ReactDOM.createRoot(document.getElementById('root')!)
+root.render(
+  <StrictMode>
+    <ThemeProvider>
+      <ProcessingProvider>
+        <RouterProvider router={router} />
+      </ProcessingProvider>
+    </ThemeProvider>
+  </StrictMode>,
+)

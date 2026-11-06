@@ -3,21 +3,19 @@ import {
   Scripts,
   createRootRoute,
   Link,
-  HeadContent,
   useLocation,
 } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
 import { ToolSidebar } from '@/components/ToolSidebar'
+import { getPage, notFoundPage, pageMeta } from '@/lib/seo'
 
 export const Route = createRootRoute({
   component: RootDocument,
   notFoundComponent: () => {
     return (
       <div className="mx-auto max-w-xl space-y-4 p-8">
-        <h1 className="text-2xl font-semibold">This tool could not be found</h1>
-        <p className="text-muted-foreground">
-          Choose another task from the toolbox.
-        </p>
+        <h1 className="text-2xl font-semibold">{notFoundPage.heading}</h1>
+        <p className="text-muted-foreground">{notFoundPage.intro}</p>
         <Link to="/" className="text-primary underline">
           Browse all tools
         </Link>
@@ -28,6 +26,7 @@ export const Route = createRootRoute({
 
 function RootDocument() {
   const { pathname } = useLocation()
+  const page = getPage(pathname)
   const previousPath = useRef(pathname)
   useEffect(() => {
     if (previousPath.current === pathname) return
@@ -40,7 +39,11 @@ function RootDocument() {
   }, [pathname])
   return (
     <>
-      <HeadContent />
+      <title>{page.title}</title>
+      {pageMeta(page).map((meta) => (
+        <meta key={meta.name ?? meta.property} {...meta} />
+      ))}
+      {page.canonical && <link rel="canonical" href={page.canonical} />}
       <a href="#main-content" className="skip-link">
         Skip to workspace
       </a>

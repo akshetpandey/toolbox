@@ -23,7 +23,9 @@ export function ToolLayout({
   children,
 }: ToolLayoutProps) {
   const { pathname } = useLocation()
-  const tool = allTools.find((item) => item.route === pathname)
+  const tool = allTools.find(
+    (item) => item.route === pathname.replace(/\/$/, ''),
+  )
   return (
     <div className="flex h-full min-w-0 flex-col">
       <header className="shrink-0 border-b border-border bg-card px-4 py-5 sm:px-8 sm:py-6">
@@ -69,6 +71,14 @@ export function ToolLayout({
               {children}
             </div>
           </div>
+          {tool && (
+            <section className="max-w-2xl space-y-1 border-t border-border pt-4">
+              <h2 className="text-sm font-semibold">How to use this tool</h2>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {tool.instructions}
+              </p>
+            </section>
+          )}
         </div>
       </div>
     </div>

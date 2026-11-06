@@ -14,33 +14,6 @@ import {
 
 export const Route = createFileRoute('/videos/trim')({
   component: VideoTrimComponent,
-  head: () => ({
-    meta: [
-      {
-        title:
-          'Video Trimmer - Free Browser-Based Video Editing Tool | Toolbox',
-      },
-      {
-        name: 'description',
-        content:
-          'Free, open-source browser-based video trimming tool. Cut and trim videos, create GIFs, and export clips. Process videos entirely in your browser with complete privacy.',
-      },
-      {
-        name: 'keywords',
-        content:
-          'video trimmer, cut video, create GIF from video, video editor, browser video trimmer, privacy-focused',
-      },
-      {
-        property: 'og:title',
-        content: 'Video Trimmer - Free Browser-Based Tool',
-      },
-      {
-        property: 'og:description',
-        content:
-          'Free, open-source browser-based video trimming. Cut videos and create GIFs with complete privacy.',
-      },
-    ],
-  }),
 })
 
 function VideoTrimComponent() {

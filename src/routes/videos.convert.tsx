@@ -18,33 +18,6 @@ import {
 
 export const Route = createFileRoute('/videos/convert')({
   component: VideoConvertComponent,
-  head: () => ({
-    meta: [
-      {
-        title:
-          'Video Converter - Free Browser-Based Video Format Conversion | Toolbox',
-      },
-      {
-        name: 'description',
-        content:
-          'Free, open-source browser-based video format converter. Convert between MP4, WebM, AVI, MOV, and more with custom codec selection. Process videos entirely in your browser.',
-      },
-      {
-        name: 'keywords',
-        content:
-          'free video converter, MP4 converter, WebM converter, browser video format conversion, privacy-focused',
-      },
-      {
-        property: 'og:title',
-        content: 'Video Converter - Free Browser-Based Tool',
-      },
-      {
-        property: 'og:description',
-        content:
-          'Free, open-source browser-based video format converter. Convert between multiple formats with complete privacy.',
-      },
-    ],
-  }),
 })
 
 function VideoConvertComponent() {

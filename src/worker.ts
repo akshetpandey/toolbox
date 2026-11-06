@@ -17,7 +17,7 @@ export default {
 
     // WASM files are stored pre-gzipped — tell the browser to decompress.
     const url = new URL(request.url)
-    if (url.pathname.endsWith('.wasm')) {
+    if (url.pathname.endsWith('.wasm') && response.ok) {
       const headers = new Headers(response.headers)
       headers.set('Content-Encoding', 'gzip')
       headers.set('Content-Type', 'application/wasm')
