@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useHydrated } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Upload, FileImage } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -38,8 +39,10 @@ export function FileUpload({
   children,
   multiple = false,
   selectedActionLabel = 'Change file',
-  disabled = false,
+  disabled: disabledByTool = false,
 }: FileUploadProps) {
+  const hydrated = useHydrated()
+  const disabled = !hydrated || disabledByTool
   const input = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const selected = selectedFiles.length > 0
@@ -122,8 +125,8 @@ export function FileUpload({
             Choose {multiple ? 'files' : 'file'}
           </Button>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            {supportedFormats.join(' · ')} · or drop{' '}
-            {multiple ? 'files' : 'a file'} here
+            {supportedFormats.join(' · ')}
+            {hydrated && ` · or drop ${multiple ? 'files' : 'a file'} here`}
           </p>
         </div>
       )}

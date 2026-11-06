@@ -1,7 +1,7 @@
 import { allTools } from './tools.ts'
 import { toolPaths } from './toolPaths.ts'
 
-const siteUrl = 'https://toolbox.computer'
+export const siteUrl = 'https://toolbox.computer'
 
 export const homePage = {
   path: '/',
@@ -23,7 +23,6 @@ export const indexedPages = [
     description: tool.instructions,
     intro: tool.description,
     canonical: `${siteUrl}${tool.route}`,
-    instructions: tool.instructions,
   })),
 ]
 
@@ -62,7 +61,6 @@ interface Page {
   description: string
   intro: string
   canonical?: string
-  instructions?: string
 }
 
 export const pages: Page[] = [
