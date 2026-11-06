@@ -1,34 +1,9 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
+import { getPage } from '@/lib/seo'
 
 export const Route = createFileRoute('/pdfs/split')({
   component: PDFSplitRoute,
-  head: () => ({
-    meta: [
-      {
-        title: 'PDF Splitter - Free Browser-Based PDF Splitting Tool | Toolbox',
-      },
-      {
-        name: 'description',
-        content:
-          'Free, open-source browser-based PDF splitter. Split PDF files into separate documents or extract specific pages. Process PDFs entirely in your browser with complete privacy.',
-      },
-      {
-        name: 'keywords',
-        content:
-          'free PDF splitter, split PDF pages, extract PDF pages, browser PDF editor, privacy-focused',
-      },
-      {
-        property: 'og:title',
-        content: 'PDF Splitter - Free Browser-Based Tool',
-      },
-      {
-        property: 'og:description',
-        content:
-          'Free, open-source browser-based PDF splitter. Split PDFs into separate documents with complete privacy.',
-      },
-    ],
-  }),
 })
 
 function PDFSplitRoute() {
@@ -36,9 +11,8 @@ function PDFSplitRoute() {
     <Card className="shadow-none">
       <CardContent className="space-y-4 p-6">
         <p className="text-sm font-medium text-muted-foreground">Coming soon</p>
-        <h2 className="text-lg font-semibold">Split PDFs</h2>
         <p className="text-sm text-muted-foreground">
-          This tool is not available yet. You can merge PDF files today.
+          {getPage('/pdfs/split').intro}
         </p>
         <Link
           to="/pdfs/merge"

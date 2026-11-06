@@ -6,6 +6,7 @@ import {
 } from '@/hooks/useWorkspaceState'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
+import { getPage } from '@/lib/seo'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   PDFToolsContext,
@@ -138,32 +139,6 @@ function SortableFileItem({
 
 export const Route = createFileRoute('/pdfs')({
   component: PDFToolsLayout,
-  head: () => ({
-    meta: [
-      {
-        title: 'PDF Tools - Free Browser-Based PDF Processing | Toolbox',
-      },
-      {
-        name: 'description',
-        content:
-          'Free, open-source browser-based PDF processing tools. Merge, split, and compress PDF files entirely in your browser. No uploads required, complete privacy.',
-      },
-      {
-        name: 'keywords',
-        content:
-          'free PDF tools, PDF merger, PDF splitter, PDF compressor, browser PDF editor, privacy-focused',
-      },
-      {
-        property: 'og:title',
-        content: 'PDF Tools - Free Browser-Based PDF Processing',
-      },
-      {
-        property: 'og:description',
-        content:
-          'Free, open-source browser-based PDF processing tools. Process PDFs entirely in your browser with complete privacy.',
-      },
-    ],
-  }),
 })
 
 function PDFToolsLayout() {
@@ -344,7 +319,7 @@ function PDFToolsLayout() {
   return (
     <PDFToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title={unavailable ? 'PDF tools' : 'Merge PDFs'}
+        title={getPage(location.pathname).heading}
         icon={FileText}
         iconColor="text-primary"
         iconBgColor="bg-primary/10"

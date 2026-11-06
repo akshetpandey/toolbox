@@ -4,41 +4,11 @@ import { ArrowRight, Search, ShieldCheck, X, ArrowUpRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { allTools, findTools, toolCategories } from '@/lib/tools'
+import { homePage } from '@/lib/seo'
 import { getToolRequestUrl } from '@/lib/toolRequests'
 
 export const Route = createFileRoute('/')({
   component: App,
-  head: () => ({
-    meta: [
-      {
-        title: 'Toolbox - Free Open Source Browser-Based File Processing Tools',
-      },
-      {
-        name: 'description',
-        content:
-          'Free, open-source browser-based file processing tools. Convert, compress, and edit images, videos, PDFs, archives, and office documents entirely in your browser. No uploads, privacy-focused.',
-      },
-      {
-        name: 'keywords',
-        content:
-          'free file tools, browser file processing, open source, image converter, video compressor, PDF editor, privacy-focused, no upload',
-      },
-      {
-        property: 'og:title',
-        content:
-          'Toolbox - Free Open Source Browser-Based File Processing Tools',
-      },
-      {
-        property: 'og:description',
-        content:
-          'Free, open-source browser-based file processing tools. Process files entirely in your browser with complete privacy.',
-      },
-      {
-        property: 'og:type',
-        content: 'website',
-      },
-    ],
-  }),
 })
 
 export function App() {
@@ -69,12 +39,10 @@ export function App() {
             Private by design
           </p>
           <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
-            Private file tools,
-            <br className="hidden sm:block" /> right in your browser.
+            {homePage.heading}
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Resize, convert, and organize your files. Everything is processed on
-            your device, with no uploads or account required.
+            {homePage.intro}
           </p>
         </header>
         <div className="relative mt-8 max-w-2xl">

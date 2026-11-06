@@ -6,6 +6,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core.ts'
 import { pandocWasmPlugin } from './vite-plugin-pandoc-wasm.ts'
 import { wasmPreviewPlugin } from './vite-plugin-wasm-preview.ts'
+import { seoPagesPlugin } from './vite-plugin-seo-pages.ts'
 
 export default defineConfig({
   build: {
@@ -71,6 +72,7 @@ export default defineConfig({
     tailwindcss(),
     tanstackRouter({ target: 'react', autoCodeSplitting: false }),
     react(),
+    seoPagesPlugin(),
     sentryVitePlugin({
       authToken: process.env.SENTRY_AUTH_TOKEN,
       org: 'happy-human',

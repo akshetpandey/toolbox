@@ -15,8 +15,9 @@ pnpm dev
 The development server uses port 5050. After `pnpm build`, `pnpm serve` previews
 the production build with Vite on port 4173. Its preview middleware supplies the
 decoding headers for compressed WASM assets and inherits the development server's
-cross-origin isolation headers. `pnpm preview` uses the Cloudflare Worker runtime
-on port 8787.
+cross-origin isolation headers. Use `pnpm preview` on port 8787 to check HTTP
+status codes, redirects, and the initial HTML that crawlers receive. It runs the
+Cloudflare Worker, whose routing rules differ from Vite's preview server.
 
 ## Coding agents
 

@@ -41,6 +41,28 @@ afterEach(() => {
   resetWorkspaceState()
 })
 
+test('client navigation replaces the canonical URL and indexing directives', async () => {
+  const router = await openApp()
+  const canonical = () =>
+    document.head.querySelectorAll('link[rel="canonical"]')
+  const robots = () => document.head.querySelector('meta[name="robots"]')
+  expect(canonical()).toHaveLength(1)
+  expect(canonical()[0].getAttribute('href')).toBe('https://toolbox.computer/')
+
+  await act(() => router.navigate({ to: '/pdfs/split' }))
+  expect(document.title).toBe('Split PDFs (Coming Soon) | Toolbox')
+  expect(canonical()).toHaveLength(0)
+  expect(robots()?.getAttribute('content')).toBe('noindex')
+
+  await act(() => router.navigate({ to: '/pdfs/merge' }))
+  expect(document.title).toBe('Merge PDFs into One File | Toolbox')
+  expect(canonical()).toHaveLength(1)
+  expect(canonical()[0].getAttribute('href')).toBe(
+    'https://toolbox.computer/pdfs/merge',
+  )
+  expect(robots()).toBeNull()
+})
+
 // Exercise the actual route tree, production CSS, and shared controls at every
 // breakpoint from the design review instead of mirroring Tailwind class names.
 test.each([
