@@ -79,7 +79,7 @@ const toolEngines = {
   pdfMerge: ['editPDF'],
   pdfCompress: ['editPDF'],
   pdfSplit: ['editPDF', 'zip'],
-  pdfOrganize: ['editPDF'],
+  pdfOrganize: ['editPDF', 'renderPDF'],
   pdfFromImages: ['editPDF'],
   pdfToImages: ['editPDF', 'renderPDF', 'zip'],
   pdfOCR: ['editPDF', 'renderPDF', 'ocr'],

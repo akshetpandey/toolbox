@@ -31,6 +31,7 @@ export async function renderPDFPage(
   page: PDFPageProxy,
   preferredScale: number,
   signal?: AbortSignal,
+  maxSide = 4096,
 ) {
   signal?.throwIfAborted()
   const dimensions = page.getViewport({ scale: 1 })
@@ -44,7 +45,7 @@ export async function renderPDFPage(
 
   const scale = Math.min(
     preferredScale,
-    4096 / Math.max(dimensions.width, dimensions.height),
+    maxSide / Math.max(dimensions.width, dimensions.height),
     Math.sqrt(12_000_000 / (dimensions.width * dimensions.height)),
   )
   const viewport = page.getViewport({ scale })

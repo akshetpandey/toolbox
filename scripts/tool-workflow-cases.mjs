@@ -333,11 +333,53 @@ export const workflows = {
     assert.equal((await pdfPages(parts[0])).length, 2)
     assert.match((await pdfText(parts[1]))[0], /Field survey report 6/)
   },
-  '/pdfs/organize': async (page, f) => {
+  '/pdfs/organize': async (page, f, capture) => {
     await upload(page, f.report)
+    const order = page.getByRole('list', { name: 'Output page order' })
+    await button(page, 'Move page 2 up').scrollIntoViewIfNeeded()
+    const preview = page.getByRole('img', { name: 'Preview of page 2' })
+    const thumbnail = await preview.evaluate(async (image) => {
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 24
+      const context = canvas.getContext('2d')
+      context.drawImage(image, 0, 0, 24, 24)
+      const pixels = context.getImageData(0, 0, 24, 24).data
+      return {
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+        hasInk: pixels.some((value, index) => index % 4 !== 3 && value < 100),
+      }
+    })
+    assert(thumbnail.hasInk, 'Thumbnail should show the original page content')
+    assert(thumbnail.width > 100 && thumbnail.width < thumbnail.height)
+    assert(thumbnail.height <= 192, 'Preview should be a small thumbnail')
     await click(page, 'Move page 2 up')
     await click(page, 'Rotate page 2 clockwise')
+    const firstPage = order.getByRole('listitem').first()
+    assert.equal(
+      await firstPage.getByRole('img').getAttribute('alt'),
+      'Preview of page 2',
+    )
+    assert.equal(
+      await preview.evaluate(
+        (image) => new DOMMatrix(getComputedStyle(image).transform).b,
+      ),
+      1,
+    )
+    // The list is scrollable. Bringing a later page into view loads its preview.
+    await button(page, 'Remove page 6').scrollIntoViewIfNeeded()
+    await page.getByRole('img', { name: 'Preview of page 6' }).waitFor()
     await click(page, 'Remove page 6')
+    await firstPage.scrollIntoViewIfNeeded()
+    if (await button(page, 'Tools').isVisible()) {
+      await capture(
+        'edit',
+        page.getByRole('heading', { name: 'Arrange your pages' }),
+      )
+    } else {
+      await capture('edit')
+    }
     const { bytes } = await run(page, 'Save organized PDF')
     const pages = await pdfPages(bytes)
     assert.equal(pages.length, 5)

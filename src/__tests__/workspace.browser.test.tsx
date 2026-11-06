@@ -41,6 +41,36 @@ afterEach(() => {
   resetWorkspaceState()
 })
 
+test('desktop PDF navigation keeps every category visible on a short viewport', async () => {
+  await page.viewport(1280, 720)
+  await openApp('/pdfs/to-word')
+  const nav = screen.getByRole('navigation', { name: 'File tools' })
+  const navBounds = nav.getBoundingClientRect()
+  for (const name of [
+    'Images',
+    'Videos',
+    'Audio',
+    'PDFs',
+    'Documents',
+    'Archives',
+    'Utilities',
+  ]) {
+    const bounds = screen
+      .getByRole('link', { name: new RegExp(`^${name}$`) })
+      .getBoundingClientRect()
+    expect(bounds.top, name).toBeGreaterThanOrEqual(navBounds.top)
+    expect(bounds.bottom, name).toBeLessThanOrEqual(navBounds.bottom)
+  }
+  const current = screen.getByRole('link', { name: 'PDF to editable Word' })
+  const bounds = current.getBoundingClientRect()
+  expect(
+    document
+      .elementFromPoint(bounds.left + 8, bounds.top + bounds.height / 2)
+      ?.closest('a'),
+  ).toBe(current)
+  expect(nav.scrollTop).toBe(0)
+})
+
 test('client navigation updates the canonical URL for available tools', async () => {
   const router = await openApp()
   const canonical = () =>
