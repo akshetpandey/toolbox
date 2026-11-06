@@ -18,6 +18,8 @@ vi.mock('../libimagequant', () => ({
 }))
 import { ImageMagickProcessor } from '../imagemagick'
 
+const preinitializedMagick = () => import('@imagemagick/magick-wasm')
+
 beforeAll(async () => {
   await initializeImageMagick(
     readFileSync(
@@ -54,7 +56,7 @@ function animatedGif(): Uint8Array<ArrayBuffer> {
 test('the processor produces exact non-square dimensions when aspect lock is off', async () => {
   const bytes = readFileSync(new URL('./fixtures/sample.png', import.meta.url))
   const input = imageFile(new Uint8Array(bytes), 'sample.png', 'image/png')
-  const processor = new ImageMagickProcessor()
+  const processor = new ImageMagickProcessor(preinitializedMagick)
   const result = await processor.resizeImage(input, {
     width: 20,
     height: 10,
@@ -78,7 +80,7 @@ test.each(['resize', 'compress'] as const)(
   '%s preserves GIF encoding, transparency, frames, and timing',
   async (operation) => {
     const input = imageFile(animatedGif(), 'animated.gif', 'image/gif')
-    const processor = new ImageMagickProcessor()
+    const processor = new ImageMagickProcessor(preinitializedMagick)
     const result =
       operation === 'resize'
         ? await processor.resizeImage(input, {
@@ -119,7 +121,7 @@ test('a HEIC photo can be decoded for preview and converted to JPG or PNG', asyn
     'photo.heic',
     '',
   )
-  const processor = new ImageMagickProcessor()
+  const processor = new ImageMagickProcessor(preinitializedMagick)
   const preview = await processor.previewImage(input.file)
   expect(preview.dimensions).toEqual({ width: 8, height: 8 })
   expect(preview.blob.type).toBe('image/png')
@@ -138,7 +140,7 @@ test('a HEIC photo can be decoded for preview and converted to JPG or PNG', asyn
 test('batch fitting shrinks large images and keeps smaller images at their original size', async () => {
   const bytes = readFileSync(new URL('./fixtures/sample.png', import.meta.url))
   const input = imageFile(new Uint8Array(bytes), 'sample.png', 'image/png')
-  const processor = new ImageMagickProcessor()
+  const processor = new ImageMagickProcessor(preinitializedMagick)
   for (const [box, output] of [
     [4, 4],
     [16, 8],
@@ -157,13 +159,14 @@ test('batch fitting shrinks large images and keeps smaller images at their origi
 
 test('crop, rotate and flip preserve GIF frames, timing and transparent pixels', async () => {
   const { file } = imageFile(animatedGif(), 'animated.gif', 'image/gif')
-  const { blob, width, height } =
-    await new ImageMagickProcessor().transformImage(file, {
-      crop: { x: 1, y: 1, width: 6, height: 5 },
-      rotation: 90,
-      flipHorizontal: true,
-      flipVertical: true,
-    })
+  const { blob, width, height } = await new ImageMagickProcessor(
+    preinitializedMagick,
+  ).transformImage(file, {
+    crop: { x: 1, y: 1, width: 6, height: 5 },
+    rotation: 90,
+    flipHorizontal: true,
+    flipVertical: true,
+  })
   expect([width, height]).toEqual([5, 6])
   ImageMagick.readCollection(
     new Uint8Array(await blob.arrayBuffer()),
@@ -187,7 +190,7 @@ test('target size never returns a JPG over the byte cap and can shrink dimension
     width: image.width,
     height: image.height,
   }))
-  const processor = new ImageMagickProcessor()
+  const processor = new ImageMagickProcessor(preinitializedMagick)
   const cap = 1_000
   await expect(processor.compressToSize(file, cap, false)).resolves.toBeNull()
   const result = await processor.compressToSize(file, cap, true)
@@ -207,11 +210,9 @@ test('solid background removal turns matching pixels transparent and leaves othe
     return image.write(MagickFormat.Png, (data) => data.slice())
   })
   const { file } = imageFile(bytes, 'solid.png', 'image/png')
-  const blob = await new ImageMagickProcessor().removeBackgroundColor(
-    file,
-    '#ffffff',
-    0,
-  )
+  const blob = await new ImageMagickProcessor(
+    preinitializedMagick,
+  ).removeBackgroundColor(file, '#ffffff', 0)
   ImageMagick.read(new Uint8Array(await blob.arrayBuffer()), (image) => {
     expect(image.getPixels((pixels) => pixels.getColor(0, 0)?.a)).toBe(0)
     expect(

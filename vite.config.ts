@@ -8,48 +8,13 @@ import { pandocWasmPlugin } from './vite-plugin-pandoc-wasm.ts'
 import { wasmPreviewPlugin } from './vite-plugin-wasm-preview.ts'
 import { seoPagesPlugin } from './vite-plugin-seo-pages.ts'
 import { pdfAssetsPlugin } from './vite-plugin-pdf-assets.ts'
+import { toolPrefetchPlugin } from './vite-plugin-tool-prefetch.ts'
 
 export default defineConfig({
   build: {
     target: ['chrome135', 'safari26', 'firefox140'],
     sourcemap: true,
-    minify: false, // Keep readable output for debugging user-reported issues
-    modulePreload: false, // Disable entirely — modern browsers handle module loading; avoids __vitePreload helper polluting chunks
-    rolldownOptions: {
-      output: {
-        manualChunks: function (id) {
-          if (id.includes('node_modules')) {
-            // Heavy WASM packages are dynamically imported in their
-            // respective lib files — don't assign them to a named chunk
-            // so the bundler creates separate lazy chunks automatically.
-            const wasmPackages = [
-              '7z-wasm',
-              '@imagemagick',
-              'libimagequant-wasm',
-              'pdf-lib',
-              'pdfjs-dist',
-              'tesseract.js',
-              'onnxruntime',
-              '/docx/',
-              '@uswriting/exiftool',
-              'pandoc-wasm',
-              '@myriaddreamin',
-              'typst',
-              'wasmagic',
-              'hash-wasm',
-              '@bjorn3',
-              '@ffmpeg',
-            ]
-            if (wasmPackages.some((pkg) => id.includes(pkg))) {
-              return undefined // let bundler handle naturally
-            }
-            return 'vendor'
-          } else {
-            return 'app'
-          }
-        },
-      },
-    },
+    modulePreload: { polyfill: false },
   },
   optimizeDeps: {
     exclude: [
@@ -78,9 +43,10 @@ export default defineConfig({
     ffmpegCorePlugin(),
     pandocWasmPlugin(),
     pdfAssetsPlugin(),
+    toolPrefetchPlugin(),
     wasmPreviewPlugin(),
     tailwindcss(),
-    tanstackRouter({ target: 'react', autoCodeSplitting: false }),
+    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),
     seoPagesPlugin(),
     sentryVitePlugin({

@@ -738,85 +738,80 @@ export class FFmpegProcessor {
     })
 
     const format = options.format ?? 'original'
-    let outputFileName: string
-    let command: string[]
-    let outputMimeType: string
+    const extension =
+      format === 'original'
+        ? this.getFileExtension(this.inputFileName ?? '').toLowerCase()
+        : format
+    const outputFileName = `trimmed.${extension}`
+    const outputMimeType =
+      format === 'original'
+        ? (this.inputFile?.type ?? 'video/mp4')
+        : `image/${format}`
+    const seconds = (time: string) =>
+      time.split(':').reduce((sum, part) => sum * 60 + Number(part), 0)
+    const duration = seconds(options.endTime) - seconds(options.startTime)
+    const command = [
+      '-ss',
+      options.startTime,
+      '-threads',
+      '4',
+      '-i',
+      this.inputFileName ?? '',
+      '-t',
+      String(duration),
+      '-filter_threads',
+      '1',
+    ]
 
-    // Determine output format and filename
-    if (format === 'gif') {
-      outputFileName = 'trimmed.gif'
-      outputMimeType = 'image/gif'
-    } else if (format === 'webp') {
-      outputFileName = 'trimmed.webp'
-      outputMimeType = 'image/webp'
-    } else {
-      outputFileName = `trimmed.${this.getFileExtension(this.inputFileName ?? '')}`
-      outputMimeType = this.inputFile?.type ?? 'video/mp4'
-    }
-
-    // Build FFmpeg command based on format
-    if (format === 'gif') {
-      command = [
-        '-i',
-        this.inputFileName ?? '',
-        '-ss',
-        options.startTime,
-        '-to',
-        options.endTime,
-        '-vf',
-        'fps=15',
-        '-c:v',
-        'gif',
-      ]
-
-      // Add loop option if specified
-      if (options.loop === true) {
-        command.push('-loop', '0') // 0 = infinite loop
+    if (format === 'gif' || format === 'webp') {
+      command.push('-an')
+      if (format === 'gif') {
+        command.push('-vf', 'fps=15', '-c:v', 'gif')
+      } else {
+        command.push(
+          '-vf',
+          'fps=20',
+          '-c:v',
+          'libwebp',
+          '-lossless',
+          '0',
+          '-compression_level',
+          '6',
+          '-quality',
+          '80',
+          '-preset',
+          'default',
+        )
       }
-
-      command.push('-f', 'gif', outputFileName)
-    } else if (format === 'webp') {
-      command = [
-        '-i',
-        this.inputFileName ?? '',
-        '-ss',
-        options.startTime,
-        '-to',
-        options.endTime,
-        '-vf',
-        'fps=20',
+      if (options.loop) command.push('-loop', '0')
+      command.push('-f', format)
+    } else if (extension === 'webm') {
+      command.push(
         '-c:v',
-        'libwebp',
-        '-lossless',
-        '0',
-        '-compression_level',
-        '6',
-        '-quality',
-        '80',
+        'libvpx',
+        '-deadline',
+        'realtime',
+        '-cpu-used',
+        '4',
+        '-c:a',
+        'libopus',
+      )
+    } else if (extension === 'avi') {
+      command.push('-c:v', 'mpeg4', '-q:v', '4', '-c:a', 'libmp3lame')
+    } else if (['mp4', 'mov', 'm4v', 'mkv'].includes(extension)) {
+      // Re-encode so cuts between keyframes retain video from the chosen start.
+      command.push(
+        '-c:v',
+        'libx264',
         '-preset',
-        'default',
-      ]
-
-      // Add loop option if specified
-      if (options.loop === true) {
-        command.push('-loop', '0') // 0 = infinite loop
-      }
-
-      command.push('-f', 'webp', outputFileName)
-    } else {
-      // Original format - use stream copy for speed
-      command = [
-        '-i',
-        this.inputFileName ?? '',
-        '-ss',
-        options.startTime,
-        '-to',
-        options.endTime,
-        '-c',
-        'copy',
-        outputFileName,
-      ]
+        'veryfast',
+        '-crf',
+        '22',
+        '-c:a',
+        'aac',
+      )
     }
+    command.push('-threads', '4', outputFileName)
 
     console.log('🎬 FFmpeg: Executing trim command', { command, format })
     try {

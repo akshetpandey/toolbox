@@ -4,7 +4,7 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import {
   invalidateWorkspaceState,
   useWorkspaceState,
@@ -12,7 +12,6 @@ import {
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
-import { useInitImageMagick } from '@/hooks/useInitImageMagick'
 import {
   ImageMagickProcessor,
   type ImageMetadata,
@@ -103,8 +102,22 @@ function readImageDimensions(preview: string) {
   })
 }
 
+const pendingImageDetails = new WeakMap<
+  File,
+  { magick: Promise<ImageMetadata>; exif: Promise<ExifMetadata> }
+>()
+function imageDetails(image: ImageFile, processor: ImageMagickProcessor) {
+  const pending = pendingImageDetails.get(image.file)
+  if (pending) return pending
+  const details = {
+    magick: processor.extractMetadata(image),
+    exif: extractExifMetadata(image.file),
+  }
+  pendingImageDetails.set(image.file, details)
+  return details
+}
+
 function ImageToolsLayout() {
-  const { isInitialized, isInitializing, error, init } = useInitImageMagick()
   const { isProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
@@ -146,6 +159,36 @@ function ImageToolsLayout() {
     ) ?? imageTabs[0]
   const isBatch = activeTab.value === 'batch'
 
+  const showMetadata = activeTab.value === 'metadata'
+  const selected = selectedFiles[0]
+  useEffect(() => {
+    if (!showMetadata || !selected) return
+    let active = true
+    const request = selection.activeRequest
+    const isCurrent = () => active && selection.activeRequest === request
+    const job = imageDetails(selected, imageMagickProcessor)
+    setIsExtractingExif(true)
+    void job.magick.then((details) => {
+      if (isCurrent()) setMetadata({ [selected.name]: details })
+    })
+    void job.exif.then((details) => {
+      if (isCurrent()) {
+        setExifMetadata(details)
+        setIsExtractingExif(false)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [
+    showMetadata,
+    selected,
+    selection,
+    imageMagickProcessor,
+    setMetadata,
+    setExifMetadata,
+  ])
+
   // Handle tab changes
   const handleTabChange = useCallback(
     (value: string) => {
@@ -179,8 +222,6 @@ function ImageToolsLayout() {
           ? await readImageDimensions(preview).catch(() => null)
           : null
         if (!isCurrent()) return
-        if (!isInitialized) await init()
-        if (!isCurrent()) return
         if (!dimensions) {
           const converted = await imageMagickProcessor.previewImage(file)
           if (!isCurrent()) return
@@ -209,19 +250,6 @@ function ImageToolsLayout() {
         setIsExtractingExif(false)
         invalidateImageWork()
         setIsPreparing(false)
-
-        const isSelected = () => selection.activeRequest === request
-        const readMetadata = imageMagickProcessor
-          .extractMetadata(imageFile)
-          .then((meta) => {
-            if (isSelected()) setMetadata({ [file.name]: meta })
-          })
-        const readExif = extractExifMetadata(file, (extracting) => {
-          if (isSelected()) setIsExtractingExif(extracting)
-        }).then((exif) => {
-          if (isSelected()) setExifMetadata(exif)
-        })
-        await Promise.allSettled([readMetadata, readExif])
       } catch {
         if (isCurrent())
           setSelectionError('This image could not be opened. Try another file.')
@@ -232,8 +260,6 @@ function ImageToolsLayout() {
     },
     [
       imageMagickProcessor,
-      isInitialized,
-      init,
       selection,
       setSelectedFiles,
       setMetadata,
@@ -264,7 +290,6 @@ function ImageToolsLayout() {
     selectedFile: selectedFiles[0] || null,
     batchFiles,
     clearBatchFiles: () => replaceBatchFiles([]),
-    initImageTools: init,
     metadata,
     exifMetadata,
     isExtractingExif,
@@ -368,7 +393,7 @@ function ImageToolsLayout() {
         fileUploadComponent={
           <div className="space-y-3">
             {imageFileUpload}
-            {((!isBatch && isPreparing) || isInitializing) && (
+            {!isBatch && isPreparing && (
               <p
                 role="status"
                 className="flex items-center gap-2 text-sm text-muted-foreground"
@@ -377,9 +402,9 @@ function ImageToolsLayout() {
                 Preparing image tools…
               </p>
             )}
-            {(uploadError ?? error) && (
+            {uploadError && (
               <p role="alert" className="text-sm text-destructive">
-                {uploadError ?? 'Image tools could not load. Try again.'}
+                {uploadError}
               </p>
             )}
           </div>

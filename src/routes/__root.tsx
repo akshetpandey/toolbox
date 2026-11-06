@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
 import { ToolSidebar } from '@/components/ToolSidebar'
+import { useToolPrefetch } from '@/hooks/useToolPrefetch'
 import { getPage, notFoundPage, pageMeta } from '@/lib/seo'
 
 export const Route = createRootRoute({
@@ -26,6 +27,7 @@ export const Route = createRootRoute({
 
 function RootDocument() {
   const { pathname } = useLocation()
+  useToolPrefetch(pathname)
   const page = getPage(pathname)
   const previousPath = useRef(pathname)
   useEffect(() => {

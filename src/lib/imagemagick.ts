@@ -1,11 +1,4 @@
-import type {
-  ImageMagick,
-  MagickFormat,
-  DitherMethod,
-  ColorSpace,
-  QuantizeSettings,
-  MagickGeometry,
-} from '@imagemagick/magick-wasm'
+import type { MagickFormat } from '@imagemagick/magick-wasm'
 import { LibImageQuantProcessor } from './libimagequant'
 import type { ImageFile } from './shared'
 
@@ -13,48 +6,23 @@ function canWriteOriginal(format: MagickFormat) {
   return format !== 'HEIC' && format !== 'HEIF'
 }
 
-// Dynamic imports for ImageMagick
-let _ImageMagick: typeof ImageMagick | null = null
-let _MagickFormat: typeof MagickFormat | null = null
-let _DitherMethod: typeof DitherMethod | null = null
-let _ColorSpace: typeof ColorSpace | null = null
-let _QuantizeSettings: typeof QuantizeSettings | null = null
-let _MagickGeometry: typeof MagickGeometry | null = null
+type MagickModule = typeof import('@imagemagick/magick-wasm')
+let loadingMagick: Promise<MagickModule> | undefined
 
-async function initImageMagick() {
-  if (
-    !_ImageMagick ||
-    !_MagickFormat ||
-    !_DitherMethod ||
-    !_ColorSpace ||
-    !_QuantizeSettings ||
-    !_MagickGeometry
-  ) {
-    console.log('🖼️ ImageMagick: Loading ImageMagick library...')
-    const {
-      ImageMagick,
-      MagickFormat,
-      DitherMethod,
-      ColorSpace,
-      QuantizeSettings,
-      MagickGeometry,
-    } = await import('@imagemagick/magick-wasm')
-    _ImageMagick = ImageMagick
-    _MagickFormat = MagickFormat
-    _DitherMethod = DitherMethod
-    _ColorSpace = ColorSpace
-    _QuantizeSettings = QuantizeSettings
-    _MagickGeometry = MagickGeometry
-    console.log('🖼️ ImageMagick: Library loaded successfully')
-  }
-  return {
-    ImageMagick: _ImageMagick,
-    MagickFormat: _MagickFormat,
-    DitherMethod: _DitherMethod,
-    ColorSpace: _ColorSpace,
-    QuantizeSettings: _QuantizeSettings,
-    MagickGeometry: _MagickGeometry,
-  }
+function loadImageMagick() {
+  loadingMagick ??= Promise.all([
+    import('@imagemagick/magick-wasm'),
+    import('@imagemagick/magick-wasm/magick.wasm?url'),
+  ])
+    .then(async ([magick, wasm]) => {
+      await magick.initializeImageMagick(new URL(wasm.default, import.meta.url))
+      return magick
+    })
+    .catch((error: unknown) => {
+      loadingMagick = undefined
+      throw error
+    })
+  return loadingMagick
 }
 
 export interface ImageMetadata {
@@ -92,7 +60,7 @@ export interface ImageTransformOptions {
 export class ImageMagickProcessor {
   private libImageQuantProcessor: LibImageQuantProcessor
 
-  constructor() {
+  constructor(private readonly load = loadImageMagick) {
     this.libImageQuantProcessor = new LibImageQuantProcessor()
   }
 
@@ -148,7 +116,7 @@ export class ImageMagickProcessor {
       fileName: imageFile.name,
     })
     try {
-      const { ImageMagick } = await initImageMagick()
+      const { ImageMagick } = await this.load()
 
       const arrayBuffer = await imageFile.file.arrayBuffer()
       const uint8Array = new Uint8Array(arrayBuffer)
@@ -191,7 +159,7 @@ export class ImageMagickProcessor {
       options,
     })
 
-    const { ImageMagick, MagickGeometry } = await initImageMagick()
+    const { ImageMagick, MagickGeometry } = await this.load()
     const bytes = new Uint8Array(await imageFile.file.arrayBuffer())
     const geometry = new MagickGeometry(options.width, options.height)
     geometry.ignoreAspectRatio = !options.maintainAspectRatio
@@ -219,7 +187,7 @@ export class ImageMagickProcessor {
   }
 
   async previewImage(file: File) {
-    const { ImageMagick } = await initImageMagick()
+    const { ImageMagick } = await this.load()
     const bytes = new Uint8Array(await file.arrayBuffer())
     return ImageMagick.read(bytes, (image) => {
       image.autoOrient()
@@ -234,7 +202,7 @@ export class ImageMagickProcessor {
   }
 
   async transformImage(file: File, options: ImageTransformOptions) {
-    const { ImageMagick, MagickGeometry } = await initImageMagick()
+    const { ImageMagick, MagickGeometry } = await this.load()
     const bytes = new Uint8Array(await file.arrayBuffer())
     return ImageMagick.readCollection(bytes, (images) => {
       const source = images[0].format
@@ -279,8 +247,7 @@ export class ImageMagickProcessor {
   }
 
   async removeBackgroundColor(file: File, color: string, tolerance: number) {
-    const { ImageMagick, MagickColor, Percentage } =
-      await import('@imagemagick/magick-wasm')
+    const { ImageMagick, MagickColor, Percentage } = await this.load()
     const bytes = new Uint8Array(await file.arrayBuffer())
     return ImageMagick.read(bytes, (image) => {
       image.autoOrient()
@@ -297,8 +264,7 @@ export class ImageMagickProcessor {
     if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1) {
       throw new Error('Enter a valid file size limit.')
     }
-    const { ImageMagick, AlphaAction, MagickColors } =
-      await import('@imagemagick/magick-wasm')
+    const { ImageMagick, AlphaAction, MagickColors } = await this.load()
     const bytes = new Uint8Array(await file.arrayBuffer())
     return ImageMagick.read(bytes, (image) => {
       image.autoOrient()
@@ -370,7 +336,7 @@ export class ImageMagickProcessor {
       options,
     })
 
-    const { ImageMagick } = await initImageMagick()
+    const { ImageMagick } = await this.load()
 
     const arrayBuffer = await imageFile.file.arrayBuffer()
     const uint8Array = new Uint8Array(arrayBuffer)
@@ -440,7 +406,7 @@ export class ImageMagickProcessor {
     }
 
     // Preserve the original encoding and all animation frames.
-    const { ImageMagick } = await initImageMagick()
+    const { ImageMagick } = await this.load()
     const bytes = new Uint8Array(await imageFile.file.arrayBuffer())
     return ImageMagick.readCollection(bytes, (images) => {
       const source = images[0].format

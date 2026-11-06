@@ -16,6 +16,8 @@ const { mockCallMain, mockFs } = vi.hoisted(() => {
     rmdir: vi.fn(),
     isDir: vi.fn(),
     isFile: vi.fn(),
+    cwd: vi.fn(() => '/'),
+    chdir: vi.fn(),
   }
   return { mockCallMain, mockFs }
 })

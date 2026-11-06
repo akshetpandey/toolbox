@@ -33,6 +33,7 @@ const { mockResize, mockWrite, mockImage, mockCompressPNG, mockDispose } =
   })
 
 vi.mock('@imagemagick/magick-wasm', () => ({
+  initializeImageMagick: vi.fn().mockResolvedValue(undefined),
   ImageMagick: {
     readCollection: vi.fn(
       (_data: Uint8Array, cb: (images: (typeof mockImage)[]) => unknown) =>

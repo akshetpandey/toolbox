@@ -13,7 +13,7 @@ import './styles.css'
 // Create a new router instance
 const router = createRouter({
   routeTree,
-  defaultPreload: 'intent',
+  defaultPreload: false,
   scrollRestoration: true,
   defaultPreloadStaleTime: 0,
 })

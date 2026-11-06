@@ -41,7 +41,7 @@ export interface ExtractedFile {
 
 export type CompressionFormat = '7z' | 'zip' | 'tar' | 'gzip'
 
-let extractionId = 0
+let archiveOperationId = 0
 
 function runSevenZip(sevenZip: SevenZipModule, args: string[]) {
   // The runtime can return an exit code or throw a WASM exception pointer.
@@ -52,7 +52,7 @@ function runSevenZip(sevenZip: SevenZipModule, args: string[]) {
     status = error
   }
   if (status !== undefined && status !== 0) {
-    throw new Error('7-Zip could not open or extract this archive', {
+    throw new Error('7-Zip could not process this archive', {
       cause: status,
     })
   }
@@ -87,120 +87,81 @@ export class ArchiveProcessor {
     archiveName = 'archive',
     onProgress?: (progress: number) => void,
   ): Promise<Uint8Array> {
-    if (!this.isInitialized) {
+    const sevenZip = this.sevenZip
+    if (!this.isInitialized || !sevenZip) {
       throw new Error('ArchiveProcessor not initialized')
     }
-    if (!this.sevenZip) {
-      throw new Error('SevenZip module not initialized')
-    }
 
-    console.log(`🗜️ ArchiveProcessor: Starting compression to ${format}`, {
-      fileCount: files.length,
-      archiveName,
-    })
+    const { FS } = sevenZip
+    const directory = `/toolbox-create-${++archiveOperationId}`
+    const source = `${directory}/source`
+    const basename = archiveName.replaceAll(/[\\/]/gu, '_')
+    const output = `${directory}/${basename}.${this.getExtension(format)}`
+    const entries = new Set<string>()
+    const folders = new Set<string>()
+    const inputs: string[] = []
 
-    const extension = this.getExtension(format)
-    const fullArchiveName = `${archiveName}.${extension}`
-
+    FS.mkdir(directory)
     try {
-      // Write input files to the virtual file system
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        const fileData = new Uint8Array(await file.file.arrayBuffer())
-
-        // Create directory structure if needed
-        const parts = file.name.split('/')
-        if (parts.length > 1) {
-          let currentPath = ''
-          for (let j = 0; j < parts.length - 1; j++) {
-            currentPath += parts[j]
-            try {
-              this.sevenZip.FS.mkdir(currentPath)
-            } catch {
-              // Directory might already exist
-            }
-            currentPath += '/'
+      FS.mkdir(source)
+      for (const [index, file] of files.entries()) {
+        const parts = file.name.replaceAll('\\', '/').split('/')
+        if (parts.some((part) => !part || part === '.' || part === '..')) {
+          throw new Error('Choose files with valid archive paths.')
+        }
+        let folder = source
+        for (const part of parts.slice(0, -1)) {
+          folder = `${folder}/${part}`
+          if (!folders.has(folder)) {
+            FS.mkdir(folder)
+            folders.add(folder)
           }
         }
 
-        this.sevenZip.FS.writeFile(file.name, fileData)
-
-        if (onProgress) {
-          onProgress(Math.round(((i + 1) / files.length) * 50)) // 50% for writing files
+        const original = parts.join('/')
+        const dot = original.lastIndexOf('.')
+        const split =
+          dot > original.lastIndexOf('/') + 1 ? dot : original.length
+        let entry = original
+        let copy = 2
+        while (entries.has(entry.toLowerCase())) {
+          entry = `${original.slice(0, split)} (${copy++})${original.slice(split)}`
         }
+        entries.add(entry.toLowerCase())
+        inputs.push(entry)
+        FS.writeFile(
+          `${source}/${entry}`,
+          new Uint8Array(await file.file.arrayBuffer()),
+        )
+        onProgress?.(Math.round(((index + 1) / files.length) * 50))
       }
 
-      // Create the archive
-      if (format === 'gzip') {
-        // For gzip, create a tar archive first, then compress it
-        const tarName = `${archiveName}.tar`
-        const tarArgs = ['a', '-ttar', tarName, ...files.map((f) => f.name)]
-        console.log(
-          '🗜️ ArchiveProcessor: Creating TAR archive first for gzip',
-          tarArgs,
-        )
-        this.sevenZip.callMain(tarArgs)
-
-        // Now compress the tar file with gzip
-        const gzipArgs = ['a', '-tgzip', fullArchiveName, tarName]
-        console.log('🗜️ ArchiveProcessor: Compressing TAR with gzip', gzipArgs)
-        this.sevenZip.callMain(gzipArgs)
-
-        // Clean up the intermediate tar file
-        try {
-          this.sevenZip.FS.unlink(tarName)
-        } catch {
-          // File might not exist
-        }
-      } else {
-        const compressionArgs = this.getCompressionArgs(
-          format,
-          fullArchiveName,
-          files,
-        )
-        console.log(
-          '🗜️ ArchiveProcessor: Running compression command',
-          compressionArgs,
-        )
-
-        this.sevenZip.callMain(compressionArgs)
-      }
-
-      if (onProgress) {
-        onProgress(100)
-      }
-
-      // Read the created archive
-      const archiveData = this.sevenZip.FS.readFile(fullArchiveName)
-
-      // Clean up input files
-      files.forEach((file) => {
-        if (!this.sevenZip) {
-          return
-        }
-        try {
-          this.sevenZip.FS.unlink(file.name)
-        } catch {
-          // File might not exist
-        }
-      })
-
-      // Clean up archive file
+      // Only change the working directory during the synchronous command.
+      // Use literal paths so names containing switches or wildcards are safe.
+      const cwd = FS.cwd()
+      FS.chdir(source)
       try {
-        this.sevenZip.FS.unlink(fullArchiveName)
-      } catch {
-        // File might not exist
+        if (format === 'gzip') {
+          const tar = `${directory}/${basename}.tar`
+          runSevenZip(sevenZip, ['a', '-ttar', '-spd', '--', tar, ...inputs])
+          runSevenZip(sevenZip, ['a', '-tgzip', '-spd', '--', output, tar])
+        } else {
+          runSevenZip(sevenZip, [
+            'a',
+            `-t${format}`,
+            '-spd',
+            '--',
+            output,
+            ...inputs,
+          ])
+        }
+      } finally {
+        FS.chdir(cwd)
       }
-
-      console.log('🗜️ ArchiveProcessor: Compression completed successfully', {
-        originalSize: files.reduce((sum, file) => sum + file.size, 0),
-        compressedSize: archiveData.length,
-      })
-
-      return archiveData
-    } catch (error) {
-      console.error('🗜️ ArchiveProcessor: Compression failed:', error)
-      throw error
+      onProgress?.(100)
+      return FS.readFile(output)
+    } finally {
+      removeArchiveDirectory(FS, directory)
     }
   }
 
@@ -216,7 +177,7 @@ export class ArchiveProcessor {
     }
 
     const { FS } = sevenZip
-    const directory = `/toolbox-extract-${++extractionId}`
+    const directory = `/toolbox-extract-${++archiveOperationId}`
     const source = `${directory}/source`
     const output = `${directory}/output`
     const basename = archiveName.split(/[\\/]/u).pop()
@@ -305,29 +266,6 @@ export class ArchiveProcessor {
         return 'tar.gz'
       default:
         return '7z'
-    }
-  }
-
-  private getCompressionArgs(
-    format: CompressionFormat,
-    archiveName: string,
-    files: ArchiveFile[],
-  ): string[] {
-    const fileNames = files.map((f) => f.name)
-
-    switch (format) {
-      case '7z':
-        return ['a', '-t7z', archiveName, ...fileNames]
-      case 'zip':
-        return ['a', '-tzip', archiveName, ...fileNames]
-      case 'tar':
-        return ['a', '-ttar', archiveName, ...fileNames]
-      case 'gzip':
-        // For gzip, use the gzip format type
-        // This creates a tar.gz file
-        return ['a', '-tgzip', archiveName, ...fileNames]
-      default:
-        return ['a', '-t7z', archiveName, ...fileNames]
     }
   }
 }

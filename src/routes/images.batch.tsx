@@ -32,8 +32,7 @@ function uniqueName(name: string, usedNames: Set<string>) {
 }
 
 function BatchImages() {
-  const { batchFiles, imageMagickProcessor, clearBatchFiles, initImageTools } =
-    useImageTools()
+  const { batchFiles, imageMagickProcessor, clearBatchFiles } = useImageTools()
   const { isProcessing } = useProcessing()
   const beginOperation = useFileOperation(batchFiles[0])
   const { result, setResult, clearResult } = useToolResult(
@@ -75,7 +74,6 @@ function BatchImages() {
     const failed: string[] = []
     try {
       setProgress('Loading image tools…')
-      await initImageTools()
       for (const [index, file] of batchFiles.entries()) {
         if (!operation.isCurrent()) return
         setProgress(`Processing image ${index + 1} of ${batchFiles.length}…`)

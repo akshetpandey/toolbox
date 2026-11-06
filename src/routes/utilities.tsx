@@ -4,7 +4,7 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   invalidateWorkspaceState,
   useWorkspaceState,
@@ -124,6 +124,9 @@ function UtilitiesLayout() {
   const { isProcessing, setIsProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
+  const currentTab = location.pathname.includes('/metadata')
+    ? 'metadata'
+    : 'hash'
   const [selectedFile, updateSelectedFile] =
     useWorkspaceState<UploadedFile | null>('utilities.file', null)
   const selectedFileRef = useRef<UploadedFile | null>(selectedFile)
@@ -197,21 +200,25 @@ function UtilitiesLayout() {
     analysis.listeners.add(updateProgress)
     updateProgress()
     setAnalysisError(false)
+    const needsExif = file.type.startsWith('image/')
     const complete =
-      analysis.hashes &&
-      analysis.metadata &&
-      (!file.type.startsWith('image/') || analysis.exif !== undefined)
+      currentTab === 'hash'
+        ? analysis.hashes !== undefined
+        : analysis.metadata !== undefined &&
+          (!needsExif || analysis.exif !== undefined)
     if (!complete) setIsProcessing(true)
     void (async () => {
       try {
-        const hashes = analysis.hashes ?? (await readHashes(file, analysis))
-        if (!isCurrent()) return
-        setFileHashes(hashes)
+        if (currentTab === 'hash') {
+          const hashes = analysis.hashes ?? (await readHashes(file, analysis))
+          if (isCurrent()) setFileHashes(hashes)
+          return
+        }
         const metadata =
           analysis.metadata ?? (await readMetadata(file, analysis))
         if (!isCurrent()) return
         setFileMetadata(metadata)
-        if (file.type.startsWith('image/')) {
+        if (needsExif) {
           const exif = analysis.exif ?? (await readExif(file, analysis))
           if (!isCurrent()) return
           setExifMetadata(exif)
@@ -241,20 +248,13 @@ function UtilitiesLayout() {
     }
   }, [
     selectedFile,
+    currentTab,
     analysisAttempt,
     setFileHashes,
     setFileMetadata,
     setExifMetadata,
     setIsProcessing,
   ])
-
-  // Determine current tab from URL path
-  const currentTab = useMemo(() => {
-    const path = location.pathname
-    if (path.includes('/hash')) return 'hash'
-    if (path.includes('/metadata')) return 'metadata'
-    return 'hash' // default
-  }, [location.pathname])
 
   // Handle tab changes
   const handleTabChange = useCallback(

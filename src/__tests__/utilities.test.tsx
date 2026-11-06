@@ -47,7 +47,7 @@ vi.mock('@/lib/shared', async (importOriginal) => ({
 
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),
-  useLocation: () => ({ pathname: '/utilities/hash' }),
+  useLocation: () => ({ pathname: `/utilities/${currentTool}` }),
   useNavigate: () => vi.fn(),
   Outlet: () => <Results />,
 }))
@@ -116,8 +116,20 @@ function selectFile(name: string, type = 'text/plain') {
 }
 
 let view: ReturnType<typeof render>
+let currentTool: 'hash' | 'metadata'
+
+function openTool(tool: typeof currentTool) {
+  currentTool = tool
+  const Layout = UtilitiesRoute.options.component!
+  view.rerender(
+    <ProcessingProvider>
+      <Layout />
+    </ProcessingProvider>,
+  )
+}
 
 beforeEach(() => {
+  currentTool = 'hash'
   resetWorkspaceState()
   vi.resetAllMocks()
   calculateFileHashes.mockImplementation((file) =>
@@ -190,20 +202,18 @@ describe('utility file selection', () => {
 
     expect(screen.getByText('second.txt-md5')).toBeTruthy()
     expect(screen.queryByText('first-md5')).toBeNull()
-    expect(screen.getByText('second.txt metadata')).toBeTruthy()
-    expect(extractFileMetadata).toHaveBeenCalledTimes(1)
+    expect(extractFileMetadata).not.toHaveBeenCalled()
   })
 
   test('old file metadata cannot replace newer metadata or start stale EXIF extraction', async () => {
+    openTool('metadata')
     const first = deferred<FileMetadata>()
     const second = deferred<FileMetadata>()
     extractFileMetadata
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise)
     selectFile('first.jpg', 'image/jpeg')
-    await screen.findByText('first.jpg-md5')
     selectFile('second.jpg', 'image/jpeg')
-    await screen.findByText('second.jpg-md5')
 
     await act(async () => {
       first.resolve(metadata('first'))
@@ -223,10 +233,10 @@ describe('utility file selection', () => {
   })
 
   test('metadata that finishes after the replacement cannot overwrite its completed results', async () => {
+    openTool('metadata')
     const first = deferred<FileMetadata>()
     extractFileMetadata.mockReturnValueOnce(first.promise)
     selectFile('first.jpg', 'image/jpeg')
-    await screen.findByText('first.jpg-md5')
     selectFile('second.jpg', 'image/jpeg')
     await screen.findByText('second.jpg metadata')
     await act(async () => {
@@ -239,6 +249,7 @@ describe('utility file selection', () => {
   })
 
   test('out-of-order EXIF completion cannot change current results or loading indicators', async () => {
+    openTool('metadata')
     const first = deferred<ExifMetadata>()
     const second = deferred<ExifMetadata>()
     extractExifMetadata
@@ -287,13 +298,13 @@ describe('utility file selection', () => {
       if (stage === 'exif')
         extractExifMetadata.mockReturnValueOnce(pendingExif.promise)
 
+      if (stage !== 'hash') openTool('metadata')
       selectFile('cleared.jpg', 'image/jpeg')
-      if (stage !== 'hash') await screen.findByText('cleared.jpg-md5')
       if (stage === 'exif') await screen.findByText('cleared.jpg metadata')
       fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
 
       await act(async () => {
-        calculateFileHashes.mock.calls[0][1]?.(95)
+        calculateFileHashes.mock.calls[0]?.[1]?.(95)
         extractExifMetadata.mock.calls[0]?.[1]?.(true)
         pendingHashes.resolve(hashes('cleared'))
         pendingMetadata.resolve(metadata('cleared'))
@@ -359,7 +370,21 @@ test('copies complete digests and announces explicit verification results', asyn
   ).toBe('polite')
 })
 
+test('opening the other tool analyzes the retained file only for that tool', async () => {
+  selectFile('retained.jpg', 'image/jpeg')
+  await screen.findByText('retained.jpg-md5')
+  expect(extractFileMetadata).not.toHaveBeenCalled()
+  expect(extractExifMetadata).not.toHaveBeenCalled()
+  openTool('metadata')
+  await screen.findByText('retained.jpg metadata')
+  expect(extractExifMetadata).toHaveBeenCalledOnce()
+  openTool('hash')
+  expect(screen.getByText('retained.jpg-md5')).toBeTruthy()
+  expect(calculateFileHashes).toHaveBeenCalledOnce()
+})
+
 test('non-image metadata describes its scope without an irrelevant EXIF panel or cleanup action', async () => {
+  openTool('metadata')
   selectFile('sample.txt')
   await screen.findByText('sample.txt metadata')
   expect(
@@ -377,6 +402,7 @@ test('non-image metadata describes its scope without an irrelevant EXIF panel or
 })
 
 test('completed file analysis survives leaving and returning to the workspace', async () => {
+  openTool('metadata')
   selectFile('retained.txt')
   await screen.findByText('retained.txt metadata')
   cleanup()
@@ -387,11 +413,12 @@ test('completed file analysis survives leaving and returning to the workspace', 
     </ProcessingProvider>,
   )
   expect(screen.getByText('retained.txt')).toBeTruthy()
-  expect(screen.getByText('retained.txt-md5')).toBeTruthy()
+  expect(calculateFileHashes).not.toHaveBeenCalled()
   expect(screen.getByText('retained.txt metadata')).toBeTruthy()
 })
 
 test('metadata removal for a replaced file cannot download or finish replacement analysis', async () => {
+  openTool('metadata')
   const stripping = deferred<Blob>()
   stripFileMetadata.mockReturnValueOnce(stripping.promise)
   selectFile('first.jpg', 'image/jpeg')
@@ -399,8 +426,8 @@ test('metadata removal for a replaced file cannot download or finish replacement
   fireEvent.click(
     screen.getByRole('button', { name: 'Download Without Metadata' }),
   )
-  const replacementHashes = deferred<FileHashes>()
-  calculateFileHashes.mockReturnValueOnce(replacementHashes.promise)
+  const replacementMetadata = deferred<FileMetadata>()
+  extractFileMetadata.mockReturnValueOnce(replacementMetadata.promise)
   selectFile('second.jpg', 'image/jpeg')
   expect(screen.getByLabelText('Processing').textContent).toBe('true')
   await act(async () => {
@@ -412,8 +439,8 @@ test('metadata removal for a replaced file cannot download or finish replacement
   expect(screen.getByLabelText('Processing').textContent).toBe('true')
 
   await act(async () => {
-    replacementHashes.resolve(hashes('second.jpg'))
-    await replacementHashes.promise
+    replacementMetadata.resolve(metadata('second.jpg'))
+    await replacementMetadata.promise
   })
   await screen.findByText('second.jpg metadata')
   fireEvent.click(
@@ -425,6 +452,7 @@ test('metadata removal for a replaced file cannot download or finish replacement
 })
 
 test('metadata removal completing after navigation cannot publish a stale result or download', async () => {
+  openTool('metadata')
   const stripping = deferred<Blob>()
   stripFileMetadata.mockReturnValueOnce(stripping.promise)
   selectFile('first.jpg', 'image/jpeg')
@@ -463,8 +491,8 @@ describe('unfinished utility workspaces', () => {
         extractFileMetadata.mockReturnValueOnce(pendingMetadata.promise)
       if (stage === 'exif')
         extractExifMetadata.mockReturnValueOnce(pendingExif.promise)
+      if (stage !== 'hash') openTool('metadata')
       selectFile('pending.jpg', 'image/jpeg')
-      if (stage !== 'hash') await screen.findByText('pending.jpg-md5')
       if (stage === 'exif') await screen.findByText('pending.jpg metadata')
       if (stage === 'hash')
         act(() => calculateFileHashes.mock.calls[0][1]?.(42))
@@ -492,9 +520,9 @@ describe('unfinished utility workspaces', () => {
           pendingExif.promise,
         ])
       })
-      await screen.findByText('pending.jpg metadata')
+      if (stage === 'hash') await screen.findByText('pending.jpg-md5')
+      else await screen.findByText('pending.jpg metadata')
       if (stage === 'exif') await screen.findByText('Retained camera')
-      expect(screen.getByText('pending.jpg-md5')).toBeTruthy()
       expect(screen.getByLabelText('Processing').textContent).toBe('false')
       restored.rerender(
         <StrictMode>
@@ -503,9 +531,15 @@ describe('unfinished utility workspaces', () => {
           </ProcessingProvider>
         </StrictMode>,
       )
-      expect(calculateFileHashes).toHaveBeenCalledOnce()
-      expect(extractFileMetadata).toHaveBeenCalledOnce()
-      expect(extractExifMetadata).toHaveBeenCalledOnce()
+      expect(calculateFileHashes).toHaveBeenCalledTimes(
+        stage === 'hash' ? 1 : 0,
+      )
+      expect(extractFileMetadata).toHaveBeenCalledTimes(
+        stage === 'hash' ? 0 : 1,
+      )
+      expect(extractExifMetadata).toHaveBeenCalledTimes(
+        stage === 'hash' ? 0 : 1,
+      )
     },
   )
 
@@ -521,8 +555,8 @@ describe('unfinished utility workspaces', () => {
         extractFileMetadata.mockReturnValueOnce(pendingMetadata.promise)
       if (stage === 'exif')
         extractExifMetadata.mockReturnValueOnce(pendingExif.promise)
+      if (stage !== 'hash') openTool('metadata')
       selectFile('away.jpg', 'image/jpeg')
-      if (stage !== 'hash') await screen.findByText('away.jpg-md5')
       if (stage === 'exif') await screen.findByText('away.jpg metadata')
       cleanup()
       await act(async () => {
@@ -543,12 +577,18 @@ describe('unfinished utility workspaces', () => {
           <Layout />
         </ProcessingProvider>,
       )
-      await screen.findByText('away.jpg metadata')
+      if (stage === 'hash') await screen.findByText('away.jpg-md5')
+      else await screen.findByText('away.jpg metadata')
       if (stage === 'exif') await screen.findByText('Away camera')
-      expect(screen.getByText('away.jpg-md5')).toBeTruthy()
-      expect(calculateFileHashes).toHaveBeenCalledOnce()
-      expect(extractFileMetadata).toHaveBeenCalledOnce()
-      expect(extractExifMetadata).toHaveBeenCalledOnce()
+      expect(calculateFileHashes).toHaveBeenCalledTimes(
+        stage === 'hash' ? 1 : 0,
+      )
+      expect(extractFileMetadata).toHaveBeenCalledTimes(
+        stage === 'hash' ? 0 : 1,
+      )
+      expect(extractExifMetadata).toHaveBeenCalledTimes(
+        stage === 'hash' ? 0 : 1,
+      )
     },
   )
 
@@ -574,7 +614,7 @@ describe('unfinished utility workspaces', () => {
         act(() => calculateFileHashes.mock.calls[1][1]?.(25))
       }
       await act(async () => {
-        calculateFileHashes.mock.calls[0][1]?.(95)
+        calculateFileHashes.mock.calls[0]?.[1]?.(95)
         first.resolve(hashes('old.jpg'))
         await first.promise
       })
@@ -598,18 +638,17 @@ describe('unfinished utility workspaces', () => {
           replacement.resolve(hashes('replacement.txt'))
           await replacement.promise
         })
-        await screen.findByText('replacement.txt metadata')
         expect(screen.getByText('replacement.txt-md5')).toBeTruthy()
-        expect(extractFileMetadata).toHaveBeenCalledOnce()
+        expect(extractFileMetadata).not.toHaveBeenCalled()
       }
     },
   )
 
   test('a failed stage can be retried without repeating completed analysis', async () => {
+    openTool('metadata')
     extractExifMetadata.mockRejectedValueOnce(new Error('WASM unavailable'))
     selectFile('retry.jpg', 'image/jpeg')
     await screen.findByText(/File analysis could not be completed/)
-    expect(screen.getByText('retry.jpg-md5')).toBeTruthy()
     expect(screen.getByText('retry.jpg metadata')).toBeTruthy()
     extractExifMetadata.mockResolvedValueOnce({ Camera: 'Recovered camera' })
     fireEvent.click(screen.getByRole('button', { name: 'Try analysis again' }))
@@ -617,7 +656,7 @@ describe('unfinished utility workspaces', () => {
     expect(
       screen.queryByText(/File analysis could not be completed/),
     ).toBeNull()
-    expect(calculateFileHashes).toHaveBeenCalledOnce()
+    expect(calculateFileHashes).not.toHaveBeenCalled()
     expect(extractFileMetadata).toHaveBeenCalledOnce()
     expect(extractExifMetadata).toHaveBeenCalledTimes(2)
     expect(screen.getByLabelText('Processing').textContent).toBe('false')

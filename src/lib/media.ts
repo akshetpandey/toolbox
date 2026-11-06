@@ -342,6 +342,10 @@ export async function compressVideoToSize(
               ? 960
               : 1920
       const args = [
+        // Bound decoder threads as well as filter and encoder threads. The
+        // default can oversubscribe the WASM worker pool on large inputs.
+        '-threads',
+        '4',
         '-i',
         input,
         '-map',

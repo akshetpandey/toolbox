@@ -56,6 +56,13 @@ export function pdfAssetsPlugin(): Plugin {
         const pathname = request.url?.split('?')[0]
         const file = pathname && assets.get(pathname)
         if (!file) return next()
+        // These responses bypass Vite's static middleware. The workers need
+        // the same isolation headers as the page that creates them.
+        for (const [name, value] of Object.entries(
+          server.config.server.headers ?? {},
+        )) {
+          if (value !== undefined) response.setHeader(name, value)
+        }
         const data = readFileSync(file)
         response.setHeader('Content-Length', data.length)
         response.setHeader(

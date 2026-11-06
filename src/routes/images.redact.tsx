@@ -5,6 +5,8 @@ import {
   useCallback,
   useRef,
   useEffect,
+  lazy,
+  Suspense,
   type Dispatch,
   type SetStateAction,
 } from 'react'
@@ -26,9 +28,10 @@ import {
 import { downloadBlob } from '@/lib/shared'
 import { stripFileMetadata } from '@/lib/metadata'
 import { applyBlurRedaction } from '@/lib/redaction'
-import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
+
+const EmojiPicker = lazy(() => import('emoji-picker-react'))
 
 interface RedactionArea {
   x: number
@@ -1242,15 +1245,17 @@ function RedactPage() {
                 </button>
                 {showEmojiPicker && (
                   <div className="fixed inset-x-4 top-1/4 z-50 sm:absolute sm:inset-x-auto sm:top-full sm:left-0 sm:mt-2 sm:w-80">
-                    <EmojiPicker
-                      emojiStyle="native"
-                      onEmojiClick={(emojiData: EmojiClickData) => {
-                        setSelectedEmoji(emojiData.emoji)
-                        setShowEmojiPicker(false)
-                      }}
-                      width="100%"
-                      height={400}
-                    />
+                    <Suspense fallback={<p role="status">Loading emojis…</p>}>
+                      <EmojiPicker
+                        emojiStyle="native"
+                        onEmojiClick={(emojiData) => {
+                          setSelectedEmoji(emojiData.emoji)
+                          setShowEmojiPicker(false)
+                        }}
+                        width="100%"
+                        height={400}
+                      />
+                    </Suspense>
                   </div>
                 )}
               </div>

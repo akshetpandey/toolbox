@@ -32,9 +32,11 @@ pnpm format         # Format with Oxfmt
 pnpm format:check   # Check formatting without writing files
 pnpm typecheck      # Check types with TypeScript 7
 pnpm check          # Format, lint fix, and check types
-pnpm test           # Run Node and Chromium suites with Vitest
+pnpm test           # Run Node, Chromium, and complete tool workflows
 pnpm test:unit      # Run unit and real-WASM integration tests in Node
 pnpm test:browser   # Run real-WASM, redaction canvas, and keyboard tests in Chromium
+pnpm test:workflows # Run all tools in Chromium and verify their results with representative files
+                    # Add --preview to check production bundles and optional --screenshots <dir>
 ```
 
 Before the first browser test run (and after Playwright upgrades), install its
@@ -58,7 +60,7 @@ pnpx shadcn@latest add button    # Add new Shadcn components
 ### Tech Stack
 
 - **Framework**: React 19 with TypeScript 7 (strict mode)
-- **Routing**: TanStack Router with file-based routing; automatic route code-splitting is disabled in `vite.config.ts`
+- **Routing**: TanStack Router with file-based routing; Vite splits route components and loads them on navigation
 - **Styling**: Tailwind CSS v4 with Shadcn/ui components (Radix UI primitives)
 - **Build Tool**: Vite 8 (target: Chrome 135+, Safari 26+, Firefox 140+)
 - **Deployment**: Cloudflare Workers with static assets
@@ -113,7 +115,7 @@ src/
 - `useInitFFmpeg` hook - loads local FFmpeg assets with progress callback; `vite-plugin-ffmpeg-core.ts` serves and emits the multi-threaded core files
 - `vite-plugin-pandoc-wasm.ts` keeps Pandoc's WASM import as an asset URL for its browser WASI shim under Vite 8.3+
 - `vite-plugin-wasm-preview.ts` supplies gzip headers for precompressed WASM assets in Vite preview
-- `useInitImageMagick` hook - loads ImageMagick WASM
+- `imagemagick.ts` - initializes ImageMagick on the first operation that needs it
 - `metadata.ts`, `pandoc.ts`, `typst.ts` - inline lazy loading with cached instances
 
 **State Management**: React Context API with typed hooks:
@@ -178,7 +180,9 @@ Routes follow TanStack Router file-based conventions:
 
 ### Build Configuration
 
-- Vite config includes manual chunk splitting for each WASM library into separate bundles
+- Vite minifies bundles and splits route components and dynamically imported engines
+- `vite-plugin-tool-prefetch.ts` records engine assets by tool; `useToolPrefetch` hints them after paint using browser-managed prefetch, and skips hints when data saving is enabled
+- Keep tool imports lazy and update the engine manifest when adding a tool or changing its dependencies
 - All WASM packages are excluded from Vite's `optimizeDeps` pre-bundling
 - COOP/COEP headers required for SharedArrayBuffer support (needed by FFmpeg multi-threading)
 - Source maps enabled for production debugging
