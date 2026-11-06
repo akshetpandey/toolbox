@@ -39,11 +39,13 @@ function RootDocument() {
   }, [pathname])
   return (
     <>
-      <title>{page.title}</title>
+      <title data-toolbox-head="">{page.title}</title>
       {pageMeta(page).map((meta) => (
-        <meta key={meta.name ?? meta.property} {...meta} />
+        <meta key={meta.name ?? meta.property} data-toolbox-head="" {...meta} />
       ))}
-      {page.canonical && <link rel="canonical" href={page.canonical} />}
+      {page.canonical && (
+        <link rel="canonical" href={page.canonical} data-toolbox-head="" />
+      )}
       <a href="#main-content" className="skip-link">
         Skip to workspace
       </a>
