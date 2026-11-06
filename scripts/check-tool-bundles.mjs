@@ -42,12 +42,19 @@ export async function checkToolBundles(browser, origin) {
       requested.push(new URL(request.url()).pathname.slice(1)),
     )
     await page.goto(origin)
+    await page.locator('#workspace-controls:not([disabled])').waitFor()
     const search = page.getByRole('searchbox')
-    await search.waitFor()
+    const homepageRequests = requested.filter((asset) =>
+      /\.m?js$/u.test(asset),
+    ).length
+    assert(
+      homepageRequests > 0 && homepageRequests <= 5,
+      `Homepage should load at most 5 JavaScript files; got ${homepageRequests}`,
+    )
     const homepageJS = await page.evaluate(() => {
       const sizes = new Map()
       for (const entry of performance.getEntriesByType('resource')) {
-        if (!new URL(entry.name).pathname.endsWith('.js')) continue
+        if (!/\.m?js$/u.test(new URL(entry.name).pathname)) continue
         sizes.set(
           entry.name,
           Math.max(sizes.get(entry.name) ?? 0, entry.encodedBodySize),
@@ -56,8 +63,8 @@ export async function checkToolBundles(browser, origin) {
       return [...sizes.values()].reduce((total, size) => total + size, 0)
     })
     assert(
-      homepageJS > 0 && homepageJS < 150 * 1024,
-      `Homepage JS should stay below 150 KiB compressed; got ${homepageJS} bytes`,
+      homepageJS > 0 && homepageJS < 140 * 1024,
+      `Homepage JS should stay below 140 KiB compressed; got ${homepageJS} bytes`,
     )
     await search.fill('trim video')
     const videoLink = page
@@ -148,7 +155,7 @@ export async function checkToolBundles(browser, origin) {
       [],
     )
     console.log(
-      `PASS production bundles: ${(homepageJS / 1024).toFixed(1)} KiB compressed homepage JS, route-only hints, lazy initialization, and data saver`,
+      `PASS production bundles: ${homepageRequests} homepage JS requests, ${(homepageJS / 1024).toFixed(1)} KiB compressed, route-only hints, lazy initialization, and data saver`,
     )
   } finally {
     await context.close()
