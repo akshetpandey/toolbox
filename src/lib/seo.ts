@@ -1,15 +1,7 @@
 import { allTools } from './tools.ts'
+import { toolPaths } from './toolPaths.ts'
 
 const siteUrl = 'https://toolbox.computer'
-
-export const categoryRedirects = {
-  '/images': '/images/metadata',
-  '/videos': '/videos/metadata',
-  '/pdfs': '/pdfs/merge',
-  '/office-documents': '/office-documents/convert',
-  '/archives': '/archives/compress',
-  '/utilities': '/utilities/hash',
-} as const
 
 export const homePage = {
   path: '/',
@@ -40,14 +32,14 @@ const unavailableDescription =
 
 export const unavailablePages = [
   {
-    path: '/pdfs/compress',
+    path: toolPaths.pdfCompress,
     title: 'Compress PDFs (Coming Soon) | Toolbox',
     heading: 'Compress PDFs',
     description: unavailableDescription,
     intro: unavailableDescription,
   },
   {
-    path: '/pdfs/split',
+    path: toolPaths.pdfSplit,
     title: 'Split PDFs (Coming Soon) | Toolbox',
     heading: 'Split PDFs',
     description: unavailableDescription,

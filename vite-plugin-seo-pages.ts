@@ -1,10 +1,6 @@
 import type { Plugin } from 'vite'
-import {
-  categoryRedirects,
-  indexedPages,
-  pageMeta,
-  pages,
-} from './src/lib/seo.ts'
+import { indexedPages, pageMeta, pages } from './src/lib/seo.ts'
+import { categoryRedirects } from './src/lib/toolPaths.ts'
 
 function escapeHtml(value: string) {
   return value

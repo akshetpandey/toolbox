@@ -18,6 +18,7 @@ import {
   FolderOpen,
   Hash,
 } from 'lucide-react'
+import { toolPaths } from './toolPaths.ts'
 
 export const toolCategories = [
   {
@@ -28,7 +29,7 @@ export const toolCategories = [
     tools: [
       {
         name: 'Resize image',
-        route: '/images/resize',
+        route: toolPaths.imageResize,
         pageTitle: 'Resize Images by Width and Height',
         description: 'Change dimensions while keeping the right proportions.',
         instructions:
@@ -38,7 +39,7 @@ export const toolCategories = [
       },
       {
         name: 'Compress image',
-        route: '/images/compress',
+        route: toolPaths.imageCompress,
         pageTitle: 'Compress Images in Your Browser',
         description: 'Make a photo or image file smaller.',
         instructions:
@@ -48,7 +49,7 @@ export const toolCategories = [
       },
       {
         name: 'Convert image',
-        route: '/images/convert',
+        route: toolPaths.imageConvert,
         pageTitle: 'Image Converter for JPG, PNG, and WebP',
         description: 'Save an image in a different format.',
         instructions:
@@ -58,7 +59,7 @@ export const toolCategories = [
       },
       {
         name: 'Redact image',
-        route: '/images/redact',
+        route: toolPaths.imageRedact,
         pageTitle: 'Redact Images and Screenshots',
         description: 'Cover private details before sharing.',
         instructions:
@@ -69,7 +70,7 @@ export const toolCategories = [
       },
       {
         name: 'Image metadata',
-        route: '/images/metadata',
+        route: toolPaths.imageMetadata,
         pageTitle: 'View and Remove Image EXIF Metadata',
         description: 'Inspect image details and remove metadata.',
         instructions:
@@ -88,7 +89,7 @@ export const toolCategories = [
     tools: [
       {
         name: 'Compress video',
-        route: '/videos/compress',
+        route: toolPaths.videoCompress,
         pageTitle: 'Compress Video to a Smaller MP4',
         description: 'Reduce video size with a quality preset.',
         instructions:
@@ -98,7 +99,7 @@ export const toolCategories = [
       },
       {
         name: 'Convert video',
-        route: '/videos/convert',
+        route: toolPaths.videoConvert,
         pageTitle: 'Video Converter for MP4, WebM, MKV, and AVI',
         description: 'Change a video’s output format.',
         instructions:
@@ -108,7 +109,7 @@ export const toolCategories = [
       },
       {
         name: 'Trim video',
-        route: '/videos/trim',
+        route: toolPaths.videoTrim,
         pageTitle: 'Trim Video and Save a Clip',
         description: 'Keep just the part you need.',
         instructions:
@@ -118,7 +119,7 @@ export const toolCategories = [
       },
       {
         name: 'Extract audio',
-        route: '/videos/extract',
+        route: toolPaths.videoExtract,
         pageTitle: 'Extract Audio from Video to MP3, AAC, or WAV',
         description: 'Save the sound from a video.',
         instructions:
@@ -128,7 +129,7 @@ export const toolCategories = [
       },
       {
         name: 'Video metadata',
-        route: '/videos/metadata',
+        route: toolPaths.videoMetadata,
         pageTitle: 'View Video Metadata and Codecs',
         description: 'Inspect duration, dimensions, and codecs.',
         instructions:
@@ -146,7 +147,7 @@ export const toolCategories = [
     tools: [
       {
         name: 'Merge PDFs',
-        route: '/pdfs/merge',
+        route: toolPaths.pdfMerge,
         pageTitle: 'Merge PDFs into One File',
         description: 'Combine documents in the order you choose.',
         instructions:
@@ -164,7 +165,7 @@ export const toolCategories = [
     tools: [
       {
         name: 'Convert document to PDF',
-        route: '/office-documents/convert',
+        route: toolPaths.documentConvert,
         pageTitle: 'Convert Word, Excel, and PowerPoint to PDF',
         description: 'Turn office documents into a shareable PDF.',
         instructions:
@@ -182,7 +183,7 @@ export const toolCategories = [
     tools: [
       {
         name: 'Create archive',
-        route: '/archives/compress',
+        route: toolPaths.archiveCompress,
         pageTitle: 'Create ZIP, 7z, TAR, and TAR.GZ Archives',
         description: 'Bundle files into a ZIP or another archive.',
         instructions:
@@ -192,7 +193,7 @@ export const toolCategories = [
       },
       {
         name: 'Extract archive',
-        route: '/archives/extract',
+        route: toolPaths.archiveExtract,
         pageTitle: 'Extract ZIP, RAR, and 7z Archives',
         description: 'Open an archive and download its files.',
         instructions:
@@ -210,7 +211,7 @@ export const toolCategories = [
     tools: [
       {
         name: 'File hashes',
-        route: '/utilities/hash',
+        route: toolPaths.fileHash,
         pageTitle: 'Calculate and Verify File Checksums',
         description: 'Calculate, copy, and verify a checksum.',
         instructions:
@@ -220,7 +221,7 @@ export const toolCategories = [
       },
       {
         name: 'File metadata',
-        route: '/utilities/metadata',
+        route: toolPaths.fileMetadata,
         pageTitle: 'Identify File Types and View File Metadata',
         description: 'Inspect the type and details of a file.',
         instructions:

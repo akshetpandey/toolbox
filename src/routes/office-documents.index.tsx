@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { categoryRedirects } from '@/lib/seo'
+import { categoryRedirects } from '@/lib/toolPaths'
 
 export const Route = createFileRoute('/office-documents/')({
   beforeLoad: () => {
