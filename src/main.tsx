@@ -29,7 +29,10 @@ const router = createAppRouter()
 // })
 
 const root = document.getElementById('root')!
-if (root.dataset.prerenderPath === router.state.location.pathname) {
+if (
+  root.dataset.prerenderPath === router.state.location.pathname &&
+  window.$_TSR?.router
+) {
   hydrateRoot(
     root,
     <AppProviders>
@@ -37,7 +40,7 @@ if (root.dataset.prerenderPath === router.state.location.pathname) {
     </AppProviders>,
   )
 } else {
-  // Development and shared fallback pages may serve a different route's HTML.
+  // Render from scratch when the HTML or router bootstrap cannot be hydrated.
   document.head
     .querySelectorAll('[data-toolbox-head]')
     .forEach((tag) => tag.remove())
