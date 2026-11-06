@@ -1,26 +1,27 @@
 // @vitest-environment node
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
 import { expect, test } from 'vitest'
 import { allTools } from '@/lib/tools'
+import { pandocWasmPlugin } from '../../vite-plugin-pandoc-wasm.ts'
 import { seoPagesPlugin } from '../../vite-plugin-seo-pages.ts'
 
-test('the build publishes crawlable HTML for exactly the available tools', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'toolbox-seo-'))
+test('the build publishes the React workspace for each available tool', async () => {
+  const outDir = await mkdtemp(join(tmpdir(), 'toolbox-seo-'))
+  const root = fileURLToPath(new URL('../../', import.meta.url))
   try {
-    await writeFile(
-      join(root, 'index.html'),
-      '<!doctype html><html><head></head><body><div id="root"></div></body></html>',
-    )
     await build({
       root,
       configFile: false,
       logLevel: 'silent',
-      plugins: [seoPagesPlugin()],
+      resolve: { tsconfigPaths: true },
+      plugins: [pandocWasmPlugin(), seoPagesPlugin()],
+      build: { outDir, reportCompressedSize: false },
     })
-    const read = (file: string) => readFile(join(root, 'dist', file), 'utf8')
+    const read = (file: string) => readFile(join(outDir, file), 'utf8')
     const sitemap = await read('sitemap.xml')
     const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
       (match) => match[1],
@@ -33,9 +34,9 @@ test('the build publishes crawlable HTML for exactly the available tools', async
 
     const home = await read('index.html')
     expect(home).toContain('rel="canonical" href="https://toolbox.computer/"')
-    const titles = new Set([
-      /<title data-static-seo>([^<]+)<\/title>/.exec(home)?.[1],
-    ])
+    expect(home).toContain('id="tool-search"')
+    expect(home).toMatch(/<fieldset id="workspace-controls" disabled/)
+    const titles = new Set([/<title[^>]*>([^<]+)<\/title>/.exec(home)?.[1]])
     for (const tool of allTools) {
       const html = await read(`${tool.route.slice(1)}.html`)
       expect(html).toContain(
@@ -43,9 +44,13 @@ test('the build publishes crawlable HTML for exactly the available tools', async
       )
       expect(html).toContain(`>${tool.name}</h1>`)
       expect(html).toContain(tool.instructions)
+      expect(html).toContain('type="file"')
+      expect(html).toMatch(/<fieldset id="workspace-controls" disabled/)
+      expect(html).not.toContain('or drop a file here')
+      expect(html).not.toContain('or drop files here')
       expect(home).toContain(`href="${tool.route}"`)
       expect(html).not.toContain('name="robots"')
-      titles.add(/<title data-static-seo>([^<]+)<\/title>/.exec(html)?.[1])
+      titles.add(/<title[^>]*>([^<]+)<\/title>/.exec(html)?.[1])
     }
     expect(titles.has(undefined)).toBe(false)
     expect(titles.size).toBe(urls.length)
@@ -54,6 +59,6 @@ test('the build publishes crawlable HTML for exactly the available tools', async
     expect(notFound).toContain('name="robots" content="noindex"')
     expect(notFound).not.toContain('rel="canonical"')
   } finally {
-    await rm(root, { recursive: true, force: true })
+    await rm(outDir, { recursive: true, force: true })
   }
-})
+}, 30_000)

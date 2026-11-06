@@ -159,6 +159,9 @@ try {
       try {
         await page.goto(origin + route)
         await page.getByRole('heading', { name, level: 1 }).waitFor()
+        await page
+          .locator('#workspace-controls:not([disabled])')
+          .waitFor({ state: 'attached' })
         await workflows[route](page, fixtures, capture)
         assert.deepEqual(
           unexpectedRequests.slice(requestStart),

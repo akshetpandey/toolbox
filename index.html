@@ -5,9 +5,33 @@
     <meta name="application-name" content="Toolbox" lang="en" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.ico" />
+    <script>
+      // A native file drop can open the file before React attaches its handlers.
+      for (const type of ['dragover', 'drop']) {
+        document.addEventListener(
+          type,
+          (event) => {
+            if (
+              event.dataTransfer?.types.includes('Files') &&
+              document.querySelector('#workspace-controls:disabled')
+            ) {
+              event.preventDefault()
+            }
+          },
+          true,
+        )
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p
+        class="fixed inset-x-4 bottom-4 z-50 mx-auto w-fit rounded-lg border border-border bg-card p-3 text-sm shadow-md"
+      >
+        Enable JavaScript to process files in your browser.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -33,6 +33,11 @@ To build this application for production:
 pnpm build
 ```
 
+The build prerenders the React workspace for each landing page. Cloudflare
+serves that HTML as a static asset, and the browser hydrates it for navigation
+and file processing. Keep the first render of new routes safe to run in Node
+by using browser APIs in effects or event handlers.
+
 ## Testing
 
 This project uses [Vitest](https://vitest.dev/) for Node and browser tests.

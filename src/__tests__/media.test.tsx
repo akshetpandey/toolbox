@@ -12,7 +12,8 @@ import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
 import { convertAudio, joinVideos } from '@/lib/media'
 import { downloadBlob } from '@/lib/shared'
 
-vi.mock('@tanstack/react-router', () => ({
+vi.mock('@tanstack/react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-router')>()),
   useLocation: () => ({ pathname: '/' }),
   useNavigate: () => vi.fn(),
 }))
