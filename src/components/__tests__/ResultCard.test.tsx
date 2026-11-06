@@ -13,7 +13,7 @@ import {
   useWorkspaceState,
 } from '@/hooks/useWorkspaceState'
 import { downloadBlob } from '@/lib/shared'
-import { findTools } from '@/lib/tools'
+import { findTools } from '@/lib/toolSearch'
 
 vi.mock('@/lib/shared', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/shared')>()),

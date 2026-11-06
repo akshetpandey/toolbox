@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
-import { allTools, findTools } from '@/lib/tools'
+import { allTools } from '@/lib/tools'
+import { findTools } from '@/lib/toolSearch'
 
 const routes = (query: string) => findTools(query).map((tool) => tool.route)
 

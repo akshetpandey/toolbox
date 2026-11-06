@@ -1,7 +1,7 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Hammer, Menu, X, ArrowUpRight, ShieldCheck } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { toolCategories } from '@/lib/tools'
@@ -148,15 +148,16 @@ export function ToolSidebar() {
     <>
       <header className="mobile-app-bar fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-4 xl:hidden">
         {brand}
-        <Button
-          variant="outline"
+        <button
+          type="button"
+          className={buttonVariants({ variant: 'outline' })}
           aria-expanded={open}
           aria-controls="tools-drawer"
           onClick={() => setOpen(true)}
         >
           <Menu aria-hidden="true" />
           Tools
-        </Button>
+        </button>
       </header>
       <aside
         ref={sidebar}
@@ -189,14 +190,14 @@ export function ToolSidebar() {
             <h2 id="tools-drawer-title" className="text-lg font-semibold">
               Choose a tool
             </h2>
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
+              type="button"
+              className={buttonVariants({ variant: 'ghost', size: 'icon' })}
               aria-label="Close tools menu"
               onClick={close}
             >
               <X aria-hidden="true" />
-            </Button>
+            </button>
           </div>
           {navigation}
         </div>

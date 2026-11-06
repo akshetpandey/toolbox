@@ -115,7 +115,9 @@ test.each([
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
   const search = screen.getByRole('searchbox')
   fireEvent.change(search, { target: { value: 'shrink photo' } })
-  expect(screen.getByRole('status').textContent).toContain('1 tool found')
+  await waitFor(() =>
+    expect(screen.getByRole('status').textContent).toContain('1 tool found'),
+  )
   expect(
     screen
       .getByRole('region', { name: 'Search results' })
