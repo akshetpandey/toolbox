@@ -1,5 +1,6 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { loadFFmpeg } from '@/hooks/useInitFFmpeg'
+import { compressVideoToSize, MediaInputError } from '@/lib/media'
 
 export interface VideoStream {
   index: number
@@ -184,15 +185,22 @@ export class FFmpegProcessor {
   }
 
   private async reloadFFmpeg() {
-    const inputFile = this.inputFile
-    this.ffmpeg.terminate()
-    await loadFFmpeg(this.ffmpeg)
-    FFmpegProcessor.inputMounts.delete(this.ffmpeg)
-    this.inputFile = null
-    this.inputFileName = null
-    if (inputFile) {
-      await this.mountInputFile(inputFile)
-    }
+    const mount = this.getInputMount()
+    const pending = mount.pending.then(async () => {
+      if (mount.owner && mount.owner !== this) return
+      const inputFile = this.inputFile
+      this.inputFile = null
+      this.inputFileName = null
+      mount.owner = null
+      mount.directoryCreated = false
+      if (this.ffmpeg.loaded !== false) this.ffmpeg.terminate()
+      await loadFFmpeg(this.ffmpeg)
+      if (inputFile) await this.mountInput(inputFile, mount)
+    })
+    mount.pending = pending.catch(() => {
+      // A subsequent selection may try again after a reload failure.
+    })
+    await pending
   }
 
   private getInputMount() {
@@ -208,29 +216,48 @@ export class FFmpegProcessor {
     return mount
   }
 
+  private async mountInput(
+    videoFile: VideoFile,
+    mount: ReturnType<FFmpegProcessor['getInputMount']>,
+  ) {
+    await this.releaseInputMount(mount)
+    if (this.ffmpeg.loaded === false) {
+      mount.directoryCreated = false
+      await loadFFmpeg(this.ffmpeg)
+    }
+    if (!mount.directoryCreated) {
+      await this.ffmpeg.createDir(this.inputDir)
+      mount.directoryCreated = true
+    }
+    await this.ffmpeg.mount(
+      //@ts-expect-error - WORKERFS is not a valid FFFSType
+      'WORKERFS',
+      { files: [videoFile.file] },
+      this.inputDir,
+    )
+    this.inputFile = videoFile
+    this.inputFileName = this.inputDir + '/' + videoFile.file.name
+    mount.owner = this
+  }
+
+  private async releaseInputMount(
+    mount: ReturnType<FFmpegProcessor['getInputMount']>,
+  ) {
+    if (!mount.owner) return
+    if (this.ffmpeg.loaded !== false) {
+      await this.ffmpeg.unmount(this.inputDir).catch((error: unknown) => {
+        // Cancelling an encode can terminate the worker with an unmount queued.
+        if (this.ffmpeg.loaded !== false) throw error
+      })
+    }
+    mount.owner.inputFile = null
+    mount.owner.inputFileName = null
+    mount.owner = null
+  }
+
   async mountInputFile(videoFile: VideoFile) {
     const mount = this.getInputMount()
-    const pending = mount.pending.then(async () => {
-      if (mount.owner) {
-        await this.ffmpeg.unmount(this.inputDir)
-        mount.owner.inputFile = null
-        mount.owner.inputFileName = null
-        mount.owner = null
-      }
-      if (!mount.directoryCreated) {
-        await this.ffmpeg.createDir(this.inputDir)
-        mount.directoryCreated = true
-      }
-      await this.ffmpeg.mount(
-        //@ts-expect-error - WORKERFS is not a valid FFFSType
-        'WORKERFS',
-        { files: [videoFile.file] },
-        this.inputDir,
-      )
-      this.inputFile = videoFile
-      this.inputFileName = this.inputDir + '/' + videoFile.file.name
-      mount.owner = this
-    })
+    const pending = mount.pending.then(() => this.mountInput(videoFile, mount))
     mount.pending = pending.catch(() => {
       // Keep the queue usable after this caller receives its mount error.
     })
@@ -240,11 +267,7 @@ export class FFmpegProcessor {
   async unmountInputFile() {
     const mount = this.getInputMount()
     const pending = mount.pending.then(async () => {
-      if (mount.owner !== this) return
-      await this.ffmpeg.unmount(this.inputDir)
-      this.inputFile = null
-      this.inputFileName = null
-      mount.owner = null
+      if (mount.owner === this) await this.releaseInputMount(mount)
     })
     mount.pending = pending.catch(() => {
       // Keep the queue usable after this caller receives its mount error.
@@ -684,6 +707,30 @@ export class FFmpegProcessor {
     return this.createBlobFromFFmpegOutput(data, 'video/mp4')
   }
 
+  async compressToSize(maxBytes: number, signal: AbortSignal) {
+    if (!this.inputFileName) throw new Error('Choose a video first.')
+    signal.throwIfAborted()
+    const stop = () => {
+      if (this.getInputMount().owner === this) this.ffmpeg.terminate()
+    }
+    signal.addEventListener('abort', stop, { once: true })
+    try {
+      return await compressVideoToSize(
+        this.ffmpeg,
+        this.inputFileName,
+        maxBytes,
+        signal,
+      )
+    } catch (error) {
+      if (signal.aborted || !(error instanceof MediaInputError))
+        await this.reloadFFmpeg()
+      signal.throwIfAborted()
+      throw error
+    } finally {
+      signal.removeEventListener('abort', stop)
+    }
+  }
+
   async trimVideo(options: TrimOptions): Promise<Blob> {
     console.log('🎬 FFmpeg: Starting video trimming', {
       fileName: this.inputFileName,
@@ -691,85 +738,80 @@ export class FFmpegProcessor {
     })
 
     const format = options.format ?? 'original'
-    let outputFileName: string
-    let command: string[]
-    let outputMimeType: string
+    const extension =
+      format === 'original'
+        ? this.getFileExtension(this.inputFileName ?? '').toLowerCase()
+        : format
+    const outputFileName = `trimmed.${extension}`
+    const outputMimeType =
+      format === 'original'
+        ? (this.inputFile?.type ?? 'video/mp4')
+        : `image/${format}`
+    const seconds = (time: string) =>
+      time.split(':').reduce((sum, part) => sum * 60 + Number(part), 0)
+    const duration = seconds(options.endTime) - seconds(options.startTime)
+    const command = [
+      '-ss',
+      options.startTime,
+      '-threads',
+      '4',
+      '-i',
+      this.inputFileName ?? '',
+      '-t',
+      String(duration),
+      '-filter_threads',
+      '1',
+    ]
 
-    // Determine output format and filename
-    if (format === 'gif') {
-      outputFileName = 'trimmed.gif'
-      outputMimeType = 'image/gif'
-    } else if (format === 'webp') {
-      outputFileName = 'trimmed.webp'
-      outputMimeType = 'image/webp'
-    } else {
-      outputFileName = `trimmed.${this.getFileExtension(this.inputFileName ?? '')}`
-      outputMimeType = this.inputFile?.type ?? 'video/mp4'
-    }
-
-    // Build FFmpeg command based on format
-    if (format === 'gif') {
-      command = [
-        '-i',
-        this.inputFileName ?? '',
-        '-ss',
-        options.startTime,
-        '-to',
-        options.endTime,
-        '-vf',
-        'fps=15',
-        '-c:v',
-        'gif',
-      ]
-
-      // Add loop option if specified
-      if (options.loop === true) {
-        command.push('-loop', '0') // 0 = infinite loop
+    if (format === 'gif' || format === 'webp') {
+      command.push('-an')
+      if (format === 'gif') {
+        command.push('-vf', 'fps=15', '-c:v', 'gif')
+      } else {
+        command.push(
+          '-vf',
+          'fps=20',
+          '-c:v',
+          'libwebp',
+          '-lossless',
+          '0',
+          '-compression_level',
+          '6',
+          '-quality',
+          '80',
+          '-preset',
+          'default',
+        )
       }
-
-      command.push('-f', 'gif', outputFileName)
-    } else if (format === 'webp') {
-      command = [
-        '-i',
-        this.inputFileName ?? '',
-        '-ss',
-        options.startTime,
-        '-to',
-        options.endTime,
-        '-vf',
-        'fps=20',
+      if (options.loop) command.push('-loop', '0')
+      command.push('-f', format)
+    } else if (extension === 'webm') {
+      command.push(
         '-c:v',
-        'libwebp',
-        '-lossless',
-        '0',
-        '-compression_level',
-        '6',
-        '-quality',
-        '80',
+        'libvpx',
+        '-deadline',
+        'realtime',
+        '-cpu-used',
+        '4',
+        '-c:a',
+        'libopus',
+      )
+    } else if (extension === 'avi') {
+      command.push('-c:v', 'mpeg4', '-q:v', '4', '-c:a', 'libmp3lame')
+    } else if (['mp4', 'mov', 'm4v', 'mkv'].includes(extension)) {
+      // Re-encode so cuts between keyframes retain video from the chosen start.
+      command.push(
+        '-c:v',
+        'libx264',
         '-preset',
-        'default',
-      ]
-
-      // Add loop option if specified
-      if (options.loop === true) {
-        command.push('-loop', '0') // 0 = infinite loop
-      }
-
-      command.push('-f', 'webp', outputFileName)
-    } else {
-      // Original format - use stream copy for speed
-      command = [
-        '-i',
-        this.inputFileName ?? '',
-        '-ss',
-        options.startTime,
-        '-to',
-        options.endTime,
-        '-c',
-        'copy',
-        outputFileName,
-      ]
+        'veryfast',
+        '-crf',
+        '22',
+        '-c:a',
+        'aac',
+      )
     }
+    command.push('-threads', '4', outputFileName)
 
     console.log('🎬 FFmpeg: Executing trim command', { command, format })
     try {

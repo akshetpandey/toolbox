@@ -96,7 +96,9 @@ test('task search understands everyday wording and excludes unavailable tools', 
   expect(findTools('merge PDFs').map((tool) => tool.route)).toEqual([
     '/pdfs/merge',
   ])
-  expect(findTools('split pdf')).toHaveLength(0)
+  expect(findTools('split pdf').map((tool) => tool.route)).toEqual([
+    '/pdfs/split',
+  ])
   expect(findTools('definitely unavailable')).toHaveLength(0)
 })
 

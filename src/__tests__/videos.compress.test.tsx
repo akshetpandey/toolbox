@@ -54,6 +54,11 @@ function context(duration = 3) {
       .mockResolvedValue(
         new Blob([new Uint8Array(200)], { type: 'video/mp4' }),
       ),
+    compressToSize: vi
+      .fn()
+      .mockResolvedValue(
+        new Blob([new Uint8Array(200)], { type: 'video/mp4' }),
+      ),
     trimVideo: vi
       .fn()
       .mockResolvedValue(new Blob(['clip'], { type: 'video/webm' })),
@@ -147,6 +152,33 @@ test('quality goals and advanced values agree and survive navigation', () => {
     screen.getByRole<HTMLInputElement>('radio', { name: /Smaller file/ })
       .checked,
   ).toBe(true)
+})
+
+test('the maximum-size mode validates the limit and clears results when it changes', async () => {
+  const { processor } = context()
+  render(<VideoCompress />)
+  fireEvent.change(screen.getByLabelText('Compress by'), {
+    target: { value: 'size' },
+  })
+  const limit = screen.getByLabelText('Maximum size (MB)')
+  const button = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Compress video',
+  })
+  fireEvent.change(limit, { target: { value: '0' } })
+  expect(button.disabled).toBe(true)
+  fireEvent.change(limit, { target: { value: '2.5' } })
+  fireEvent.click(button)
+  await waitFor(() => expect(processor.compressToSize).toHaveBeenCalledOnce())
+  expect(processor.compressToSize).toHaveBeenCalledWith(
+    2_500_000,
+    expect.any(AbortSignal),
+  )
+  expect(processor.compressVideo).not.toHaveBeenCalled()
+  await waitFor(() =>
+    expect(screen.getByText('Meets the 2.5 MB limit')).toBeTruthy(),
+  )
+  fireEvent.change(limit, { target: { value: '1' } })
+  expect(screen.queryByRole('region', { name: 'Result' })).toBeNull()
 })
 
 test('preparation does not claim compression has begun', () => {

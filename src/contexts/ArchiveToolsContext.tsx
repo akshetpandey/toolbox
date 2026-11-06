@@ -62,7 +62,7 @@ export interface ArchiveToolsContextType {
 
   // File operations
   compressFiles: () => Promise<void>
-  decompressArchive: () => Promise<void>
+  decompressArchive: (password?: string) => Promise<void>
   downloadExtractedFile: (file: ExtractedFile) => void
   downloadAllFiles: () => Promise<void>
 }
@@ -237,15 +237,24 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
     setCompressionResult,
   ])
 
-  const decompressArchive = useCallback(async () => {
-    if (!uploadedArchive || !isInitialized) return
-    const data = new Uint8Array(await uploadedArchive.arrayBuffer())
-    const extracted = await runArchiveOperation(() =>
-      archiveProcessor.decompress(data, uploadedArchive.name),
-    )
-    if (mounted.current && archiveRef.current === uploadedArchive)
-      setExtractedFiles(extracted)
-  }, [uploadedArchive, isInitialized, archiveProcessor, setExtractedFiles])
+  const decompressArchive = useCallback(
+    async (password?: string) => {
+      if (!uploadedArchive || !isInitialized) return
+      setExtractedFiles([])
+      const data = new Uint8Array(await uploadedArchive.arrayBuffer())
+      const extracted = await runArchiveOperation(() =>
+        archiveProcessor.decompress(
+          data,
+          uploadedArchive.name,
+          undefined,
+          password,
+        ),
+      )
+      if (mounted.current && archiveRef.current === uploadedArchive)
+        setExtractedFiles(extracted)
+    },
+    [uploadedArchive, isInitialized, archiveProcessor, setExtractedFiles],
+  )
 
   const downloadExtractedFile = useCallback((file: ExtractedFile) => {
     if (file.isDirectory) return

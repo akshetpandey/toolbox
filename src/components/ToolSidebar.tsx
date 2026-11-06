@@ -1,5 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Hammer, Menu, X, ArrowUpRight, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -7,10 +7,11 @@ import { useProcessing } from '@/contexts/ProcessingContext'
 import { toolCategories } from '@/lib/tools'
 
 export function ToolSidebar() {
-  const { pathname } = useLocation()
+  const pathname = useLocation().pathname.replace(/\/$/u, '') || '/'
   const { isProcessing } = useProcessing()
   const [open, setOpen] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
+  const sidebar = useRef<HTMLElement>(null)
   const close = () => setOpen(false)
 
   useEffect(() => {
@@ -28,20 +29,45 @@ export function ToolSidebar() {
     media.addEventListener('change', onResize)
     return () => media.removeEventListener('change', onResize)
   }, [])
+  useLayoutEffect(() => {
+    const current = sidebar.current?.querySelector('ul [aria-current="page"]')
+    const submenu = current?.closest('ul')
+    if (!current || !submenu) return
+    const reveal = () => {
+      if (!submenu.clientHeight) return
+      const item = current.getBoundingClientRect()
+      const viewport = submenu.getBoundingClientRect()
+      submenu.scrollTop +=
+        Math.max(0, item.bottom - viewport.bottom) +
+        Math.min(0, item.top - viewport.top)
+    }
+    reveal()
+    window.addEventListener('resize', reveal)
+    return () => window.removeEventListener('resize', reveal)
+  }, [pathname])
 
   const navigation = (
     <>
-      <nav aria-label="File tools" className="flex-1 overflow-y-auto px-3 py-4">
-        <p className="px-3 pb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      <nav
+        aria-label="File tools"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-4 xl:flex xl:flex-col xl:py-3"
+      >
+        <p className="shrink-0 px-3 pb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Your toolbox
         </p>
-        <div className="space-y-1">
+        <div className="space-y-1 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:gap-1 xl:space-y-0">
           {toolCategories.map((category) => {
             const active =
               pathname.startsWith(`${category.path}/`) ||
               pathname === category.path
+            const expanded = active && category.tools.length > 1
             return (
-              <div key={category.path}>
+              <div
+                key={category.path}
+                className={
+                  expanded ? 'xl:flex xl:min-h-26 xl:flex-col' : 'xl:shrink-0'
+                }
+              >
                 <Link
                   to={category.tools[0].route}
                   aria-disabled={isProcessing || undefined}
@@ -49,7 +75,7 @@ export function ToolSidebar() {
                     if (isProcessing) event.preventDefault()
                     else close()
                   }}
-                  className={`nav-link flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 font-medium ${active ? 'text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                  className={`nav-link flex min-h-12 shrink-0 items-center gap-3 rounded-lg px-3 py-2 font-medium xl:min-h-10 ${active ? 'text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
                 >
                   <category.icon
                     aria-hidden="true"
@@ -57,8 +83,8 @@ export function ToolSidebar() {
                   />
                   {category.name}
                 </Link>
-                {active && category.tools.length > 1 && (
-                  <ul className="ml-5 space-y-1 border-l border-border pl-3 pb-2">
+                {expanded && (
+                  <ul className="ml-5 space-y-1 border-l border-border pl-3 pb-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-gutter:stable]">
                     {category.tools.map((tool) => (
                       <li key={tool.route}>
                         <Link
@@ -84,7 +110,7 @@ export function ToolSidebar() {
           })}
         </div>
       </nav>
-      <div className="space-y-4 border-t border-border px-5 py-5">
+      <div className="shrink-0 space-y-4 border-t border-border px-5 py-5 xl:space-y-2 xl:py-3">
         <p className="flex gap-2 text-sm text-muted-foreground">
           <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           Files stay on your device.
@@ -132,8 +158,11 @@ export function ToolSidebar() {
           Tools
         </Button>
       </header>
-      <aside className="hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-card xl:flex">
-        <div className="px-6 py-5">{brand}</div>
+      <aside
+        ref={sidebar}
+        className="hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-card xl:flex"
+      >
+        <div className="shrink-0 px-6 py-4">{brand}</div>
         {navigation}
       </aside>
       <dialog

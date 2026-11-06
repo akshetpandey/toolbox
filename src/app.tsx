@@ -8,7 +8,7 @@ import { routeTree } from './routeTree.gen'
 export function createAppRouter() {
   return createRouter({
     routeTree,
-    defaultPreload: 'intent',
+    defaultPreload: false,
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
   })

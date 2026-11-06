@@ -3,6 +3,7 @@ import { playwright } from '@vitest/browser-playwright'
 import tailwindcss from '@tailwindcss/vite'
 import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core.ts'
 import { pandocWasmPlugin } from './vite-plugin-pandoc-wasm.ts'
+import { pdfAssetsPlugin } from './vite-plugin-pdf-assets.ts'
 
 export default defineConfig({
   resolve: {
@@ -27,6 +28,11 @@ export default defineConfig({
       '@ffmpeg/ffmpeg',
       '@ffmpeg/util',
       'pandoc-wasm',
+      'pdfjs-dist',
+      'tesseract.js',
+      'tesseract.js-core',
+      'onnxruntime-web/wasm',
+      'docx',
       '7z-wasm',
       '@imagemagick/magick-wasm',
       'libimagequant-wasm',
@@ -36,7 +42,12 @@ export default defineConfig({
       '@myriaddreamin/typst-ts-web-compiler',
     ],
   },
-  plugins: [ffmpegCorePlugin(), pandocWasmPlugin(), tailwindcss()],
+  plugins: [
+    ffmpegCorePlugin(),
+    pandocWasmPlugin(),
+    pdfAssetsPlugin(),
+    tailwindcss(),
+  ],
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

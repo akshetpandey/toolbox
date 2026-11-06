@@ -1,4 +1,16 @@
-import { Play, Globe, Archive, Monitor, Square } from 'lucide-react'
+import {
+  Play,
+  Globe,
+  Archive,
+  Monitor,
+  Square,
+  Info,
+  Settings,
+  Zap,
+  Scissors,
+  Volume2,
+  Merge,
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
@@ -7,7 +19,17 @@ import { useToolResult } from '@/components/ResultCard'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { downloadBlob } from '@/lib/shared'
+import { MediaInputError } from '@/lib/media'
 import type { FFmpegProcessor } from '@/lib/ffmpeg'
+
+export const videoTabs = [
+  { value: 'metadata', label: 'Metadata', icon: Info },
+  { value: 'convert', label: 'Convert', icon: Settings },
+  { value: 'compress', label: 'Compress', icon: Zap },
+  { value: 'trim', label: 'Trim', icon: Scissors },
+  { value: 'extract', label: 'Extract', icon: Volume2 },
+  { value: 'join', label: 'Join', icon: Merge },
+]
 
 // Format and codec compatibility definitions
 export const formatOptions = [
@@ -418,13 +440,16 @@ export function useVideoAction(workspaceKey: string, failureMessage: string) {
     context.setEstimatedTimeRemaining(null)
     context.setElapsedTime(null)
     context.setShowSlowProcessingWarning(false)
+    clearResult()
     setError(null)
     setDiagnostic(null)
     try {
       const processor = await context.getFfmpegProcessor()
       if (!isCurrent()) return
+      controller.signal.throwIfAborted()
       const output = await operation(processor, controller.signal)
       if (!isCurrent()) return
+      controller.signal.throwIfAborted()
       setResult({ ...output, sourceSize: source.size })
       downloadBlob(output.blob, output.filename)
       context.setProgress(100)
@@ -434,9 +459,9 @@ export function useVideoAction(workspaceKey: string, failureMessage: string) {
         controller.signal.aborted ||
         (cause instanceof Error && cause.name === 'AbortError')
       ) {
-        setError(
-          'Processing was cancelled. Your original video is unchanged; you can try again.',
-        )
+        setError('Processing cancelled. You can try again.')
+      } else if (cause instanceof MediaInputError) {
+        setError(cause.message)
       } else {
         setError(failureMessage)
         setDiagnostic(cause instanceof Error ? cause.message : String(cause))
@@ -466,11 +491,13 @@ export function VideoActionStatus({
   error,
   diagnostic,
   cancellable = true,
+  indeterminate = false,
 }: {
   label: string
   error: string | null
   diagnostic: string | null
   cancellable?: boolean
+  indeterminate?: boolean
 }) {
   const {
     isProcessing,
@@ -490,16 +517,23 @@ export function VideoActionStatus({
             className="flex flex-wrap items-center justify-between gap-2 text-sm"
           >
             <span className="font-medium">{label}</span>
-            <span>{progress.toFixed(1)}%</span>
+            {!indeterminate && <span>{progress.toFixed(1)}%</span>}
           </div>
-          <Progress aria-label={label} value={progress} />
+          {indeterminate ? (
+            <progress
+              aria-label={label}
+              className="h-2 w-full accent-primary"
+            />
+          ) : (
+            <Progress aria-label={label} value={progress} />
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               {elapsedTime
                 ? `Elapsed: ${elapsedTime}`
                 : 'Processing locally in your browser.'}
             </span>
-            {estimatedTimeRemaining && (
+            {!indeterminate && estimatedTimeRemaining && (
               <span>About {estimatedTimeRemaining} remaining</span>
             )}
             {cancellable && (

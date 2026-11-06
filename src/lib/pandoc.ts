@@ -19,6 +19,55 @@ export interface OfficeFile {
   type: string
 }
 
+async function normalizeWorkbook(file: File): Promise<Blob> {
+  const { strFromU8, strToU8, unzipSync, zipSync } = await import('fflate')
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const relationships = 'xl/_rels/workbook.xml.rels'
+  const parts = unzipSync(bytes, {
+    filter: ({ name }) =>
+      name === relationships || /^xl\/worksheets\/[^/]+\.xml$/u.test(name),
+  })
+  const updates: Record<string, Uint8Array> = {}
+  for (const [name, part] of Object.entries(parts)) {
+    const xml = strFromU8(part)
+    if (name === relationships) {
+      // The XLSX reader prefixes targets with xl/, even if they are rooted.
+      const normalized = xml.replace(/(\bTarget\s*=\s*["'])\/xl\//gu, '$1')
+      if (normalized !== xml) updates[name] = strToU8(normalized)
+    } else if (xml.includes('inlineStr')) {
+      const sheet = new DOMParser().parseFromString(xml, 'application/xml')
+      const namespace = sheet.documentElement.namespaceURI
+      const cells = Array.from(sheet.getElementsByTagNameNS(namespace, 'c'))
+      let changed = false
+      for (const cell of cells) {
+        if (cell.getAttribute('t') !== 'inlineStr') continue
+        const inline = Array.from(cell.children).find(
+          (child) => child.localName === 'is',
+        )
+        if (!inline) continue
+        // The reader understands cached string values but drops inline text.
+        // Move the visible text to a value in this temporary conversion copy.
+        const value = sheet.createElementNS(namespace, 'v')
+        value.textContent = Array.from(
+          inline.getElementsByTagNameNS(namespace, 't'),
+        )
+          .filter((text) => text.parentElement?.localName !== 'rPh')
+          .map((text) => text.textContent)
+          .join('')
+        cell.setAttribute('t', 'str')
+        inline.replaceWith(value)
+        changed = true
+      }
+      if (changed)
+        updates[name] = strToU8(new XMLSerializer().serializeToString(sheet))
+    }
+  }
+  if (!Object.keys(updates).length) return file
+
+  const files = { ...unzipSync(bytes), ...updates }
+  return new Blob([zipSync(files, { level: 1 }).slice()], { type: file.type })
+}
+
 /**
  * Convert an office document to PDF using pandoc-wasm + typst.
  * Pipeline: input format → (pandoc) → typst markup → (typst WASM) → PDF
@@ -27,8 +76,14 @@ export async function convertOfficeToPDF(
   file: File,
 ): Promise<ConversionResult> {
   try {
-    const inputFormat = getInputFormat(file.name)
+    const inputFormat = getOfficePdfInputFormat(file.name)
+    if (!inputFormat) {
+      throw new Error(
+        'Unsupported file format. Choose a DOCX, PPTX, or XLSX file.',
+      )
+    }
 
+    const source = inputFormat === 'xlsx' ? await normalizeWorkbook(file) : file
     const { convert } = await import('pandoc-wasm')
     const { compileTypstToPDF } = await import('./typst')
     const { extractZipEntries } = await import('./archive')
@@ -46,7 +101,7 @@ export async function convertOfficeToPDF(
         'extract-media': 'media.zip',
       },
       null,
-      { [file.name]: file },
+      { [file.name]: source },
     )
 
     if (!typstResult.stdout) {
@@ -227,19 +282,9 @@ export function getOutputFilename(
   return `${baseName}.${extension}`
 }
 
-function getInputFormat(filename: string): string {
+export const officePdfInputFormats = ['docx', 'pptx', 'xlsx'] as const
+
+export function getOfficePdfInputFormat(filename: string) {
   const ext = filename.toLowerCase().split('.').pop()
-  switch (ext) {
-    case 'docx':
-    case 'doc':
-      return 'docx'
-    case 'pptx':
-    case 'ppt':
-      return 'pptx'
-    case 'xlsx':
-    case 'xls':
-      return 'xlsx'
-    default:
-      throw new Error(`Unsupported file format: ${ext}`)
-  }
+  return officePdfInputFormats.find((format) => format === ext)
 }

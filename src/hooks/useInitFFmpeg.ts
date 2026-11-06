@@ -14,6 +14,11 @@ let initializationPromise: Promise<void> | null = null
 let ffmpegInstance: FFmpeg | null = null
 let isInitialized = false
 let progressCallback: ((progress: number) => void) | null = null
+let coreAssets: Promise<{
+  coreURL: string
+  wasmURL: string
+  workerURL: string
+}> | null = null
 
 // Lazy load FFmpeg modules
 async function loadFFmpegModules() {
@@ -29,23 +34,32 @@ async function loadFFmpegModules() {
   }
 }
 
-export async function loadFFmpeg(ffmpeg: FFmpeg) {
-  const { toBlobURL } = await loadFFmpegModules()
-
+export async function loadFFmpeg(ffmpeg: FFmpeg, signal?: AbortSignal) {
   // Load WASM files from the local @ffmpeg/core-mt package.
   // Files are served by the ffmpegCorePlugin (see vite-plugin-ffmpeg-core.ts)
   // which serves raw files from node_modules in dev and emits them as assets
   // in production builds. Using toBlobURL to create same-origin blob URLs
   // required for COEP/SharedArrayBuffer compatibility.
   const baseURL = '/ffmpeg-core'
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    workerURL: await toBlobURL(
-      `${baseURL}/ffmpeg-core.worker.js`,
-      'text/javascript',
-    ),
-  })
+  coreAssets ??= loadFFmpegModules()
+    .then(async ({ toBlobURL }) => ({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(
+        `${baseURL}/ffmpeg-core.wasm`,
+        'application/wasm',
+      ),
+      workerURL: await toBlobURL(
+        `${baseURL}/ffmpeg-core.worker.js`,
+        'text/javascript',
+      ),
+    }))
+    .catch((error: unknown) => {
+      coreAssets = null
+      throw error
+    })
+  const assets = await coreAssets
+  signal?.throwIfAborted()
+  await ffmpeg.load(assets, { signal })
 }
 
 export function useInitFFmpeg(): UseInitFFmpegReturn {

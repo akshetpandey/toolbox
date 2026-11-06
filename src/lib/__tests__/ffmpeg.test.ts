@@ -472,7 +472,7 @@ describe('FFmpegProcessor.trimVideo', () => {
     await processor.mountInputFile(createVideoFile())
   })
 
-  test('trims with start and end time using stream copy', async () => {
+  test('trims with an accurate seek and the requested duration', async () => {
     const blob = await processor.trimVideo({
       startTime: '00:00:05',
       endTime: '00:00:15',
@@ -481,10 +481,9 @@ describe('FFmpegProcessor.trimVideo', () => {
     const execCall = vi.mocked(ffmpeg.exec).mock.calls[0][0]
     expect(execCall).toContain('-ss')
     expect(execCall).toContain('00:00:05')
-    expect(execCall).toContain('-to')
-    expect(execCall).toContain('00:00:15')
-    expect(execCall).toContain('-c')
-    expect(execCall).toContain('copy')
+    expect(execCall).toContain('-t')
+    expect(execCall).toContain('10')
+    expect(execCall).toContain('libx264')
     expect(blob).toBeInstanceOf(Blob)
   })
 

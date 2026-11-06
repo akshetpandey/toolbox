@@ -55,11 +55,9 @@ test('the build publishes the React workspace for each available tool', async ()
     expect(titles.has(undefined)).toBe(false)
     expect(titles.size).toBe(urls.length)
 
-    for (const file of ['pdfs/compress.html', 'pdfs/split.html', '404.html']) {
-      const html = await read(file)
-      expect(html).toContain('name="robots" content="noindex"')
-      expect(html).not.toContain('rel="canonical"')
-    }
+    const notFound = await read('404.html')
+    expect(notFound).toContain('name="robots" content="noindex"')
+    expect(notFound).not.toContain('rel="canonical"')
   } finally {
     await rm(outDir, { recursive: true, force: true })
   }

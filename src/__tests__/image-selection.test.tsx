@@ -16,14 +16,6 @@ import { useToolResult } from '@/components/ResultCard'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
 const { revoke } = vi.hoisted(() => ({ revoke: vi.fn() }))
-vi.mock('@/hooks/useInitImageMagick', () => ({
-  useInitImageMagick: () => ({
-    isInitialized: true,
-    isInitializing: false,
-    error: null,
-    init: vi.fn(),
-  }),
-}))
 vi.mock('@/contexts/ProcessingContext', () => ({
   useProcessing: () => ({ isProcessing: false }),
 }))
@@ -45,7 +37,7 @@ vi.mock('@/lib/metadata', () => ({
 }))
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),
-  useLocation: () => ({ pathname: '/images/resize' }),
+  useLocation: () => ({ pathname: '/images/metadata' }),
   useNavigate: () => vi.fn(),
   Outlet: () => <SelectedImage />,
 }))

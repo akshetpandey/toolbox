@@ -4,7 +4,7 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import {
   invalidateWorkspaceState,
   useWorkspaceState,
@@ -12,12 +12,17 @@ import {
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
-import { useInitImageMagick } from '@/hooks/useInitImageMagick'
 import {
   ImageMagickProcessor,
   type ImageMetadata,
   formatFileSize,
 } from '@/lib/imagemagick'
+import {
+  acceptedImageTypes,
+  isHeifImage,
+  isSupportedImage,
+  supportedImageFormats,
+} from '@/lib/imageFiles'
 import { type ImageFile } from '@/lib/shared'
 import { extractExifMetadata, type ExifMetadata } from '@/lib/metadata'
 import { useProcessing } from '@/contexts/ProcessingContext'
@@ -34,14 +39,40 @@ import {
   Settings,
   Zap,
   Eye,
+  Crop,
+  Images,
+  Eraser,
 } from 'lucide-react'
 
 const imageTabs = [
-  { value: 'metadata', label: 'Metadata', icon: Info },
-  { value: 'resize', label: 'Resize', icon: Maximize },
-  { value: 'convert', label: 'Convert', icon: Settings },
-  { value: 'compress', label: 'Compress', icon: Zap },
-  { value: 'redact', label: 'Redact', icon: Eye },
+  { value: 'metadata', label: 'Metadata', title: 'Image metadata', icon: Info },
+  { value: 'resize', label: 'Resize', title: 'Resize image', icon: Maximize },
+  {
+    value: 'convert',
+    label: 'Convert',
+    title: 'Convert image',
+    icon: Settings,
+  },
+  { value: 'compress', label: 'Compress', title: 'Compress image', icon: Zap },
+  {
+    value: 'crop',
+    label: 'Crop & rotate',
+    title: 'Crop, rotate and flip image',
+    icon: Crop,
+  },
+  {
+    value: 'batch',
+    label: 'Batch',
+    title: 'Batch resize or convert images',
+    icon: Images,
+  },
+  { value: 'redact', label: 'Redact', title: 'Redact image', icon: Eye },
+  {
+    value: 'background',
+    label: 'Remove background',
+    title: 'Remove image background',
+    icon: Eraser,
+  },
 ]
 
 function invalidateImageWork() {
@@ -61,8 +92,32 @@ export const Route = createFileRoute('/images')({
   component: ImageToolsLayout,
 })
 
+function readImageDimensions(preview: string) {
+  return new Promise<{ width: number; height: number }>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve({ width: image.width, height: image.height })
+    image.onerror = () =>
+      reject(new Error('The browser could not open this image.'))
+    image.src = preview
+  })
+}
+
+const pendingImageDetails = new WeakMap<
+  File,
+  { magick: Promise<ImageMetadata>; exif: Promise<ExifMetadata> }
+>()
+function imageDetails(image: ImageFile, processor: ImageMagickProcessor) {
+  const pending = pendingImageDetails.get(image.file)
+  if (pending) return pending
+  const details = {
+    magick: processor.extractMetadata(image),
+    exif: extractExifMetadata(image.file),
+  }
+  pendingImageDetails.set(image.file, details)
+  return details
+}
+
 function ImageToolsLayout() {
-  const { isInitialized, isInitializing, error, init } = useInitImageMagick()
   const { isProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
@@ -78,24 +133,61 @@ function ImageToolsLayout() {
     {},
   )
   const [isExtractingExif, setIsExtractingExif] = useState(false)
+  const [isPreparing, setIsPreparing] = useState(false)
+  const [selectionError, setSelectionError] = useState<string | null>(null)
+  const [batchSelectionError, setBatchSelectionError] = useState<string | null>(
+    null,
+  )
+  const [batchFiles, setBatchFiles] = useWorkspaceState<File[]>(
+    'imageBatch.files',
+    [],
+  )
 
   const [selection] = useWorkspaceState('images.selection', () => ({
-    file: null as File | null,
+    request: 0,
+    activeRequest: 0,
   }))
 
   // Create ImageMagick processor instance - use useMemo to prevent recreation on every render
   const imageMagickProcessor = useMemo(() => new ImageMagickProcessor(), [])
 
   // Determine current tab from URL path
-  const currentTab = useMemo(() => {
-    const path = location.pathname
-    if (path.includes('/metadata')) return 'metadata'
-    if (path.includes('/resize')) return 'resize'
-    if (path.includes('/convert')) return 'convert'
-    if (path.includes('/compress')) return 'compress'
-    if (path.includes('/redact')) return 'redact'
-    return 'metadata' // default
-  }, [location.pathname])
+  const activeTab =
+    imageTabs.find(
+      ({ value }) =>
+        location.pathname.replace(/\/$/, '') === `/images/${value}`,
+    ) ?? imageTabs[0]
+  const isBatch = activeTab.value === 'batch'
+
+  const showMetadata = activeTab.value === 'metadata'
+  const selected = selectedFiles[0]
+  useEffect(() => {
+    if (!showMetadata || !selected) return
+    let active = true
+    const request = selection.activeRequest
+    const isCurrent = () => active && selection.activeRequest === request
+    const job = imageDetails(selected, imageMagickProcessor)
+    setIsExtractingExif(true)
+    void job.magick.then((details) => {
+      if (isCurrent()) setMetadata({ [selected.name]: details })
+    })
+    void job.exif.then((details) => {
+      if (isCurrent()) {
+        setExifMetadata(details)
+        setIsExtractingExif(false)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [
+    showMetadata,
+    selected,
+    selection,
+    imageMagickProcessor,
+    setMetadata,
+    setExifMetadata,
+  ])
 
   // Handle tab changes
   const handleTabChange = useCallback(
@@ -111,46 +203,44 @@ function ImageToolsLayout() {
 
   const handleFileSelect = useCallback(
     async (files: FileList) => {
-      console.log('🖼️ ImageTools: File selection started', {
-        fileCount: files.length,
-      })
-
-      // Only take the first image file
       const file = files[0]
-      if (file?.type.startsWith('image/')) {
-        console.log('🖼️ ImageTools: Processing image file', {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        })
-
-        selection.file = file
-        const preview = URL.createObjectURL(file)
-
-        // Get image dimensions
-        const img = new Image()
-        const dimensions = await new Promise<{ width: number; height: number }>(
-          (resolve) => {
-            img.onload = () => resolve({ width: img.width, height: img.height })
-            img.src = preview
-          },
-        )
-
-        if (selection.file !== file) {
-          URL.revokeObjectURL(preview)
-          return
+      if (!file) return
+      const request = ++selection.request
+      const isCurrent = () => selection.request === request
+      if (!isSupportedImage(file)) {
+        setIsPreparing(false)
+        setSelectionError('Choose a JPG, PNG, WebP, GIF, HEIC, or HEIF image.')
+        return
+      }
+      setIsPreparing(true)
+      setSelectionError(null)
+      let preview = ''
+      let retainedPreview = false
+      try {
+        if (!isHeifImage(file)) preview = URL.createObjectURL(file)
+        let dimensions = preview
+          ? await readImageDimensions(preview).catch(() => null)
+          : null
+        if (!isCurrent()) return
+        if (!dimensions) {
+          const converted = await imageMagickProcessor.previewImage(file)
+          if (!isCurrent()) return
+          if (preview) URL.revokeObjectURL(preview)
+          preview = URL.createObjectURL(converted.blob)
+          dimensions = converted.dimensions
         }
-        console.log('🖼️ ImageTools: Image dimensions extracted', dimensions)
 
-        const imageFile = {
+        const imageFile: ImageFile = {
           file,
           preview,
           name: file.name,
           size: file.size,
-          type: file.type,
+          type: file.type || (isHeifImage(file) ? 'image/heic' : ''),
           dimensions,
         }
 
+        selection.activeRequest = request
+        retainedPreview = true
         setSelectedFiles((previous) => {
           previous.forEach((image) => URL.revokeObjectURL(image.preview))
           return [imageFile]
@@ -159,30 +249,17 @@ function ImageToolsLayout() {
         setExifMetadata({})
         setIsExtractingExif(false)
         invalidateImageWork()
-
-        // Initialize ImageMagick if not already initialized
-        if (!isInitialized) {
-          console.log('🖼️ ImageTools: Initializing ImageMagick...')
-          await init()
-          console.log('🖼️ ImageTools: ImageMagick initialization completed')
-        }
-
-        // Automatically extract both ImageMagick and EXIF metadata
-        console.log('🖼️ ImageTools: Starting metadata extraction...')
-        await Promise.all([
-          extractMetadata(imageFile),
-          extractImageExifMetadata(imageFile),
-        ])
-        console.log('🖼️ ImageTools: File selection completed successfully')
-      } else {
-        console.warn('🖼️ ImageTools: Invalid file type selected', {
-          type: file?.type,
-        })
+        setIsPreparing(false)
+      } catch {
+        if (isCurrent())
+          setSelectionError('This image could not be opened. Try another file.')
+      } finally {
+        if (!retainedPreview && preview) URL.revokeObjectURL(preview)
+        if (isCurrent()) setIsPreparing(false)
       }
     },
     [
-      isInitialized,
-      init,
+      imageMagickProcessor,
       selection,
       setSelectedFiles,
       setMetadata,
@@ -190,53 +267,10 @@ function ImageToolsLayout() {
     ],
   )
 
-  // Extract metadata using ImageMagick
-  const extractMetadata = async (imageFile: ImageFile) => {
-    console.log(
-      '🖼️ ImageTools: Starting metadata extraction for',
-      imageFile.name,
-    )
-    try {
-      const meta = await imageMagickProcessor.extractMetadata(imageFile)
-      console.log('🖼️ ImageTools: Metadata extraction successful', meta)
-      if (selection.file === imageFile.file)
-        setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
-    } catch (error) {
-      console.error('🖼️ ImageTools: Error extracting metadata:', error)
-      // Fallback to basic metadata
-      const meta: ImageMetadata = {
-        width: imageFile.dimensions?.width ?? 0,
-        height: imageFile.dimensions?.height ?? 0,
-        format: imageFile.type.split('/')[1].toUpperCase(),
-        size: imageFile.size,
-        colorspace: 'sRGB',
-        depth: 8,
-        compression: 'None',
-      }
-      console.log('🖼️ ImageTools: Using fallback metadata', meta)
-      if (selection.file === imageFile.file)
-        setMetadata((prev) => ({ ...prev, [imageFile.name]: meta }))
-    }
-  }
-
-  // Extract EXIF metadata using shared metadata library
-  const extractImageExifMetadata = async (imageFile: ImageFile) => {
-    try {
-      const exifData = await extractExifMetadata(
-        imageFile.file,
-        (extracting) => {
-          if (selection.file === imageFile.file) setIsExtractingExif(extracting)
-        },
-      )
-      if (selection.file === imageFile.file) setExifMetadata(exifData)
-    } catch (error) {
-      console.error('🖼️ ImageTools: Error extracting EXIF metadata:', error)
-      if (selection.file === imageFile.file) setExifMetadata({})
-    }
-  }
-
   const clearSelectedFile = useCallback(() => {
-    selection.file = null
+    selection.activeRequest = ++selection.request
+    setIsPreparing(false)
+    setSelectionError(null)
     setSelectedFiles((previous) => {
       previous.forEach((image) => URL.revokeObjectURL(image.preview))
       return []
@@ -247,9 +281,15 @@ function ImageToolsLayout() {
     invalidateImageWork()
   }, [selection, setSelectedFiles, setMetadata, setExifMetadata])
 
-  // Create context value
+  const replaceBatchFiles = (files: File[]) => {
+    setBatchFiles(files)
+    invalidateWorkspaceState(['imageBatch.options', 'result.imageBatch.'])
+  }
+
   const contextValue: ImageToolsContextType = {
     selectedFile: selectedFiles[0] || null,
+    batchFiles,
+    clearBatchFiles: () => replaceBatchFiles([]),
     metadata,
     exifMetadata,
     isExtractingExif,
@@ -259,36 +299,31 @@ function ImageToolsLayout() {
     clearSelectedFile,
   }
 
-  if (isInitializing) {
-    return (
-      <div className="flex flex-col h-full bg-background">
-        <div className="flex items-center justify-center h-screen w-full bg-background/80 z-50">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <span className="text-lg text-foreground">
-              Loading image tools...
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col h-full bg-background">
-        <div className="flex items-center justify-center h-screen w-full bg-background/80 z-50">
-          <div className="flex flex-col items-center gap-4">
-            <span className="text-lg text-red-500">
-              Failed to load image tools: {error}
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const imageFileUpload = (
+  const imageFileUpload = isBatch ? (
+    <FileUpload
+      selectedFiles={batchFiles.map(({ name, size }) => ({ name, size }))}
+      onFileSelect={(files) => {
+        const selected = Array.from(files)
+        if (selected.some((file) => !isSupportedImage(file))) {
+          setBatchSelectionError('Choose only image files for a batch.')
+          return
+        }
+        setBatchSelectionError(null)
+        replaceBatchFiles(selected)
+      }}
+      onClearFiles={() => {
+        setBatchSelectionError(null)
+        replaceBatchFiles([])
+      }}
+      disabled={isProcessing}
+      acceptedTypes={acceptedImageTypes}
+      title="Drop images here"
+      description="Apply the same changes to every selected image."
+      supportedFormats={supportedImageFormats}
+      selectedActionLabel="Change files"
+      multiple
+    />
+  ) : (
     <FileUpload
       selectedFiles={selectedFiles.map((file) => ({
         name: file.name,
@@ -299,11 +334,11 @@ function ImageToolsLayout() {
       }))}
       onFileSelect={(files) => void handleFileSelect(files)}
       onClearFiles={clearSelectedFile}
-      disabled={isProcessing}
-      acceptedTypes="image/*"
+      disabled={isProcessing || isPreparing}
+      acceptedTypes={acceptedImageTypes}
       title="Drop an image here"
-      description="Supports JPG, PNG, WebP, GIF"
-      supportedFormats={['JPG', 'PNG', 'WebP', 'GIF']}
+      description="Choose an image from this device."
+      supportedFormats={supportedImageFormats}
       selectedFileIcon={FileImage}
     >
       {/* Custom file display for images */}
@@ -341,31 +376,44 @@ function ImageToolsLayout() {
   const imageToolsNav = (
     <ResponsiveTabs
       tabs={imageTabs}
-      currentTab={currentTab}
+      currentTab={activeTab.value}
       onTabChange={handleTabChange}
       isProcessing={isProcessing}
     />
   )
+  const uploadError = isBatch ? batchSelectionError : selectionError
 
   return (
     <ImageToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title={
-          {
-            metadata: 'Image metadata',
-            resize: 'Resize image',
-            convert: 'Convert image',
-            compress: 'Compress image',
-            redact: 'Redact image',
-          }[currentTab]
-        }
+        title={activeTab.title}
         icon={ImageIcon}
         iconColor="text-blue-500"
         iconBgColor="bg-gradient-to-br from-blue-500/10 to-blue-500/5"
-        fileUploadComponent={imageFileUpload}
+        fileUploadComponent={
+          <div className="space-y-3">
+            {imageFileUpload}
+            {!isBatch && isPreparing && (
+              <p
+                role="status"
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+              >
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />{' '}
+                Preparing image tools…
+              </p>
+            )}
+            {uploadError && (
+              <p role="alert" className="text-sm text-destructive">
+                {uploadError}
+              </p>
+            )}
+          </div>
+        }
         navigationComponent={imageToolsNav}
       >
-        <Outlet />
+        <div inert={!isBatch && isPreparing}>
+          <Outlet />
+        </div>
       </ToolLayout>
     </ImageToolsContext.Provider>
   )

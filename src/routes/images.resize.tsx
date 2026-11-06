@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2 } from 'lucide-react'
 import { type ResizeOptions } from '@/lib/imagemagick'
+import { imageOutputFilename, isHeifImage } from '@/lib/imageFiles'
 import { downloadBlob } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
@@ -30,7 +31,7 @@ function ResizePage() {
     maintainAspectRatio: true,
   })
   const [error, setError] = useState<string | null>(null)
-  const { result, setResult } = useToolResult(
+  const { result, setResult, clearResult } = useToolResult(
     selectedFile?.file,
     'images.resize',
   )
@@ -48,6 +49,7 @@ function ResizePage() {
   }, [selectedFile, settings.source, setSettings])
 
   const setDimension = (field: 'width' | 'height', value: string) => {
+    clearResult()
     setSettings((previous) => {
       const next = { ...previous, [field]: value }
       const dimensions = selectedFile?.dimensions
@@ -63,6 +65,7 @@ function ResizePage() {
 
   const applyPercentage = (percentage: number) => {
     if (!selectedFile?.dimensions) return
+    clearResult()
     setSettings((previous) => ({
       ...previous,
       width: String(
@@ -92,7 +95,7 @@ function ResizePage() {
       }
       const blob = await imageMagickProcessor.resizeImage(selectedFile, options)
       if (!operation.isCurrent()) return
-      const filename = `resized_${selectedFile.name}`
+      const filename = imageOutputFilename(`resized_${selectedFile.name}`, blob)
       const dimensions = selectedFile.dimensions
       const ratio =
         settings.maintainAspectRatio && dimensions
@@ -182,15 +185,21 @@ function ResizePage() {
               id="aspect-ratio"
               checked={settings.maintainAspectRatio}
               disabled={isProcessing}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked) => {
+                clearResult()
                 setSettings((previous) => ({
                   ...previous,
                   maintainAspectRatio: checked === true,
                 }))
-              }
+              }}
             />
             Keep aspect ratio
           </Label>
+          {selectedFile && isHeifImage(selectedFile) && (
+            <p className="text-sm text-muted-foreground">
+              HEIC and HEIF are saved as PNG.
+            </p>
+          )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -206,7 +215,11 @@ function ResizePage() {
           </Button>
         </CardContent>
       </Card>
-      <ResultCard result={result} onReset={clearSelectedFile} />
+      <ResultCard
+        result={result}
+        onReset={clearSelectedFile}
+        disabled={isProcessing}
+      />
     </div>
   )
 }

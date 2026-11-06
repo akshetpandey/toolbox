@@ -26,9 +26,20 @@ test('keeps meaningful terms, curated aliases, and category matches', () => {
   expect(routes('Word to PDF')).toEqual(['/office-documents/convert'])
   expect(routes('MP4 to MP3')).toEqual(['/videos/extract'])
   expect(routes('extract 7-Zip')).toEqual(['/archives/extract'])
-  expect(routes('convert images')).toEqual(['/images/convert'])
+  expect(routes('convert images')).toContain('/images/convert')
   expect(routes('JPG to nonexistent-format')).toEqual([])
-  expect(routes('split PDF')).toEqual([])
+})
+
+test.each([
+  ['MP4 to GIF', '/videos/trim'],
+  ['split PDF', '/pdfs/split'],
+  ['PDF to Word', '/pdfs/to-word'],
+  ['JPG to PDF', '/pdfs/from-images'],
+  ['PDF to JPG', '/pdfs/to-images'],
+  ['HEIC to JPG', '/images/convert'],
+  ['M4A to MP3', '/audio/convert'],
+])('finds the tool for %s', (query, route) => {
+  expect(routes(query)).toEqual([route])
 })
 
 test('empty and non-searchable input do not produce misleading matches', () => {
@@ -62,15 +73,7 @@ test('matches everyday descriptions and word order without a model', () => {
 })
 
 test('unavailable tasks and short format names do not become misleading fuzzy matches', () => {
-  for (const query of [
-    'rotate image',
-    'OCR PDF',
-    'split PDF',
-    'JPG to SVG',
-    'MP4 to MP2',
-    'sha257',
-    'zzzzzzzz',
-  ]) {
+  for (const query of ['JPG to SVG', 'MP4 to MP2', 'sha257', 'zzzzzzzz']) {
     expect(routes(query), query).toEqual([])
   }
   expect(routes('MP4 to MP3')).toEqual(['/videos/extract'])

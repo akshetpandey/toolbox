@@ -11,7 +11,7 @@ export const Route = createFileRoute('/')({
   component: App,
 })
 
-export function App() {
+function App() {
   const [query, setQuery] = useState('')
   const searchInput = useRef<HTMLInputElement>(null)
   const clearSearch = () => {
