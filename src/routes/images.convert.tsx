@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { type ImageConvertOptions } from '@/lib/imagemagick'
+import { isHeifImage } from '@/lib/imageFiles'
 import { downloadBlob } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
@@ -23,13 +24,18 @@ function ConvertPage() {
   const beginOperation = useFileOperation(selectedFile?.file)
   const [targetFormat, setTargetFormat] = useWorkspaceState(
     'images.convert.format',
-    'webp',
+    selectedFile && isHeifImage(selectedFile) ? 'jpg' : 'webp',
   )
   const [error, setError] = useState<string | null>(null)
-  const { result, setResult } = useToolResult(
+  const { result, setResult, clearResult } = useToolResult(
     selectedFile?.file,
     'images.convert',
   )
+  const changeFormat = (format: string) => {
+    setTargetFormat(format)
+    clearResult()
+    setError(null)
+  }
 
   const convertImage = async (imageFile: typeof selectedFile) => {
     if (!imageFile) {
@@ -101,7 +107,7 @@ function ConvertPage() {
                   name="format"
                   value="webp"
                   checked={targetFormat === 'webp'}
-                  onChange={(e) => setTargetFormat(e.target.value)}
+                  onChange={(e) => changeFormat(e.target.value)}
                   className="w-4 h-4 text-primary border-border/50"
                 />
                 <Label
@@ -119,7 +125,7 @@ function ConvertPage() {
                   name="format"
                   value="png"
                   checked={targetFormat === 'png'}
-                  onChange={(e) => setTargetFormat(e.target.value)}
+                  onChange={(e) => changeFormat(e.target.value)}
                   className="w-4 h-4 text-primary border-border/50"
                 />
                 <Label
@@ -137,7 +143,7 @@ function ConvertPage() {
                   name="format"
                   value="jpg"
                   checked={targetFormat === 'jpg'}
-                  onChange={(e) => setTargetFormat(e.target.value)}
+                  onChange={(e) => changeFormat(e.target.value)}
                   className="w-4 h-4 text-primary border-border/50"
                 />
                 <Label
@@ -149,6 +155,9 @@ function ConvertPage() {
               </div>
             </div>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Converts the first frame of animated images and HEIF sequences.
+          </p>
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
@@ -169,7 +178,11 @@ function ConvertPage() {
           </div>
         </CardContent>
       </Card>
-      <ResultCard result={result} onReset={clearSelectedFile} />
+      <ResultCard
+        result={result}
+        onReset={clearSelectedFile}
+        disabled={isProcessing}
+      />
     </div>
   )
 }

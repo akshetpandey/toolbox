@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -81,4 +82,47 @@ test('real browser Files expose page counts, keyboard ordering, and a reusable t
   await userEvent.click(screen.getByRole('button', { name: 'Download again' }))
   expect(outputs).toHaveLength(2)
   expect(outputs[1]).toBe(output)
+})
+
+test('PDF editing keeps one shared source and clears obsolete exports when the source is replaced', async () => {
+  async function createPDF(pages: number) {
+    const document = await PDFDocument.create()
+    for (let index = 0; index < pages; index++) document.addPage([72, 72])
+    return new File([Uint8Array.from(await document.save())], 'document.pdf', {
+      type: 'application/pdf',
+    })
+  }
+
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/pdfs/split'] }),
+    defaultPendingMinMs: 0,
+  })
+  await router.load()
+  render(
+    <ThemeProvider>
+      <ProcessingProvider>
+        <RouterProvider router={router} />
+      </ProcessingProvider>
+    </ThemeProvider>,
+  )
+  const input = await screen.findByLabelText<HTMLInputElement>('Upload file')
+  expect(input.multiple).toBe(false)
+  fireEvent.change(input, { target: { files: [await createPDF(2)] } })
+  await screen.findByText('Your document has 2 pages.')
+  fireEvent.change(screen.getByLabelText('Pages'), { target: { value: '2' } })
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Extract and download PDF' }),
+  )
+  await screen.findByText('document-pages.pdf')
+
+  await act(() => router.navigate({ to: '/pdfs/compress' }))
+  expect(screen.getByText('document.pdf')).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('Upload file'), {
+    target: { files: [await createPDF(1)] },
+  })
+  await act(() => router.navigate({ to: '/pdfs/split' }))
+  await screen.findByText('Your document has 1 page.')
+  expect(screen.getByLabelText<HTMLInputElement>('Pages').value).toBe('')
+  expect(screen.queryByText('document-pages.pdf')).toBeNull()
 })

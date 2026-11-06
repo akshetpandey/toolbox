@@ -17,6 +17,15 @@ import {
   Package,
   FolderOpen,
   Hash,
+  AudioLines,
+  Crop,
+  Eraser,
+  FileImage,
+  Layers,
+  ListOrdered,
+  PenLine,
+  ScanText,
+  Stamp,
 } from 'lucide-react'
 import { toolPaths } from './toolPaths.ts'
 
@@ -43,19 +52,49 @@ export const toolCategories = [
         pageTitle: 'Compress Images in Your Browser',
         description: 'Make a photo or image file smaller.',
         instructions:
-          'Choose a JPG, PNG, WebP, or GIF and pick a compression preset or set the quality yourself. Compare the result with the original before sharing it.',
-        keywords: 'photo picture shrink reduce size',
+          'Choose an image and pick a quality preset. For a JPG, set a maximum size in KB when you need to meet an upload limit.',
+        keywords: 'photo picture shrink reduce size limit kb',
         icon: Minimize2,
       },
       {
         name: 'Convert image',
         route: toolPaths.imageConvert,
-        pageTitle: 'Image Converter for JPG, PNG, and WebP',
+        pageTitle: 'Convert HEIC, JPG, PNG, and WebP Images',
         description: 'Save an image in a different format.',
         instructions:
-          'Choose an image and select JPG, PNG, or WebP for the output. Use PNG or WebP if you need to keep transparency. JPG is useful for photos.',
-        keywords: 'jpg jpeg png webp gif format',
+          'Choose a HEIC, JPG, PNG, WebP, or GIF image and save it as JPG, PNG, or WebP. PNG and WebP can preserve transparency.',
+        keywords: 'jpg jpeg png webp gif heic heif format',
         icon: SlidersHorizontal,
+      },
+      {
+        name: 'Crop, rotate and flip image',
+        route: toolPaths.imageCrop,
+        pageTitle: 'Crop, Rotate, or Flip Images in Your Browser',
+        description: 'Keep a selected area or change the image orientation.',
+        instructions:
+          'Choose an image, set the crop area, and rotate or mirror it as needed. Preview the result before saving.',
+        keywords: 'photo picture crop rotate flip mirror aspect ratio',
+        icon: Crop,
+      },
+      {
+        name: 'Batch resize or convert images',
+        route: toolPaths.imageBatch,
+        pageTitle: 'Batch Resize or Convert Images',
+        description: 'Apply the same settings to multiple images.',
+        instructions:
+          'Choose multiple images and apply the same resize or conversion settings. Download the processed files together as a ZIP.',
+        keywords: 'bulk batch multiple photos zip dimensions',
+        icon: Layers,
+      },
+      {
+        name: 'Remove image background',
+        route: toolPaths.imageBackground,
+        pageTitle: 'Remove an Image Background in Your Browser',
+        description: 'Keep the subject and make the background transparent.',
+        instructions:
+          'Choose an image to isolate the subject automatically, or pick a solid color to remove. Save the transparent result as a PNG.',
+        keywords: 'background transparent photo chroma key green screen',
+        icon: Eraser,
       },
       {
         name: 'Redact image',
@@ -91,10 +130,10 @@ export const toolCategories = [
         name: 'Compress video',
         route: toolPaths.videoCompress,
         pageTitle: 'Compress Video to a Smaller MP4',
-        description: 'Reduce video size with a quality preset.',
+        description: 'Reduce video size with a preset or a maximum size.',
         instructions:
-          'Choose a video and pick a preset for file size or quality. You can adjust the settings before exporting an MP4 and comparing its size with the original.',
-        keywords: 'movie shrink smaller reduce',
+          'Choose a video and pick a quality preset or set a maximum size in MB. Export an MP4 and compare its size with the original.',
+        keywords: 'movie shrink smaller reduce limit mb',
         icon: Minimize2,
       },
       {
@@ -114,8 +153,18 @@ export const toolCategories = [
         description: 'Keep just the part you need.',
         instructions:
           'Set the start and end of the clip you want to keep. Export in the original video format or make a silent animated GIF or WebP.',
-        keywords: 'cut clip movie length',
+        keywords: 'cut clip movie length mp4 gif animated webp',
         icon: Scissors,
+      },
+      {
+        name: 'Join videos',
+        route: toolPaths.videoJoin,
+        pageTitle: 'Join Video Clips into One MP4',
+        description: 'Combine clips in the order you choose.',
+        instructions:
+          'Add two or more clips, arrange them in playback order, and download a single MP4.',
+        keywords: 'merge combine concatenate movie clips',
+        icon: Merge,
       },
       {
         name: 'Extract audio',
@@ -124,7 +173,7 @@ export const toolCategories = [
         description: 'Save the sound from a video.',
         instructions:
           'Choose a video with an audio track, then save the audio as MP3, AAC, or WAV. WAV is uncompressed and generally produces a larger file.',
-        keywords: 'music sound movie mp4 webm mp3 wav aac flac ogg opus m4a',
+        keywords: 'music sound movie mp4 webm mp3 wav aac',
         icon: Music2,
       },
       {
@@ -136,6 +185,44 @@ export const toolCategories = [
           'Choose a video to see its duration, resolution, and video and audio codecs. Use these details to check what a player or editor needs to open it.',
         keywords: 'movie info details',
         icon: Info,
+      },
+    ],
+  },
+  {
+    name: 'Audio',
+    path: '/audio',
+    icon: AudioLines,
+    color: 'text-pink-700 dark:text-pink-400',
+    tools: [
+      {
+        name: 'Convert audio',
+        route: toolPaths.audioConvert,
+        pageTitle: 'Convert Audio Files to MP3, WAV, or AAC',
+        description: 'Save a sound file in a different format.',
+        instructions:
+          'Choose an audio file such as a voice memo or WAV recording, select an output format, and download the result.',
+        keywords: 'sound music mp3 wav aac m4a voice memo format',
+        icon: SlidersHorizontal,
+      },
+      {
+        name: 'Trim audio',
+        route: toolPaths.audioTrim,
+        pageTitle: 'Trim Audio and Save a Clip',
+        description: 'Keep part of a recording.',
+        instructions:
+          'Choose an audio file, set the start and end of the part to keep, and download the clip.',
+        keywords: 'cut clip sound recording music',
+        icon: Scissors,
+      },
+      {
+        name: 'Join audio',
+        route: toolPaths.audioJoin,
+        pageTitle: 'Join Audio Files into One Track',
+        description: 'Combine recordings in playback order.',
+        instructions:
+          'Add two or more audio files, arrange them, and save them as one track.',
+        keywords: 'merge combine concatenate sound recording music',
+        icon: Merge,
       },
     ],
   },
@@ -155,6 +242,106 @@ export const toolCategories = [
         keywords: 'join combine pages documents',
         icon: Merge,
       },
+      {
+        name: 'Compress PDF',
+        route: toolPaths.pdfCompress,
+        pageTitle: 'Compress a PDF and Keep Text Selectable',
+        description: 'Reduce PDF file size in your browser.',
+        instructions:
+          'Choose a PDF and select a compression mode. Compare the result with the original before downloading.',
+        keywords: 'pdf shrink reduce size optimize scan document',
+        icon: Minimize2,
+      },
+      {
+        name: 'Images to PDF',
+        route: toolPaths.pdfFromImages,
+        pageTitle: 'Convert JPG or PNG Images to a PDF',
+        description: 'Put one or more images into a PDF.',
+        instructions:
+          'Add JPG or PNG images, arrange them in page order, and download a single PDF.',
+        keywords: 'photo photos jpg jpeg png picture pdf combine',
+        icon: FileImage,
+      },
+      {
+        name: 'Split or extract PDF pages',
+        route: toolPaths.pdfSplit,
+        pageTitle: 'Split a PDF or Extract Selected Pages',
+        description: 'Save selected pages or split a PDF into parts.',
+        instructions:
+          'Choose a PDF and enter the page ranges to keep or split into separate files.',
+        keywords: 'pdf separate divide select extract pages ranges',
+        icon: Scissors,
+      },
+      {
+        name: 'Organize PDF pages',
+        route: toolPaths.pdfOrganize,
+        pageTitle: 'Reorder, Rotate, or Delete PDF Pages',
+        description: 'Change the order, orientation, or contents of a PDF.',
+        instructions:
+          'Choose a PDF, then move, rotate, or remove pages before saving a copy.',
+        keywords: 'pdf rearrange reorder rotate delete remove pages',
+        icon: ListOrdered,
+      },
+      {
+        name: 'PDF to images',
+        route: toolPaths.pdfToImages,
+        pageTitle: 'Convert PDF Pages to JPG or PNG',
+        description: 'Save PDF pages as images.',
+        instructions:
+          'Choose a PDF and export selected pages as JPG or PNG images. Multiple pages download as a ZIP.',
+        keywords: 'pdf jpg jpeg png render image export',
+        icon: FileImage,
+      },
+      {
+        name: 'Make PDF searchable',
+        route: toolPaths.pdfOCR,
+        pageTitle: 'Make a Scanned PDF Searchable with OCR',
+        description: 'Recognize English text in scanned pages.',
+        instructions:
+          'Choose a scanned PDF and run English text recognition to create a copy with searchable text.',
+        keywords: 'ocr pdf scanned scan text recognition searchable copy',
+        icon: ScanText,
+      },
+      {
+        name: 'Redact PDF',
+        route: toolPaths.pdfRedact,
+        pageTitle: 'Redact Sensitive Information in a PDF',
+        description: 'Black out sensitive areas in a new PDF copy.',
+        instructions:
+          'Choose a PDF and mark the areas to cover. The redacted copy is rebuilt from the visible pages.',
+        keywords: 'pdf redact hide black out sensitive remove private',
+        icon: Eraser,
+      },
+      {
+        name: 'Add a signature to PDF',
+        route: toolPaths.pdfSign,
+        pageTitle: 'Add a Visible Signature to a PDF',
+        description: 'Place a visible signature on a selected page.',
+        instructions:
+          'Choose a PDF, add your signature to a page, and download the signed copy.',
+        keywords: 'pdf sign signature stamp',
+        icon: PenLine,
+      },
+      {
+        name: 'Watermark PDF',
+        route: toolPaths.pdfWatermark,
+        pageTitle: 'Add a Text Watermark to a PDF',
+        description: 'Stamp a text label on PDF pages.',
+        instructions:
+          'Choose a PDF and enter the watermark text. Save a new copy with the label on its pages.',
+        keywords: 'pdf watermark text draft confidential stamp',
+        icon: Stamp,
+      },
+      {
+        name: 'PDF to editable Word',
+        route: toolPaths.pdfToWord,
+        pageTitle: 'Export Selectable PDF Text to an Editable Word Document',
+        description: 'Save selectable text as an editable DOCX.',
+        instructions:
+          'Choose a PDF with selectable text to export it to an editable Word document. This experimental converter focuses on text.',
+        keywords: 'pdf word docx extract editable text',
+        icon: FileText,
+      },
     ],
   },
   {
@@ -169,7 +356,7 @@ export const toolCategories = [
         pageTitle: 'Convert Word, Excel, and PowerPoint to PDF',
         description: 'Turn office documents into a shareable PDF.',
         instructions:
-          'Choose a Word document, Excel spreadsheet, or PowerPoint presentation and download a PDF copy. Review the output before sharing if the layout matters.',
+          'Choose a DOCX, XLSX, or PPTX file and download a PDF copy. Save older Office files in a current format first. Review the output if the layout matters.',
         keywords: 'word docx excel xlsx spreadsheet office',
         icon: FileText,
       },
@@ -197,8 +384,8 @@ export const toolCategories = [
         pageTitle: 'Extract ZIP, RAR, and 7z Archives',
         description: 'Open an archive and download its files.',
         instructions:
-          'Choose a ZIP, RAR, 7z, TAR, or GZIP archive to see what it contains. Download a single file or save all the extracted files.',
-        keywords: 'unzip zip 7z rar unpack',
+          'Choose a ZIP, RAR, 7z, TAR, or GZIP archive. Enter its password if needed, then download a single file or save all extracted files.',
+        keywords: 'unzip zip 7z rar unpack encrypted password protected',
         icon: FolderOpen,
       },
     ],
@@ -269,6 +456,38 @@ const searchStopWords = new Set([
   'you',
 ])
 
+const imageInputs = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'heic',
+  'heif',
+])
+const imageOutputs = new Set(['jpg', 'jpeg', 'png', 'webp'])
+const officeInputs = new Set([
+  'word',
+  'docx',
+  'excel',
+  'xlsx',
+  'powerpoint',
+  'pptx',
+])
+
+function conversionRoute(from: string, to: string) {
+  if (imageInputs.has(from) && imageOutputs.has(to))
+    return toolPaths.imageConvert
+  if (to === 'pdf' && ['jpg', 'jpeg', 'png'].includes(from))
+    return toolPaths.pdfFromImages
+  if (from === 'pdf' && ['jpg', 'jpeg', 'png'].includes(to))
+    return toolPaths.pdfToImages
+  if (from === 'pdf' && ['word', 'docx'].includes(to))
+    return toolPaths.pdfToWord
+  if (to === 'pdf' && officeInputs.has(from)) return toolPaths.documentConvert
+  if (from === 'mp4' && to === 'gif') return toolPaths.videoTrim
+}
+
 function normalizeSearchText(value: string) {
   return value
     .normalize('NFKD')
@@ -331,10 +550,21 @@ const toolSearch = new Fuse(searchableTools, {
 
 export function findTools(query: string) {
   if (!query.trim()) return allTools
-  const words = normalizeSearchText(query)
+  const normalized = normalizeSearchText(query.replaceAll('→', ' to '))
+  const words = normalized
     .split(/\s+/)
     .filter((word) => word && !searchStopWords.has(word))
   if (words.length === 0) return []
+  // Prefer the requested direction for format pairs such as PDF to Word.
+  const pair = /\b([a-z0-9]+) (?:to|into) ([a-z0-9]+)$/u.exec(normalized)
+  const route = pair
+    ? conversionRoute(pair[1], pair[2])
+    : words.length === 2 &&
+        imageInputs.has(words[0]) &&
+        imageOutputs.has(words[1])
+      ? toolPaths.imageConvert
+      : undefined
+  if (route) return allTools.filter((tool) => tool.route === route)
   // Short format/digest tokens must stay literal: MP3 must not become MP4,
   // and an unsupported format should lead to the request link, not a guess.
   const exactMatch = (text: string) =>

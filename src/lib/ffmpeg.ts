@@ -1,5 +1,6 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { loadFFmpeg } from '@/hooks/useInitFFmpeg'
+import { compressVideoToSize, MediaInputError } from '@/lib/media'
 
 export interface VideoStream {
   index: number
@@ -184,15 +185,22 @@ export class FFmpegProcessor {
   }
 
   private async reloadFFmpeg() {
-    const inputFile = this.inputFile
-    this.ffmpeg.terminate()
-    await loadFFmpeg(this.ffmpeg)
-    FFmpegProcessor.inputMounts.delete(this.ffmpeg)
-    this.inputFile = null
-    this.inputFileName = null
-    if (inputFile) {
-      await this.mountInputFile(inputFile)
-    }
+    const mount = this.getInputMount()
+    const pending = mount.pending.then(async () => {
+      if (mount.owner && mount.owner !== this) return
+      const inputFile = this.inputFile
+      this.inputFile = null
+      this.inputFileName = null
+      mount.owner = null
+      mount.directoryCreated = false
+      if (this.ffmpeg.loaded !== false) this.ffmpeg.terminate()
+      await loadFFmpeg(this.ffmpeg)
+      if (inputFile) await this.mountInput(inputFile, mount)
+    })
+    mount.pending = pending.catch(() => {
+      // A subsequent selection may try again after a reload failure.
+    })
+    await pending
   }
 
   private getInputMount() {
@@ -208,29 +216,48 @@ export class FFmpegProcessor {
     return mount
   }
 
+  private async mountInput(
+    videoFile: VideoFile,
+    mount: ReturnType<FFmpegProcessor['getInputMount']>,
+  ) {
+    await this.releaseInputMount(mount)
+    if (this.ffmpeg.loaded === false) {
+      mount.directoryCreated = false
+      await loadFFmpeg(this.ffmpeg)
+    }
+    if (!mount.directoryCreated) {
+      await this.ffmpeg.createDir(this.inputDir)
+      mount.directoryCreated = true
+    }
+    await this.ffmpeg.mount(
+      //@ts-expect-error - WORKERFS is not a valid FFFSType
+      'WORKERFS',
+      { files: [videoFile.file] },
+      this.inputDir,
+    )
+    this.inputFile = videoFile
+    this.inputFileName = this.inputDir + '/' + videoFile.file.name
+    mount.owner = this
+  }
+
+  private async releaseInputMount(
+    mount: ReturnType<FFmpegProcessor['getInputMount']>,
+  ) {
+    if (!mount.owner) return
+    if (this.ffmpeg.loaded !== false) {
+      await this.ffmpeg.unmount(this.inputDir).catch((error: unknown) => {
+        // Cancelling an encode can terminate the worker with an unmount queued.
+        if (this.ffmpeg.loaded !== false) throw error
+      })
+    }
+    mount.owner.inputFile = null
+    mount.owner.inputFileName = null
+    mount.owner = null
+  }
+
   async mountInputFile(videoFile: VideoFile) {
     const mount = this.getInputMount()
-    const pending = mount.pending.then(async () => {
-      if (mount.owner) {
-        await this.ffmpeg.unmount(this.inputDir)
-        mount.owner.inputFile = null
-        mount.owner.inputFileName = null
-        mount.owner = null
-      }
-      if (!mount.directoryCreated) {
-        await this.ffmpeg.createDir(this.inputDir)
-        mount.directoryCreated = true
-      }
-      await this.ffmpeg.mount(
-        //@ts-expect-error - WORKERFS is not a valid FFFSType
-        'WORKERFS',
-        { files: [videoFile.file] },
-        this.inputDir,
-      )
-      this.inputFile = videoFile
-      this.inputFileName = this.inputDir + '/' + videoFile.file.name
-      mount.owner = this
-    })
+    const pending = mount.pending.then(() => this.mountInput(videoFile, mount))
     mount.pending = pending.catch(() => {
       // Keep the queue usable after this caller receives its mount error.
     })
@@ -240,11 +267,7 @@ export class FFmpegProcessor {
   async unmountInputFile() {
     const mount = this.getInputMount()
     const pending = mount.pending.then(async () => {
-      if (mount.owner !== this) return
-      await this.ffmpeg.unmount(this.inputDir)
-      this.inputFile = null
-      this.inputFileName = null
-      mount.owner = null
+      if (mount.owner === this) await this.releaseInputMount(mount)
     })
     mount.pending = pending.catch(() => {
       // Keep the queue usable after this caller receives its mount error.
@@ -682,6 +705,30 @@ export class FFmpegProcessor {
     await this.ffmpeg.deleteFile(outputFileName)
 
     return this.createBlobFromFFmpegOutput(data, 'video/mp4')
+  }
+
+  async compressToSize(maxBytes: number, signal: AbortSignal) {
+    if (!this.inputFileName) throw new Error('Choose a video first.')
+    signal.throwIfAborted()
+    const stop = () => {
+      if (this.getInputMount().owner === this) this.ffmpeg.terminate()
+    }
+    signal.addEventListener('abort', stop, { once: true })
+    try {
+      return await compressVideoToSize(
+        this.ffmpeg,
+        this.inputFileName,
+        maxBytes,
+        signal,
+      )
+    } catch (error) {
+      if (signal.aborted || !(error instanceof MediaInputError))
+        await this.reloadFFmpeg()
+      signal.throwIfAborted()
+      throw error
+    } finally {
+      signal.removeEventListener('abort', stop)
+    }
   }
 
   async trimVideo(options: TrimOptions): Promise<Blob> {

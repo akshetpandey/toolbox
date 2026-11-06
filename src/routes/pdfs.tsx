@@ -6,6 +6,7 @@ import {
 } from '@/hooks/useWorkspaceState'
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
+import { PDFNavigation } from '@/components/PDFNavigation'
 import { getPage } from '@/lib/seo'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
@@ -144,10 +145,18 @@ export const Route = createFileRoute('/pdfs')({
 function PDFToolsLayout() {
   const { isProcessing } = useProcessing()
   const location = useLocation()
-  const [selectedFiles, setSelectedFiles] = useWorkspaceState<PDFFile[]>(
+  const path = location.pathname.replace(/\/$/, '')
+  const merging = path === '/pdfs/merge'
+  const [mergeFiles, setMergeFiles] = useWorkspaceState<PDFFile[]>(
     'pdfs.files',
     [],
   )
+  const [singleFile, setSingleFile] = useWorkspaceState<PDFFile[]>(
+    'pdfs.single-file',
+    [],
+  )
+  const selectedFiles = merging ? mergeFiles : singleFile
+  const setSelectedFiles = merging ? setMergeFiles : setSingleFile
   const [activeId, setActiveId] = useState<string | null>(null)
   const [pageCounts, setPageCounts] = useState<Record<string, number | null>>(
     {},
@@ -199,30 +208,38 @@ function PDFToolsLayout() {
         .filter(isPDFFile)
         .map((file) => ({ ...createPDFFile(file), id: crypto.randomUUID() }))
       if (pdfFiles.length) {
-        setSelectedFiles((previous) => [...previous, ...pdfFiles])
-        invalidateWorkspaceState(['result.pdfs.'])
+        if (merging) {
+          setSelectedFiles((previous) => [...previous, ...pdfFiles])
+          invalidateWorkspaceState(['result.pdfs.merge'])
+        } else {
+          invalidateWorkspaceState(['pdfs.edit.', 'result.pdfs.edit.'])
+          setSelectedFiles(pdfFiles.slice(0, 1))
+          setPageCounts({})
+        }
       }
       if (pdfFiles.length !== files.length)
         setSelectionError(
           'Only PDF files were added. Choose PDF files to continue.',
         )
     },
-    [isProcessing, setSelectedFiles],
+    [isProcessing, merging, setSelectedFiles],
   )
 
   const removeFile = useCallback(
     (id: string) => {
       setSelectedFiles((files) => files.filter((file) => file.id !== id))
-      invalidateWorkspaceState(['result.pdfs.'])
+      invalidateWorkspaceState(['result.pdfs.merge'])
     },
     [setSelectedFiles],
   )
   const clearFiles = useCallback(() => {
     setSelectedFiles([])
-    invalidateWorkspaceState(['result.pdfs.'])
+    invalidateWorkspaceState(
+      merging ? ['result.pdfs.merge'] : ['pdfs.edit.', 'result.pdfs.edit.'],
+    )
     setPageCounts({})
     setSelectionError('')
-  }, [setSelectedFiles])
+  }, [merging, setSelectedFiles])
   const reorderFiles = useCallback(
     (fromId: string, toId: string) => {
       setSelectedFiles((items) => {
@@ -230,7 +247,7 @@ function PDFToolsLayout() {
         const to = items.findIndex((file) => file.id === toId)
         return from < 0 || to < 0 ? items : arrayMove(items, from, to)
       })
-      invalidateWorkspaceState(['result.pdfs.'])
+      invalidateWorkspaceState(['result.pdfs.merge'])
     },
     [setSelectedFiles],
   )
@@ -249,7 +266,20 @@ function PDFToolsLayout() {
     reorderFiles,
     pageCounts,
   }
-  const unavailable = /\/(split|compress)\/?$/.test(location.pathname)
+  if (path === '/pdfs/from-images') return <Outlet />
+  const singleUpload = (
+    <FileUpload
+      selectedFiles={selectedFiles.map(({ name, size }) => ({ name, size }))}
+      onFileSelect={handleFileSelect}
+      onClearFiles={clearFiles}
+      acceptedTypes=".pdf,application/pdf"
+      title="Choose a PDF"
+      description="Select the PDF you want to work with."
+      supportedFormats={['PDF']}
+      selectedFileIcon={File}
+      disabled={isProcessing}
+    />
+  )
   const pdfFileUpload = (
     <DndContext
       sensors={sensors}
@@ -323,7 +353,8 @@ function PDFToolsLayout() {
         icon={FileText}
         iconColor="text-primary"
         iconBgColor="bg-primary/10"
-        fileUploadComponent={unavailable ? null : pdfFileUpload}
+        fileUploadComponent={merging ? pdfFileUpload : singleUpload}
+        navigationComponent={<PDFNavigation />}
       >
         {selectionError && (
           <p role="alert" className="text-sm text-destructive">

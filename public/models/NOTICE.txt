@@ -1,0 +1,14 @@
+U²-Netp salient object detection model
+
+U²-Net was developed by Xuebin Qin, Zichen Zhang, Chenyang Huang, Masood Dehghan,
+Osmar R. Zaïane, and Martin Jagersand. The model is distributed under the
+Apache License, Version 2.0. See U2NET-LICENSE.txt.
+
+Original model
+https://github.com/xuebinqin/U-2-Net
+
+ONNX export distributed by rembg
+https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx
+
+SHA-256
+309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8

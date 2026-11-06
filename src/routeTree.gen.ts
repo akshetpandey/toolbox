@@ -19,9 +19,16 @@ import { Route as VideosRouteImport } from './routes/videos'
 import { Route as ArchivesIndexRouteImport } from './routes/archives.index'
 import { Route as ArchivesCompressRouteImport } from './routes/archives.compress'
 import { Route as ArchivesExtractRouteImport } from './routes/archives.extract'
+import { Route as AudioIndexRouteImport } from './routes/audio.index'
+import { Route as AudioConvertRouteImport } from './routes/audio.convert'
+import { Route as AudioJoinRouteImport } from './routes/audio.join'
+import { Route as AudioTrimRouteImport } from './routes/audio.trim'
 import { Route as ImagesIndexRouteImport } from './routes/images.index'
+import { Route as ImagesBackgroundRouteImport } from './routes/images.background'
+import { Route as ImagesBatchRouteImport } from './routes/images.batch'
 import { Route as ImagesCompressRouteImport } from './routes/images.compress'
 import { Route as ImagesConvertRouteImport } from './routes/images.convert'
+import { Route as ImagesCropRouteImport } from './routes/images.crop'
 import { Route as ImagesMetadataRouteImport } from './routes/images.metadata'
 import { Route as ImagesRedactRouteImport } from './routes/images.redact'
 import { Route as ImagesResizeRouteImport } from './routes/images.resize'
@@ -29,8 +36,16 @@ import { Route as OfficeDocumentsIndexRouteImport } from './routes/office-docume
 import { Route as OfficeDocumentsConvertRouteImport } from './routes/office-documents.convert'
 import { Route as PdfsIndexRouteImport } from './routes/pdfs.index'
 import { Route as PdfsCompressRouteImport } from './routes/pdfs.compress'
+import { Route as PdfsFromImagesRouteImport } from './routes/pdfs.from-images'
 import { Route as PdfsMergeRouteImport } from './routes/pdfs.merge'
+import { Route as PdfsOcrRouteImport } from './routes/pdfs.ocr'
+import { Route as PdfsOrganizeRouteImport } from './routes/pdfs.organize'
+import { Route as PdfsRedactRouteImport } from './routes/pdfs.redact'
+import { Route as PdfsSignRouteImport } from './routes/pdfs.sign'
 import { Route as PdfsSplitRouteImport } from './routes/pdfs.split'
+import { Route as PdfsToImagesRouteImport } from './routes/pdfs.to-images'
+import { Route as PdfsToWordRouteImport } from './routes/pdfs.to-word'
+import { Route as PdfsWatermarkRouteImport } from './routes/pdfs.watermark'
 import { Route as UtilitiesIndexRouteImport } from './routes/utilities.index'
 import { Route as UtilitiesHashRouteImport } from './routes/utilities.hash'
 import { Route as UtilitiesMetadataRouteImport } from './routes/utilities.metadata'
@@ -38,6 +53,7 @@ import { Route as VideosIndexRouteImport } from './routes/videos.index'
 import { Route as VideosCompressRouteImport } from './routes/videos.compress'
 import { Route as VideosConvertRouteImport } from './routes/videos.convert'
 import { Route as VideosExtractRouteImport } from './routes/videos.extract'
+import { Route as VideosJoinRouteImport } from './routes/videos.join'
 import { Route as VideosMetadataRouteImport } from './routes/videos.metadata'
 import { Route as VideosTrimRouteImport } from './routes/videos.trim'
 
@@ -91,9 +107,39 @@ const ArchivesExtractRoute = ArchivesExtractRouteImport.update({
   path: '/extract',
   getParentRoute: () => ArchivesRoute,
 } as any)
+const AudioIndexRoute = AudioIndexRouteImport.update({
+  id: '/audio/',
+  path: '/audio/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AudioConvertRoute = AudioConvertRouteImport.update({
+  id: '/audio/convert',
+  path: '/audio/convert',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AudioJoinRoute = AudioJoinRouteImport.update({
+  id: '/audio/join',
+  path: '/audio/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AudioTrimRoute = AudioTrimRouteImport.update({
+  id: '/audio/trim',
+  path: '/audio/trim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImagesIndexRoute = ImagesIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesBackgroundRoute = ImagesBackgroundRouteImport.update({
+  id: '/background',
+  path: '/background',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesBatchRoute = ImagesBatchRouteImport.update({
+  id: '/batch',
+  path: '/batch',
   getParentRoute: () => ImagesRoute,
 } as any)
 const ImagesCompressRoute = ImagesCompressRouteImport.update({
@@ -104,6 +150,11 @@ const ImagesCompressRoute = ImagesCompressRouteImport.update({
 const ImagesConvertRoute = ImagesConvertRouteImport.update({
   id: '/convert',
   path: '/convert',
+  getParentRoute: () => ImagesRoute,
+} as any)
+const ImagesCropRoute = ImagesCropRouteImport.update({
+  id: '/crop',
+  path: '/crop',
   getParentRoute: () => ImagesRoute,
 } as any)
 const ImagesMetadataRoute = ImagesMetadataRouteImport.update({
@@ -141,14 +192,54 @@ const PdfsCompressRoute = PdfsCompressRouteImport.update({
   path: '/compress',
   getParentRoute: () => PdfsRoute,
 } as any)
+const PdfsFromImagesRoute = PdfsFromImagesRouteImport.update({
+  id: '/from-images',
+  path: '/from-images',
+  getParentRoute: () => PdfsRoute,
+} as any)
 const PdfsMergeRoute = PdfsMergeRouteImport.update({
   id: '/merge',
   path: '/merge',
   getParentRoute: () => PdfsRoute,
 } as any)
+const PdfsOcrRoute = PdfsOcrRouteImport.update({
+  id: '/ocr',
+  path: '/ocr',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsOrganizeRoute = PdfsOrganizeRouteImport.update({
+  id: '/organize',
+  path: '/organize',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsRedactRoute = PdfsRedactRouteImport.update({
+  id: '/redact',
+  path: '/redact',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsSignRoute = PdfsSignRouteImport.update({
+  id: '/sign',
+  path: '/sign',
+  getParentRoute: () => PdfsRoute,
+} as any)
 const PdfsSplitRoute = PdfsSplitRouteImport.update({
   id: '/split',
   path: '/split',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsToImagesRoute = PdfsToImagesRouteImport.update({
+  id: '/to-images',
+  path: '/to-images',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsToWordRoute = PdfsToWordRouteImport.update({
+  id: '/to-word',
+  path: '/to-word',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsWatermarkRoute = PdfsWatermarkRouteImport.update({
+  id: '/watermark',
+  path: '/watermark',
   getParentRoute: () => PdfsRoute,
 } as any)
 const UtilitiesIndexRoute = UtilitiesIndexRouteImport.update({
@@ -186,6 +277,11 @@ const VideosExtractRoute = VideosExtractRouteImport.update({
   path: '/extract',
   getParentRoute: () => VideosRoute,
 } as any)
+const VideosJoinRoute = VideosJoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => VideosRoute,
+} as any)
 const VideosMetadataRoute = VideosMetadataRouteImport.update({
   id: '/metadata',
   path: '/metadata',
@@ -207,23 +303,39 @@ export interface FileRoutesByFullPath {
   '/videos': typeof VideosRouteWithChildren
   '/archives/compress': typeof ArchivesCompressRoute
   '/archives/extract': typeof ArchivesExtractRoute
+  '/audio/convert': typeof AudioConvertRoute
+  '/audio/join': typeof AudioJoinRoute
+  '/audio/trim': typeof AudioTrimRoute
+  '/images/background': typeof ImagesBackgroundRoute
+  '/images/batch': typeof ImagesBatchRoute
   '/images/compress': typeof ImagesCompressRoute
   '/images/convert': typeof ImagesConvertRoute
+  '/images/crop': typeof ImagesCropRoute
   '/images/metadata': typeof ImagesMetadataRoute
   '/images/redact': typeof ImagesRedactRoute
   '/images/resize': typeof ImagesResizeRoute
   '/office-documents/convert': typeof OfficeDocumentsConvertRoute
   '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/from-images': typeof PdfsFromImagesRoute
   '/pdfs/merge': typeof PdfsMergeRoute
+  '/pdfs/ocr': typeof PdfsOcrRoute
+  '/pdfs/organize': typeof PdfsOrganizeRoute
+  '/pdfs/redact': typeof PdfsRedactRoute
+  '/pdfs/sign': typeof PdfsSignRoute
   '/pdfs/split': typeof PdfsSplitRoute
+  '/pdfs/to-images': typeof PdfsToImagesRoute
+  '/pdfs/to-word': typeof PdfsToWordRoute
+  '/pdfs/watermark': typeof PdfsWatermarkRoute
   '/utilities/hash': typeof UtilitiesHashRoute
   '/utilities/metadata': typeof UtilitiesMetadataRoute
   '/videos/compress': typeof VideosCompressRoute
   '/videos/convert': typeof VideosConvertRoute
   '/videos/extract': typeof VideosExtractRoute
+  '/videos/join': typeof VideosJoinRoute
   '/videos/metadata': typeof VideosMetadataRoute
   '/videos/trim': typeof VideosTrimRoute
   '/archives/': typeof ArchivesIndexRoute
+  '/audio/': typeof AudioIndexRoute
   '/images/': typeof ImagesIndexRoute
   '/office-documents/': typeof OfficeDocumentsIndexRoute
   '/pdfs/': typeof PdfsIndexRoute
@@ -234,23 +346,39 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archives/compress': typeof ArchivesCompressRoute
   '/archives/extract': typeof ArchivesExtractRoute
+  '/audio/convert': typeof AudioConvertRoute
+  '/audio/join': typeof AudioJoinRoute
+  '/audio/trim': typeof AudioTrimRoute
+  '/images/background': typeof ImagesBackgroundRoute
+  '/images/batch': typeof ImagesBatchRoute
   '/images/compress': typeof ImagesCompressRoute
   '/images/convert': typeof ImagesConvertRoute
+  '/images/crop': typeof ImagesCropRoute
   '/images/metadata': typeof ImagesMetadataRoute
   '/images/redact': typeof ImagesRedactRoute
   '/images/resize': typeof ImagesResizeRoute
   '/office-documents/convert': typeof OfficeDocumentsConvertRoute
   '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/from-images': typeof PdfsFromImagesRoute
   '/pdfs/merge': typeof PdfsMergeRoute
+  '/pdfs/ocr': typeof PdfsOcrRoute
+  '/pdfs/organize': typeof PdfsOrganizeRoute
+  '/pdfs/redact': typeof PdfsRedactRoute
+  '/pdfs/sign': typeof PdfsSignRoute
   '/pdfs/split': typeof PdfsSplitRoute
+  '/pdfs/to-images': typeof PdfsToImagesRoute
+  '/pdfs/to-word': typeof PdfsToWordRoute
+  '/pdfs/watermark': typeof PdfsWatermarkRoute
   '/utilities/hash': typeof UtilitiesHashRoute
   '/utilities/metadata': typeof UtilitiesMetadataRoute
   '/videos/compress': typeof VideosCompressRoute
   '/videos/convert': typeof VideosConvertRoute
   '/videos/extract': typeof VideosExtractRoute
+  '/videos/join': typeof VideosJoinRoute
   '/videos/metadata': typeof VideosMetadataRoute
   '/videos/trim': typeof VideosTrimRoute
   '/archives': typeof ArchivesIndexRoute
+  '/audio': typeof AudioIndexRoute
   '/images': typeof ImagesIndexRoute
   '/office-documents': typeof OfficeDocumentsIndexRoute
   '/pdfs': typeof PdfsIndexRoute
@@ -268,23 +396,39 @@ export interface FileRoutesById {
   '/videos': typeof VideosRouteWithChildren
   '/archives/compress': typeof ArchivesCompressRoute
   '/archives/extract': typeof ArchivesExtractRoute
+  '/audio/convert': typeof AudioConvertRoute
+  '/audio/join': typeof AudioJoinRoute
+  '/audio/trim': typeof AudioTrimRoute
+  '/images/background': typeof ImagesBackgroundRoute
+  '/images/batch': typeof ImagesBatchRoute
   '/images/compress': typeof ImagesCompressRoute
   '/images/convert': typeof ImagesConvertRoute
+  '/images/crop': typeof ImagesCropRoute
   '/images/metadata': typeof ImagesMetadataRoute
   '/images/redact': typeof ImagesRedactRoute
   '/images/resize': typeof ImagesResizeRoute
   '/office-documents/convert': typeof OfficeDocumentsConvertRoute
   '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/from-images': typeof PdfsFromImagesRoute
   '/pdfs/merge': typeof PdfsMergeRoute
+  '/pdfs/ocr': typeof PdfsOcrRoute
+  '/pdfs/organize': typeof PdfsOrganizeRoute
+  '/pdfs/redact': typeof PdfsRedactRoute
+  '/pdfs/sign': typeof PdfsSignRoute
   '/pdfs/split': typeof PdfsSplitRoute
+  '/pdfs/to-images': typeof PdfsToImagesRoute
+  '/pdfs/to-word': typeof PdfsToWordRoute
+  '/pdfs/watermark': typeof PdfsWatermarkRoute
   '/utilities/hash': typeof UtilitiesHashRoute
   '/utilities/metadata': typeof UtilitiesMetadataRoute
   '/videos/compress': typeof VideosCompressRoute
   '/videos/convert': typeof VideosConvertRoute
   '/videos/extract': typeof VideosExtractRoute
+  '/videos/join': typeof VideosJoinRoute
   '/videos/metadata': typeof VideosMetadataRoute
   '/videos/trim': typeof VideosTrimRoute
   '/archives/': typeof ArchivesIndexRoute
+  '/audio/': typeof AudioIndexRoute
   '/images/': typeof ImagesIndexRoute
   '/office-documents/': typeof OfficeDocumentsIndexRoute
   '/pdfs/': typeof PdfsIndexRoute
@@ -303,23 +447,39 @@ export interface FileRouteTypes {
     | '/videos'
     | '/archives/compress'
     | '/archives/extract'
+    | '/audio/convert'
+    | '/audio/join'
+    | '/audio/trim'
+    | '/images/background'
+    | '/images/batch'
     | '/images/compress'
     | '/images/convert'
+    | '/images/crop'
     | '/images/metadata'
     | '/images/redact'
     | '/images/resize'
     | '/office-documents/convert'
     | '/pdfs/compress'
+    | '/pdfs/from-images'
     | '/pdfs/merge'
+    | '/pdfs/ocr'
+    | '/pdfs/organize'
+    | '/pdfs/redact'
+    | '/pdfs/sign'
     | '/pdfs/split'
+    | '/pdfs/to-images'
+    | '/pdfs/to-word'
+    | '/pdfs/watermark'
     | '/utilities/hash'
     | '/utilities/metadata'
     | '/videos/compress'
     | '/videos/convert'
     | '/videos/extract'
+    | '/videos/join'
     | '/videos/metadata'
     | '/videos/trim'
     | '/archives/'
+    | '/audio/'
     | '/images/'
     | '/office-documents/'
     | '/pdfs/'
@@ -330,23 +490,39 @@ export interface FileRouteTypes {
     | '/'
     | '/archives/compress'
     | '/archives/extract'
+    | '/audio/convert'
+    | '/audio/join'
+    | '/audio/trim'
+    | '/images/background'
+    | '/images/batch'
     | '/images/compress'
     | '/images/convert'
+    | '/images/crop'
     | '/images/metadata'
     | '/images/redact'
     | '/images/resize'
     | '/office-documents/convert'
     | '/pdfs/compress'
+    | '/pdfs/from-images'
     | '/pdfs/merge'
+    | '/pdfs/ocr'
+    | '/pdfs/organize'
+    | '/pdfs/redact'
+    | '/pdfs/sign'
     | '/pdfs/split'
+    | '/pdfs/to-images'
+    | '/pdfs/to-word'
+    | '/pdfs/watermark'
     | '/utilities/hash'
     | '/utilities/metadata'
     | '/videos/compress'
     | '/videos/convert'
     | '/videos/extract'
+    | '/videos/join'
     | '/videos/metadata'
     | '/videos/trim'
     | '/archives'
+    | '/audio'
     | '/images'
     | '/office-documents'
     | '/pdfs'
@@ -363,23 +539,39 @@ export interface FileRouteTypes {
     | '/videos'
     | '/archives/compress'
     | '/archives/extract'
+    | '/audio/convert'
+    | '/audio/join'
+    | '/audio/trim'
+    | '/images/background'
+    | '/images/batch'
     | '/images/compress'
     | '/images/convert'
+    | '/images/crop'
     | '/images/metadata'
     | '/images/redact'
     | '/images/resize'
     | '/office-documents/convert'
     | '/pdfs/compress'
+    | '/pdfs/from-images'
     | '/pdfs/merge'
+    | '/pdfs/ocr'
+    | '/pdfs/organize'
+    | '/pdfs/redact'
+    | '/pdfs/sign'
     | '/pdfs/split'
+    | '/pdfs/to-images'
+    | '/pdfs/to-word'
+    | '/pdfs/watermark'
     | '/utilities/hash'
     | '/utilities/metadata'
     | '/videos/compress'
     | '/videos/convert'
     | '/videos/extract'
+    | '/videos/join'
     | '/videos/metadata'
     | '/videos/trim'
     | '/archives/'
+    | '/audio/'
     | '/images/'
     | '/office-documents/'
     | '/pdfs/'
@@ -395,6 +587,10 @@ export interface RootRouteChildren {
   PdfsRoute: typeof PdfsRouteWithChildren
   UtilitiesRoute: typeof UtilitiesRouteWithChildren
   VideosRoute: typeof VideosRouteWithChildren
+  AudioConvertRoute: typeof AudioConvertRoute
+  AudioJoinRoute: typeof AudioJoinRoute
+  AudioTrimRoute: typeof AudioTrimRoute
+  AudioIndexRoute: typeof AudioIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -469,11 +665,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArchivesExtractRouteImport
       parentRoute: typeof ArchivesRoute
     }
+    '/audio/': {
+      id: '/audio/'
+      path: '/audio'
+      fullPath: '/audio/'
+      preLoaderRoute: typeof AudioIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audio/convert': {
+      id: '/audio/convert'
+      path: '/audio/convert'
+      fullPath: '/audio/convert'
+      preLoaderRoute: typeof AudioConvertRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audio/join': {
+      id: '/audio/join'
+      path: '/audio/join'
+      fullPath: '/audio/join'
+      preLoaderRoute: typeof AudioJoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audio/trim': {
+      id: '/audio/trim'
+      path: '/audio/trim'
+      fullPath: '/audio/trim'
+      preLoaderRoute: typeof AudioTrimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/images/': {
       id: '/images/'
       path: '/'
       fullPath: '/images/'
       preLoaderRoute: typeof ImagesIndexRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/background': {
+      id: '/images/background'
+      path: '/background'
+      fullPath: '/images/background'
+      preLoaderRoute: typeof ImagesBackgroundRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/batch': {
+      id: '/images/batch'
+      path: '/batch'
+      fullPath: '/images/batch'
+      preLoaderRoute: typeof ImagesBatchRouteImport
       parentRoute: typeof ImagesRoute
     }
     '/images/compress': {
@@ -488,6 +726,13 @@ declare module '@tanstack/react-router' {
       path: '/convert'
       fullPath: '/images/convert'
       preLoaderRoute: typeof ImagesConvertRouteImport
+      parentRoute: typeof ImagesRoute
+    }
+    '/images/crop': {
+      id: '/images/crop'
+      path: '/crop'
+      fullPath: '/images/crop'
+      preLoaderRoute: typeof ImagesCropRouteImport
       parentRoute: typeof ImagesRoute
     }
     '/images/metadata': {
@@ -539,6 +784,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PdfsCompressRouteImport
       parentRoute: typeof PdfsRoute
     }
+    '/pdfs/from-images': {
+      id: '/pdfs/from-images'
+      path: '/from-images'
+      fullPath: '/pdfs/from-images'
+      preLoaderRoute: typeof PdfsFromImagesRouteImport
+      parentRoute: typeof PdfsRoute
+    }
     '/pdfs/merge': {
       id: '/pdfs/merge'
       path: '/merge'
@@ -546,11 +798,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PdfsMergeRouteImport
       parentRoute: typeof PdfsRoute
     }
+    '/pdfs/ocr': {
+      id: '/pdfs/ocr'
+      path: '/ocr'
+      fullPath: '/pdfs/ocr'
+      preLoaderRoute: typeof PdfsOcrRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/organize': {
+      id: '/pdfs/organize'
+      path: '/organize'
+      fullPath: '/pdfs/organize'
+      preLoaderRoute: typeof PdfsOrganizeRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/redact': {
+      id: '/pdfs/redact'
+      path: '/redact'
+      fullPath: '/pdfs/redact'
+      preLoaderRoute: typeof PdfsRedactRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/sign': {
+      id: '/pdfs/sign'
+      path: '/sign'
+      fullPath: '/pdfs/sign'
+      preLoaderRoute: typeof PdfsSignRouteImport
+      parentRoute: typeof PdfsRoute
+    }
     '/pdfs/split': {
       id: '/pdfs/split'
       path: '/split'
       fullPath: '/pdfs/split'
       preLoaderRoute: typeof PdfsSplitRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/to-images': {
+      id: '/pdfs/to-images'
+      path: '/to-images'
+      fullPath: '/pdfs/to-images'
+      preLoaderRoute: typeof PdfsToImagesRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/to-word': {
+      id: '/pdfs/to-word'
+      path: '/to-word'
+      fullPath: '/pdfs/to-word'
+      preLoaderRoute: typeof PdfsToWordRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/watermark': {
+      id: '/pdfs/watermark'
+      path: '/watermark'
+      fullPath: '/pdfs/watermark'
+      preLoaderRoute: typeof PdfsWatermarkRouteImport
       parentRoute: typeof PdfsRoute
     }
     '/utilities/': {
@@ -602,6 +903,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VideosExtractRouteImport
       parentRoute: typeof VideosRoute
     }
+    '/videos/join': {
+      id: '/videos/join'
+      path: '/join'
+      fullPath: '/videos/join'
+      preLoaderRoute: typeof VideosJoinRouteImport
+      parentRoute: typeof VideosRoute
+    }
     '/videos/metadata': {
       id: '/videos/metadata'
       path: '/metadata'
@@ -636,8 +944,11 @@ const ArchivesRouteWithChildren = ArchivesRoute._addFileChildren(
 )
 
 interface ImagesRouteChildren {
+  ImagesBackgroundRoute: typeof ImagesBackgroundRoute
+  ImagesBatchRoute: typeof ImagesBatchRoute
   ImagesCompressRoute: typeof ImagesCompressRoute
   ImagesConvertRoute: typeof ImagesConvertRoute
+  ImagesCropRoute: typeof ImagesCropRoute
   ImagesMetadataRoute: typeof ImagesMetadataRoute
   ImagesRedactRoute: typeof ImagesRedactRoute
   ImagesResizeRoute: typeof ImagesResizeRoute
@@ -645,8 +956,11 @@ interface ImagesRouteChildren {
 }
 
 const ImagesRouteChildren: ImagesRouteChildren = {
+  ImagesBackgroundRoute: ImagesBackgroundRoute,
+  ImagesBatchRoute: ImagesBatchRoute,
   ImagesCompressRoute: ImagesCompressRoute,
   ImagesConvertRoute: ImagesConvertRoute,
+  ImagesCropRoute: ImagesCropRoute,
   ImagesMetadataRoute: ImagesMetadataRoute,
   ImagesRedactRoute: ImagesRedactRoute,
   ImagesResizeRoute: ImagesResizeRoute,
@@ -672,15 +986,31 @@ const OfficeDocumentsRouteWithChildren = OfficeDocumentsRoute._addFileChildren(
 
 interface PdfsRouteChildren {
   PdfsCompressRoute: typeof PdfsCompressRoute
+  PdfsFromImagesRoute: typeof PdfsFromImagesRoute
   PdfsMergeRoute: typeof PdfsMergeRoute
+  PdfsOcrRoute: typeof PdfsOcrRoute
+  PdfsOrganizeRoute: typeof PdfsOrganizeRoute
+  PdfsRedactRoute: typeof PdfsRedactRoute
+  PdfsSignRoute: typeof PdfsSignRoute
   PdfsSplitRoute: typeof PdfsSplitRoute
+  PdfsToImagesRoute: typeof PdfsToImagesRoute
+  PdfsToWordRoute: typeof PdfsToWordRoute
+  PdfsWatermarkRoute: typeof PdfsWatermarkRoute
   PdfsIndexRoute: typeof PdfsIndexRoute
 }
 
 const PdfsRouteChildren: PdfsRouteChildren = {
   PdfsCompressRoute: PdfsCompressRoute,
+  PdfsFromImagesRoute: PdfsFromImagesRoute,
   PdfsMergeRoute: PdfsMergeRoute,
+  PdfsOcrRoute: PdfsOcrRoute,
+  PdfsOrganizeRoute: PdfsOrganizeRoute,
+  PdfsRedactRoute: PdfsRedactRoute,
+  PdfsSignRoute: PdfsSignRoute,
   PdfsSplitRoute: PdfsSplitRoute,
+  PdfsToImagesRoute: PdfsToImagesRoute,
+  PdfsToWordRoute: PdfsToWordRoute,
+  PdfsWatermarkRoute: PdfsWatermarkRoute,
   PdfsIndexRoute: PdfsIndexRoute,
 }
 
@@ -706,6 +1036,7 @@ interface VideosRouteChildren {
   VideosCompressRoute: typeof VideosCompressRoute
   VideosConvertRoute: typeof VideosConvertRoute
   VideosExtractRoute: typeof VideosExtractRoute
+  VideosJoinRoute: typeof VideosJoinRoute
   VideosMetadataRoute: typeof VideosMetadataRoute
   VideosTrimRoute: typeof VideosTrimRoute
   VideosIndexRoute: typeof VideosIndexRoute
@@ -715,6 +1046,7 @@ const VideosRouteChildren: VideosRouteChildren = {
   VideosCompressRoute: VideosCompressRoute,
   VideosConvertRoute: VideosConvertRoute,
   VideosExtractRoute: VideosExtractRoute,
+  VideosJoinRoute: VideosJoinRoute,
   VideosMetadataRoute: VideosMetadataRoute,
   VideosTrimRoute: VideosTrimRoute,
   VideosIndexRoute: VideosIndexRoute,
@@ -731,6 +1063,10 @@ const rootRouteChildren: RootRouteChildren = {
   PdfsRoute: PdfsRouteWithChildren,
   UtilitiesRoute: UtilitiesRouteWithChildren,
   VideosRoute: VideosRouteWithChildren,
+  AudioConvertRoute: AudioConvertRoute,
+  AudioJoinRoute: AudioJoinRoute,
+  AudioTrimRoute: AudioTrimRoute,
+  AudioIndexRoute: AudioIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

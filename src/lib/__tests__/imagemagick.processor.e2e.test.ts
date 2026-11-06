@@ -110,3 +110,112 @@ test.each(['resize', 'compress'] as const)(
     })
   },
 )
+
+test('a HEIC photo can be decoded for preview and converted to JPG or PNG', async () => {
+  const input = imageFile(
+    new Uint8Array(
+      readFileSync(new URL('./fixtures/sample.heic', import.meta.url)),
+    ),
+    'photo.heic',
+    '',
+  )
+  const processor = new ImageMagickProcessor()
+  const preview = await processor.previewImage(input.file)
+  expect(preview.dimensions).toEqual({ width: 8, height: 8 })
+  expect(preview.blob.type).toBe('image/png')
+  for (const [targetFormat, format, mime] of [
+    ['jpg', 'JPEG', 'image/jpeg'],
+    ['png', 'PNG', 'image/png'],
+  ] as const) {
+    const result = await processor.convertImage(input, { targetFormat })
+    expect(result.type).toBe(mime)
+    ImageMagick.read(new Uint8Array(await result.arrayBuffer()), (image) => {
+      expect([image.format, image.width, image.height]).toEqual([format, 8, 8])
+    })
+  }
+})
+
+test('batch fitting shrinks large images and keeps smaller images at their original size', async () => {
+  const bytes = readFileSync(new URL('./fixtures/sample.png', import.meta.url))
+  const input = imageFile(new Uint8Array(bytes), 'sample.png', 'image/png')
+  const processor = new ImageMagickProcessor()
+  for (const [box, output] of [
+    [4, 4],
+    [16, 8],
+  ]) {
+    const result = await processor.resizeImage(input, {
+      width: box,
+      height: box,
+      maintainAspectRatio: true,
+      onlyShrink: true,
+    })
+    ImageMagick.read(new Uint8Array(await result.arrayBuffer()), (image) => {
+      expect([image.width, image.height]).toEqual([output, output])
+    })
+  }
+})
+
+test('crop, rotate and flip preserve GIF frames, timing and transparent pixels', async () => {
+  const { file } = imageFile(animatedGif(), 'animated.gif', 'image/gif')
+  const { blob, width, height } =
+    await new ImageMagickProcessor().transformImage(file, {
+      crop: { x: 1, y: 1, width: 6, height: 5 },
+      rotation: 90,
+      flipHorizontal: true,
+      flipVertical: true,
+    })
+  expect([width, height]).toEqual([5, 6])
+  ImageMagick.readCollection(
+    new Uint8Array(await blob.arrayBuffer()),
+    (images) => {
+      expect(images.map((image) => image.animationDelay)).toEqual([7, 13])
+      images.coalesce()
+      for (const image of images) {
+        expect([image.width, image.height]).toEqual([5, 6])
+        expect(image.getPixels((pixels) => pixels.getColor(4, 5)?.a)).toBe(0)
+      }
+    },
+  )
+})
+
+test('target size never returns a JPG over the byte cap and can shrink dimensions with consent', async () => {
+  const bytes = readFileSync(
+    new URL('./fixtures/sample-real.jpg', import.meta.url),
+  )
+  const { file } = imageFile(new Uint8Array(bytes), 'photo.jpg', 'image/jpeg')
+  const original = ImageMagick.read(bytes, (image) => ({
+    width: image.width,
+    height: image.height,
+  }))
+  const processor = new ImageMagickProcessor()
+  const cap = 1_000
+  await expect(processor.compressToSize(file, cap, false)).resolves.toBeNull()
+  const result = await processor.compressToSize(file, cap, true)
+  expect(result).not.toBeNull()
+  expect(result?.blob.type).toBe('image/jpeg')
+  expect(result?.blob.size).toBeLessThanOrEqual(cap)
+  expect(result?.width).toBeLessThan(original.width)
+  expect(result?.height).toBeLessThan(original.height)
+})
+
+test('solid background removal turns matching pixels transparent and leaves other colors visible', async () => {
+  const bytes = ImageMagick.read(MagickColors.White, 8, 8, (image) => {
+    new Drawables()
+      .fillColor(MagickColors.Red)
+      .rectangle(2, 2, 5, 5)
+      .draw(image)
+    return image.write(MagickFormat.Png, (data) => data.slice())
+  })
+  const { file } = imageFile(bytes, 'solid.png', 'image/png')
+  const blob = await new ImageMagickProcessor().removeBackgroundColor(
+    file,
+    '#ffffff',
+    0,
+  )
+  ImageMagick.read(new Uint8Array(await blob.arrayBuffer()), (image) => {
+    expect(image.getPixels((pixels) => pixels.getColor(0, 0)?.a)).toBe(0)
+    expect(
+      image.getPixels((pixels) => pixels.getColor(3, 3)?.a),
+    ).toBeGreaterThan(0)
+  })
+})

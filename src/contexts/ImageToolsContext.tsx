@@ -5,6 +5,9 @@ import type { ExifMetadata } from '@/lib/metadata'
 
 export interface ImageToolsContextType {
   selectedFile: ImageFile | null
+  batchFiles: File[]
+  clearBatchFiles: () => void
+  initImageTools: () => Promise<void>
   metadata: Record<string, ImageMetadata>
   exifMetadata: ExifMetadata
   isExtractingExif: boolean

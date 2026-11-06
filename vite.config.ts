@@ -7,6 +7,7 @@ import { ffmpegCorePlugin } from './vite-plugin-ffmpeg-core.ts'
 import { pandocWasmPlugin } from './vite-plugin-pandoc-wasm.ts'
 import { wasmPreviewPlugin } from './vite-plugin-wasm-preview.ts'
 import { seoPagesPlugin } from './vite-plugin-seo-pages.ts'
+import { pdfAssetsPlugin } from './vite-plugin-pdf-assets.ts'
 
 export default defineConfig({
   build: {
@@ -26,6 +27,10 @@ export default defineConfig({
               '@imagemagick',
               'libimagequant-wasm',
               'pdf-lib',
+              'pdfjs-dist',
+              'tesseract.js',
+              'onnxruntime',
+              '/docx/',
               '@uswriting/exiftool',
               'pandoc-wasm',
               '@myriaddreamin',
@@ -55,6 +60,10 @@ export default defineConfig({
       '@imagemagick/magick-wasm',
       'libimagequant-wasm',
       '@pdf-lib/fontkit',
+      'pdfjs-dist',
+      'tesseract.js',
+      'tesseract.js-core',
+      'onnxruntime-web/wasm',
       '@uswriting/exiftool',
       'hash-wasm',
       'pandoc-wasm',
@@ -68,6 +77,7 @@ export default defineConfig({
   plugins: [
     ffmpegCorePlugin(),
     pandocWasmPlugin(),
+    pdfAssetsPlugin(),
     wasmPreviewPlugin(),
     tailwindcss(),
     tanstackRouter({ target: 'react', autoCodeSplitting: false }),

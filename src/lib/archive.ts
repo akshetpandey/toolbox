@@ -11,7 +11,8 @@ async function loadSevenZip(): Promise<SevenZipModule> {
     console.log('🗜️ ArchiveProcessor: Loading 7z-wasm library...')
     try {
       const { default: SevenZip } = await import('7z-wasm')
-      _sevenZip = await SevenZip()
+      // Emscripten treats null as end-of-input. Never open a password prompt.
+      _sevenZip = await SevenZip({ stdin: () => null as unknown as number })
       console.log('🗜️ ArchiveProcessor: 7z-wasm library loaded successfully')
       return _sevenZip
     } catch (error) {
@@ -39,6 +40,33 @@ export interface ExtractedFile {
 }
 
 export type CompressionFormat = '7z' | 'zip' | 'tar' | 'gzip'
+
+let extractionId = 0
+
+function runSevenZip(sevenZip: SevenZipModule, args: string[]) {
+  // The runtime can return an exit code or throw a WASM exception pointer.
+  let status: unknown
+  try {
+    status = sevenZip.callMain(args)
+  } catch (error) {
+    status = error
+  }
+  if (status !== undefined && status !== 0) {
+    throw new Error('7-Zip could not open or extract this archive', {
+      cause: status,
+    })
+  }
+}
+
+function removeArchiveDirectory(fs: SevenZipModule['FS'], directory: string) {
+  for (const entry of fs.readdir(directory)) {
+    if (entry === '.' || entry === '..') continue
+    const path = `${directory}/${entry}`
+    if (fs.isDir(fs.lstat(path).mode)) removeArchiveDirectory(fs, path)
+    else fs.unlink(path)
+  }
+  fs.rmdir(directory)
+}
 
 export class ArchiveProcessor {
   private sevenZip: SevenZipModule | null = null
@@ -180,299 +208,88 @@ export class ArchiveProcessor {
     archiveData: Uint8Array,
     archiveName: string,
     onProgress?: (progress: number) => void,
+    password = '',
   ): ExtractedFile[] {
-    if (!this.isInitialized) {
+    const sevenZip = this.sevenZip
+    if (!this.isInitialized || !sevenZip) {
       throw new Error('ArchiveProcessor not initialized')
     }
-    if (!this.sevenZip) {
-      throw new Error('SevenZip module not initialized')
+
+    const { FS } = sevenZip
+    const directory = `/toolbox-extract-${++extractionId}`
+    const source = `${directory}/source`
+    const output = `${directory}/output`
+    const basename = archiveName.split(/[\\/]/u).pop()
+    if (!basename || basename === '.' || basename === '..') {
+      throw new Error('Choose an archive with a valid file name')
     }
+    const passwordArgs = password ? [`-p${password}`] : []
+    let input = `${source}/${basename}`
 
-    console.log('🗜️ ArchiveProcessor: Starting decompression', {
-      archiveName,
-      size: archiveData.length,
-    })
-
-    // Check if this is a tar.gz file that needs special handling
-    const isTarGz =
-      archiveName.toLowerCase().endsWith('.tar.gz') ||
-      archiveName.toLowerCase().endsWith('.tgz')
-
-    let archiveToExtract = archiveName
-
+    FS.mkdir(directory)
     try {
-      // Clean up any existing files first
-      try {
-        this.sevenZip.FS.unlink(archiveName)
-      } catch {
-        // File might not exist, that's okay
-      }
+      FS.mkdir(source)
+      FS.writeFile(input, archiveData)
+      onProgress?.(25)
 
-      // Write archive to virtual file system
-      this.sevenZip.FS.writeFile(archiveName, archiveData)
-
-      if (onProgress) {
-        onProgress(25)
-      }
-
-      // Handle tar.gz files
-      if (isTarGz) {
-        console.log(
-          '🗜️ ArchiveProcessor: Detected tar.gz file, ungzipping first...',
+      if (/\.(tar\.gz|tgz)$/iu.test(basename)) {
+        const tarDirectory = `${directory}/tar`
+        FS.mkdir(tarDirectory)
+        runSevenZip(sevenZip, ['x', `-o${tarDirectory}`, '-y', '--', input])
+        const tar = FS.readdir(tarDirectory).find((name) =>
+          name.toLowerCase().endsWith('.tar'),
         )
-
-        // First, extract the gzip to get the tar file
-        const tarFileName = archiveName.replace(/\.(tar\.gz|tgz)$/i, '.tar')
-
-        try {
-          // Extract the gzip to get the tar file
-          this.sevenZip.callMain(['x', archiveName, '-y'])
-
-          // Check if the tar file was created
-          try {
-            this.sevenZip.FS.stat(tarFileName)
-            archiveToExtract = tarFileName
-            console.log(
-              '🗜️ ArchiveProcessor: Successfully ungzipped to',
-              tarFileName,
-            )
-          } catch {
-            // If tar file wasn't created, try to find it with a different name
-            const files = this.sevenZip.FS.readdir('.')
-            const tarFile = files.find((f) => f.endsWith('.tar'))
-            if (tarFile) {
-              archiveToExtract = tarFile
-              console.log('🗜️ ArchiveProcessor: Found tar file:', tarFile)
-            } else {
-              throw new Error('Failed to extract tar file from gzip archive')
-            }
-          }
-        } catch (error) {
-          console.error(
-            '🗜️ ArchiveProcessor: Failed to ungzip tar.gz file:',
-            error,
-          )
-          throw new Error(
-            'Failed to extract tar.gz archive - gzip extraction failed',
-            { cause: error },
-          )
-        }
+        if (!tar)
+          throw new Error('This GZIP archive does not contain a TAR file')
+        input = `${tarDirectory}/${tar}`
       }
 
-      // List contents first to validate archive
-      console.log('🗜️ ArchiveProcessor: Listing archive contents...')
-      try {
-        this.sevenZip.callMain(['l', archiveToExtract])
-      } catch (error) {
-        console.error(
-          '🗜️ ArchiveProcessor: Failed to list archive contents:',
-          error,
-        )
-        throw new Error('Invalid or corrupted archive file', { cause: error })
-      }
+      runSevenZip(sevenZip, ['l', ...passwordArgs, '--', input])
+      onProgress?.(50)
+      FS.mkdir(output)
+      runSevenZip(sevenZip, [
+        'x',
+        ...passwordArgs,
+        `-o${output}`,
+        '-y',
+        '--',
+        input,
+      ])
+      onProgress?.(75)
 
-      if (onProgress) {
-        onProgress(50)
-      }
-
-      // Create extraction directory
-      const extractionDir = 'extracted_files'
-      try {
-        this.sevenZip.FS.mkdir(extractionDir)
-      } catch {
-        // Directory might already exist
-      }
-
-      // Extract all files to the extraction directory
-      console.log('🗜️ ArchiveProcessor: Extracting files...')
-      try {
-        this.sevenZip.callMain([
-          'x',
-          archiveToExtract,
-          `-o${extractionDir}`,
-          '-y',
-        ]) // -o to specify output directory, -y to overwrite without prompting
-      } catch (error) {
-        console.error('🗜️ ArchiveProcessor: Failed to extract files:', error)
-        throw new Error('Failed to extract archive files', { cause: error })
-      }
-
-      if (onProgress) {
-        onProgress(75)
-      }
-
-      // Get list of extracted files from the extraction directory
-      const extractedFiles: ExtractedFile[] = []
-      const listFilesRecursively = (path: string, relativePath = '') => {
-        if (!this.sevenZip) {
-          return
-        }
-
-        let entries: string[]
-        try {
-          entries = this.sevenZip.FS.readdir(path)
-        } catch (error) {
-          console.warn(
-            '🗜️ ArchiveProcessor: Failed to read directory:',
-            path,
-            error,
-          )
-          return
-        }
-
-        for (const entry of entries) {
+      const extracted: ExtractedFile[] = []
+      const collectFiles = (path: string, relativePath = '') => {
+        for (const entry of FS.readdir(path)) {
           if (entry === '.' || entry === '..') continue
-
           const fullPath = `${path}/${entry}`
-          const displayPath = relativePath ? `${relativePath}/${entry}` : entry
+          const name = relativePath ? `${relativePath}/${entry}` : entry
+          const { mode } = FS.lstat(fullPath)
 
-          try {
-            const stat = this.sevenZip.FS.stat(fullPath)
-
-            if (this.sevenZip.FS.isDir(stat.mode)) {
-              extractedFiles.push({
-                name: displayPath,
-                size: 0,
-                data: new Uint8Array(),
-                isDirectory: true,
-              })
-              listFilesRecursively(fullPath, displayPath)
-            } else {
-              const fileData = this.sevenZip.FS.readFile(fullPath)
-              extractedFiles.push({
-                name: displayPath,
-                size: fileData.length,
-                data: fileData,
-                isDirectory: false,
-              })
-            }
-          } catch (error) {
-            console.warn(
-              '🗜️ ArchiveProcessor: Failed to process file:',
-              fullPath,
-              error,
-            )
-            // Continue processing other files
+          if (FS.isDir(mode)) {
+            extracted.push({
+              name,
+              size: 0,
+              data: new Uint8Array(),
+              isDirectory: true,
+            })
+            collectFiles(fullPath, name)
+          } else if (FS.isFile(mode)) {
+            const data = FS.readFile(fullPath)
+            extracted.push({
+              name,
+              size: data.length,
+              data,
+              isDirectory: false,
+            })
           }
         }
       }
 
-      listFilesRecursively(extractionDir)
-
-      if (onProgress) {
-        onProgress(100)
-      }
-
-      // Clean up archive files
-      try {
-        this.sevenZip.FS.unlink(archiveName)
-      } catch {
-        // Cleanup errors are not critical
-      }
-
-      // Clean up intermediate tar file if it was created during tar.gz extraction
-      if (isTarGz && archiveToExtract !== archiveName) {
-        try {
-          this.sevenZip.FS.unlink(archiveToExtract)
-        } catch {
-          // Cleanup errors are not critical
-        }
-      }
-
-      // Clean up extraction directory and its contents
-      const cleanupDirectory = (dirPath: string) => {
-        if (!this.sevenZip) return
-
-        try {
-          const entries = this.sevenZip.FS.readdir(dirPath)
-          for (const entry of entries) {
-            if (entry === '.' || entry === '..') continue
-
-            const fullPath = `${dirPath}/${entry}`
-            try {
-              const stat = this.sevenZip.FS.stat(fullPath)
-              if (this.sevenZip.FS.isDir(stat.mode)) {
-                cleanupDirectory(fullPath)
-                this.sevenZip.FS.rmdir(fullPath)
-              } else {
-                this.sevenZip.FS.unlink(fullPath)
-              }
-            } catch {
-              // File might not exist or already be cleaned up
-            }
-          }
-        } catch {
-          // Directory might not exist
-        }
-      }
-
-      try {
-        cleanupDirectory(extractionDir)
-        this.sevenZip.FS.rmdir(extractionDir)
-      } catch {
-        // Cleanup errors are not critical
-      }
-
-      console.log('🗜️ ArchiveProcessor: Decompression completed successfully', {
-        extractedCount: extractedFiles.length,
-      })
-
-      return extractedFiles
-    } catch (error) {
-      console.error('🗜️ ArchiveProcessor: Decompression failed:', error)
-
-      // Clean up in case of error
-      try {
-        this.sevenZip?.FS.unlink(archiveName)
-      } catch {
-        // Cleanup errors are not critical
-      }
-
-      // Clean up intermediate tar file if it was created during tar.gz extraction
-      if (isTarGz && archiveToExtract !== archiveName) {
-        try {
-          this.sevenZip?.FS.unlink(archiveToExtract)
-        } catch {
-          // Cleanup errors are not critical
-        }
-      }
-
-      // Also clean up extraction directory if it exists
-      try {
-        const extractionDir = 'extracted_files'
-        const cleanupDirectory = (dirPath: string) => {
-          if (!this.sevenZip) return
-
-          try {
-            const entries = this.sevenZip.FS.readdir(dirPath)
-            for (const entry of entries) {
-              if (entry === '.' || entry === '..') continue
-
-              const fullPath = `${dirPath}/${entry}`
-              try {
-                const stat = this.sevenZip.FS.stat(fullPath)
-                if (this.sevenZip.FS.isDir(stat.mode)) {
-                  cleanupDirectory(fullPath)
-                  this.sevenZip.FS.rmdir(fullPath)
-                } else {
-                  this.sevenZip.FS.unlink(fullPath)
-                }
-              } catch {
-                // File might not exist or already be cleaned up
-              }
-            }
-          } catch {
-            // Directory might not exist
-          }
-        }
-
-        cleanupDirectory(extractionDir)
-        this.sevenZip.FS.rmdir(extractionDir)
-      } catch {
-        // Cleanup errors are not critical
-      }
-
-      throw error
+      collectFiles(output)
+      onProgress?.(100)
+      return extracted
+    } finally {
+      removeArchiveDirectory(FS, directory)
     }
   }
 

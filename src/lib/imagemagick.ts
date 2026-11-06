@@ -9,6 +9,10 @@ import type {
 import { LibImageQuantProcessor } from './libimagequant'
 import type { ImageFile } from './shared'
 
+function canWriteOriginal(format: MagickFormat) {
+  return format !== 'HEIC' && format !== 'HEIF'
+}
+
 // Dynamic imports for ImageMagick
 let _ImageMagick: typeof ImageMagick | null = null
 let _MagickFormat: typeof MagickFormat | null = null
@@ -67,6 +71,7 @@ export interface ResizeOptions {
   width: number
   height: number
   maintainAspectRatio: boolean
+  onlyShrink?: boolean
 }
 
 export interface ImageConvertOptions {
@@ -75,6 +80,13 @@ export interface ImageConvertOptions {
 
 export interface ImageCompressOptions {
   quality: number
+}
+
+export interface ImageTransformOptions {
+  crop?: { x: number; y: number; width: number; height: number }
+  rotation: 0 | 90 | 180 | 270
+  flipHorizontal: boolean
+  flipVertical: boolean
 }
 
 export class ImageMagickProcessor {
@@ -144,31 +156,22 @@ export class ImageMagickProcessor {
         size: uint8Array.length,
       })
 
-      return new Promise((resolve) => {
-        ImageMagick.read(uint8Array, (img) => {
-          const meta: ImageMetadata = {
-            width: img.width,
-            height: img.height,
-            format: img.format.toString(),
-            size: imageFile.size,
-            colorspace: img.colorSpace.toString(),
-            depth: img.depth,
-            compression: img.compression.toString(),
-          }
-          console.log(
-            '🖼️ ImageMagick: Metadata extraction completed successfully',
-            meta,
-          )
-          resolve(meta)
-        })
-      })
+      return ImageMagick.read(uint8Array, (img) => ({
+        width: img.width,
+        height: img.height,
+        format: img.format.toString(),
+        size: imageFile.size,
+        colorspace: img.colorSpace.toString(),
+        depth: img.depth,
+        compression: img.compression.toString(),
+      }))
     } catch (error) {
       console.error('🖼️ ImageMagick: Error extracting metadata:', error)
       // Fallback to basic metadata
       const fallbackMetadata = {
         width: imageFile.dimensions?.width ?? 0,
         height: imageFile.dimensions?.height ?? 0,
-        format: imageFile.type.split('/')[1].toUpperCase(),
+        format: imageFile.type.split('/')[1]?.toUpperCase() ?? 'Unknown',
         size: imageFile.size,
         colorspace: 'sRGB',
         depth: 8,
@@ -192,9 +195,11 @@ export class ImageMagickProcessor {
     const bytes = new Uint8Array(await imageFile.file.arrayBuffer())
     const geometry = new MagickGeometry(options.width, options.height)
     geometry.ignoreAspectRatio = !options.maintainAspectRatio
+    if (options.onlyShrink) geometry.greater = true
 
     return ImageMagick.readCollection(bytes, (images) => {
-      const format = images[0].format
+      const source = images[0].format
+      const format = canWriteOriginal(source) ? source : 'PNG'
       // Animated frames can store only the changed rectangle. Expand them
       // before resizing, then update the animation canvas to the new size.
       if (images.length > 1) images.coalesce()
@@ -210,6 +215,149 @@ export class ImageMagickProcessor {
             type: this.getOriginalMimeType(format, imageFile.type),
           }),
       )
+    })
+  }
+
+  async previewImage(file: File) {
+    const { ImageMagick } = await initImageMagick()
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    return ImageMagick.read(bytes, (image) => {
+      image.autoOrient()
+      return {
+        dimensions: { width: image.width, height: image.height },
+        blob: image.write(
+          'PNG',
+          (data) => new Blob([data.slice()], { type: 'image/png' }),
+        ),
+      }
+    })
+  }
+
+  async transformImage(file: File, options: ImageTransformOptions) {
+    const { ImageMagick, MagickGeometry } = await initImageMagick()
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    return ImageMagick.readCollection(bytes, (images) => {
+      const source = images[0].format
+      const format = canWriteOriginal(source) ? source : 'PNG'
+      if (images.length > 1) images.coalesce()
+      const { crop, rotation, flipHorizontal, flipVertical } = options
+      for (const image of images) {
+        image.autoOrient()
+        image.resetPage()
+        if (crop) {
+          const { x, y, width, height } = crop
+          if (
+            ![x, y, width, height].every(Number.isSafeInteger) ||
+            x < 0 ||
+            y < 0 ||
+            width < 1 ||
+            height < 1 ||
+            x + width > image.width ||
+            y + height > image.height
+          )
+            throw new Error('The crop must stay inside the image.')
+          image.crop(new MagickGeometry(x, y, width, height))
+          image.resetPage()
+        }
+        if (rotation) image.rotate(rotation)
+        if (flipHorizontal) image.flop()
+        if (flipVertical) image.flip()
+        image.resetPage()
+      }
+      return {
+        width: images[0].width,
+        height: images[0].height,
+        blob: images.write(
+          format,
+          (data) =>
+            new Blob([data.slice()], {
+              type: this.getOriginalMimeType(format, file.type),
+            }),
+        ),
+      }
+    })
+  }
+
+  async removeBackgroundColor(file: File, color: string, tolerance: number) {
+    const { ImageMagick, MagickColor, Percentage } =
+      await import('@imagemagick/magick-wasm')
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    return ImageMagick.read(bytes, (image) => {
+      image.autoOrient()
+      image.colorFuzz = new Percentage(tolerance)
+      image.transparent(new MagickColor(color))
+      return image.write(
+        'PNG',
+        (data) => new Blob([data.slice()], { type: 'image/png' }),
+      )
+    })
+  }
+
+  async compressToSize(file: File, maximumBytes: number, allowResize: boolean) {
+    if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1) {
+      throw new Error('Enter a valid file size limit.')
+    }
+    const { ImageMagick, AlphaAction, MagickColors } =
+      await import('@imagemagick/magick-wasm')
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    return ImageMagick.read(bytes, (image) => {
+      image.autoOrient()
+      const result = (blob: Blob) => ({
+        blob,
+        width: image.width,
+        height: image.height,
+      })
+      if (image.format === 'JPEG' && file.size <= maximumBytes) {
+        return result(new Blob([file], { type: 'image/jpeg' }))
+      }
+      image.backgroundColor = MagickColors.White
+      image.alpha(AlphaAction.Remove)
+      const colorProfile = image.getProfile('icc')
+      image.strip()
+      if (colorProfile) image.setProfile(colorProfile)
+
+      const encode = (quality: number) => {
+        image.quality = quality
+        return image.write('JPEG', (data) => ({
+          size: data.length,
+          blob:
+            data.length <= maximumBytes
+              ? new Blob([data.slice()], { type: 'image/jpeg' })
+              : null,
+        }))
+      }
+
+      while (true) {
+        const highestQuality = encode(100).blob
+        if (highestQuality) return result(highestQuality)
+        const minimum = encode(1)
+        if (minimum.blob) {
+          let best = minimum.blob
+          let low = 2
+          let high = 99
+          while (low <= high) {
+            const quality = Math.floor((low + high) / 2)
+            const candidate = encode(quality).blob
+            if (candidate) {
+              best = candidate
+              low = quality + 1
+            } else {
+              high = quality - 1
+            }
+          }
+          return result(best)
+        }
+        if (!allowResize || (image.width === 1 && image.height === 1))
+          return null
+        const scale = Math.min(
+          0.8,
+          Math.sqrt(maximumBytes / minimum.size) * 0.9,
+        )
+        image.resize(
+          Math.max(1, Math.floor(image.width * scale)),
+          Math.max(1, Math.floor(image.height * scale)),
+        )
+      }
     })
   }
 
@@ -295,7 +443,8 @@ export class ImageMagickProcessor {
     const { ImageMagick } = await initImageMagick()
     const bytes = new Uint8Array(await imageFile.file.arrayBuffer())
     return ImageMagick.readCollection(bytes, (images) => {
-      const format = images[0].format
+      const source = images[0].format
+      const format = canWriteOriginal(source) ? source : 'JPEG'
       if (images.length > 1) images.coalesce()
       for (const image of images) {
         image.autoOrient()

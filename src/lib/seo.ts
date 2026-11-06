@@ -1,5 +1,4 @@
 import { allTools } from './tools.ts'
-import { toolPaths } from './toolPaths.ts'
 
 const siteUrl = 'https://toolbox.computer'
 
@@ -27,26 +26,6 @@ export const indexedPages = [
   })),
 ]
 
-const unavailableDescription =
-  'This tool is not available yet. You can merge PDF files today.'
-
-export const unavailablePages = [
-  {
-    path: toolPaths.pdfCompress,
-    title: 'Compress PDFs (Coming Soon) | Toolbox',
-    heading: 'Compress PDFs',
-    description: unavailableDescription,
-    intro: unavailableDescription,
-  },
-  {
-    path: toolPaths.pdfSplit,
-    title: 'Split PDFs (Coming Soon) | Toolbox',
-    heading: 'Split PDFs',
-    description: unavailableDescription,
-    intro: unavailableDescription,
-  },
-]
-
 export const notFoundPage = {
   path: '/404',
   title: 'Tool Not Found | Toolbox',
@@ -65,11 +44,7 @@ interface Page {
   instructions?: string
 }
 
-export const pages: Page[] = [
-  ...indexedPages,
-  ...unavailablePages,
-  notFoundPage,
-]
+export const pages: Page[] = [...indexedPages, notFoundPage]
 
 export function getPage(pathname: string): Page {
   const path = pathname.replace(/\/$/, '') || '/'

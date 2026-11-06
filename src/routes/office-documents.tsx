@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { useCallback, useMemo, useRef, useEffect } from 'react'
+import { useCallback, useMemo, useRef, useEffect, useState } from 'react'
 import {
   invalidateWorkspaceState,
   useWorkspaceState,
@@ -19,7 +19,12 @@ import {
   FileSpreadsheet,
   Building,
 } from 'lucide-react'
-import { isOfficeFile, createOfficeFile, type OfficeFile } from '@/lib/pandoc'
+import {
+  createOfficeFile,
+  getOfficePdfInputFormat,
+  officePdfInputFormats,
+  type OfficeFile,
+} from '@/lib/pandoc'
 import { formatFileSize } from '@/lib/shared'
 
 export const Route = createFileRoute('/office-documents')({
@@ -27,6 +32,7 @@ export const Route = createFileRoute('/office-documents')({
 })
 
 function OfficeDocumentsLayout() {
+  const [selectionError, setSelectionError] = useState('')
   const [selectedFile, updateSelectedFile] =
     useWorkspaceState<OfficeFile | null>('office.file', null)
   const selectedFileRef = useRef<OfficeFile | null>(selectedFile)
@@ -39,6 +45,7 @@ function OfficeDocumentsLayout() {
   const setSelectedFile = useCallback(
     (file: OfficeFile | null) => {
       selectedFileRef.current = file
+      setSelectionError('')
       updateSelectedFile(file)
       setConversionStatus('')
       invalidateWorkspaceState(['result.office.'])
@@ -78,7 +85,7 @@ function OfficeDocumentsLayout() {
       const file = files[0]
       if (!file) return
 
-      if (isOfficeFile(file)) {
+      if (getOfficePdfInputFormat(file.name)) {
         console.log('📄 OfficeTools: Processing office file', {
           name: file.name,
           size: file.size,
@@ -88,11 +95,9 @@ function OfficeDocumentsLayout() {
         const officeFile = createOfficeFile(file)
         setSelectedFile(officeFile)
       } else {
-        console.warn('📄 OfficeTools: Invalid file type selected', {
-          name: file.name,
-          type: file.type,
-        })
-        alert('Please select a valid office file (Word, PowerPoint, Excel)')
+        setSelectionError(
+          'Choose a DOCX, PPTX, or XLSX file. For older Office files, save a copy in one of these formats first.',
+        )
       }
     },
     [setSelectedFile],
@@ -145,10 +150,12 @@ function OfficeDocumentsLayout() {
         }
         onFileSelect={(files) => void handleFileSelect(files)}
         onClearFiles={clearSelectedFile}
-        acceptedTypes=".docx,.doc,.pptx,.ppt,.xlsx,.xls"
+        acceptedTypes={officePdfInputFormats
+          .map((format) => `.${format}`)
+          .join(',')}
         title="Drop an office file here"
-        description="Supports Word, PowerPoint, Excel"
-        supportedFormats={['Word', 'PowerPoint', 'Excel']}
+        description="Choose a Word, PowerPoint, or Excel file in a current Office format."
+        supportedFormats={['DOCX', 'PPTX', 'XLSX']}
         emptyStateIcon={Upload}
         selectedFileIcon={FileText}
       >
@@ -168,6 +175,11 @@ function OfficeDocumentsLayout() {
           </div>
         )}
       </FileUpload>
+      {selectionError && (
+        <p role="alert" className="mt-3 text-sm text-destructive">
+          {selectionError}
+        </p>
+      )}
     </div>
   )
 

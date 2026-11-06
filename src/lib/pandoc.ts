@@ -27,7 +27,12 @@ export async function convertOfficeToPDF(
   file: File,
 ): Promise<ConversionResult> {
   try {
-    const inputFormat = getInputFormat(file.name)
+    const inputFormat = getOfficePdfInputFormat(file.name)
+    if (!inputFormat) {
+      throw new Error(
+        'Unsupported file format. Choose a DOCX, PPTX, or XLSX file.',
+      )
+    }
 
     const { convert } = await import('pandoc-wasm')
     const { compileTypstToPDF } = await import('./typst')
@@ -227,19 +232,9 @@ export function getOutputFilename(
   return `${baseName}.${extension}`
 }
 
-function getInputFormat(filename: string): string {
+export const officePdfInputFormats = ['docx', 'pptx', 'xlsx'] as const
+
+export function getOfficePdfInputFormat(filename: string) {
   const ext = filename.toLowerCase().split('.').pop()
-  switch (ext) {
-    case 'docx':
-    case 'doc':
-      return 'docx'
-    case 'pptx':
-    case 'ppt':
-      return 'pptx'
-    case 'xlsx':
-    case 'xls':
-      return 'xlsx'
-    default:
-      throw new Error(`Unsupported file format: ${ext}`)
-  }
+  return officePdfInputFormats.find((format) => format === ext)
 }

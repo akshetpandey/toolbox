@@ -11,8 +11,11 @@ const { mockCallMain, mockFs } = vi.hoisted(() => {
     unlink: vi.fn(),
     readdir: vi.fn(),
     stat: vi.fn(),
+    lstat: vi.fn(),
     mkdir: vi.fn(),
+    rmdir: vi.fn(),
     isDir: vi.fn(),
+    isFile: vi.fn(),
   }
   return { mockCallMain, mockFs }
 })
@@ -34,7 +37,9 @@ beforeEach(() => {
   mockFs.readFile.mockReturnValue(new Uint8Array([0x50, 0x4b, 0x03, 0x04]))
   mockFs.readdir.mockReturnValue(['.', '..'])
   mockFs.stat.mockReturnValue({ mode: 0o100644 })
+  mockFs.lstat.mockReturnValue({ mode: 0o100644 })
   mockFs.isDir.mockReturnValue(false)
+  mockFs.isFile.mockReturnValue(true)
 
   processor = new ArchiveProcessor()
 })
@@ -255,7 +260,10 @@ describe('ArchiveProcessor.decompress', () => {
     const archiveData = new Uint8Array([0x50, 0x4b, 0x03, 0x04])
     processor.decompress(archiveData, 'test.zip')
 
-    expect(mockFs.writeFile).toHaveBeenCalledWith('test.zip', archiveData)
+    expect(mockFs.writeFile).toHaveBeenCalledWith(
+      expect.stringMatching(/\/source\/test\.zip$/u),
+      archiveData,
+    )
   })
 
   test('calls callMain to list and extract archive', () => {
@@ -265,12 +273,17 @@ describe('ArchiveProcessor.decompress', () => {
     processor.decompress(archiveData, 'test.zip')
 
     // Should list contents and then extract
-    expect(mockCallMain).toHaveBeenCalledWith(['l', 'test.zip'])
+    expect(mockCallMain).toHaveBeenCalledWith([
+      'l',
+      '--',
+      expect.stringMatching(/\/source\/test\.zip$/u),
+    ])
     expect(mockCallMain).toHaveBeenCalledWith([
       'x',
-      'test.zip',
-      '-oextracted_files',
+      expect.stringMatching(/^-o\/toolbox-extract-\d+\/output$/u),
       '-y',
+      '--',
+      expect.stringMatching(/\/source\/test\.zip$/u),
     ])
   })
 })

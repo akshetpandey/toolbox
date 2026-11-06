@@ -7,6 +7,7 @@
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest'
 import { FFmpegProcessor, type VideoFile } from '../ffmpeg'
+import { convertAudio, joinAudio, joinVideos } from '../media'
 
 // ─── FFmpeg Setup ───────────────────────────────────────────────────────────
 
@@ -120,6 +121,170 @@ describe('FFmpegProcessor with real WASM', () => {
     } finally {
       await processor.unmountInputFile()
     }
+  })
+
+  test('encodes a playable MP4 and verifies the requested byte limit', async () => {
+    const processor = new FFmpegProcessor(ffmpeg)
+    const signal = new AbortController().signal
+    try {
+      await processor.mountInputFile(await fixtureVideo('sample.webm'))
+      const maxBytes = 45_000
+      const result = await processor.compressToSize(maxBytes, signal)
+      expect(result.type).toBe('video/mp4')
+      expect(result.size).toBeLessThanOrEqual(maxBytes)
+      const file = new File([result], 'target.mp4', { type: result.type })
+      await processor.mountInputFile({
+        file,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        preview: '',
+      })
+      const metadata = await processor.extractMetadata()
+      expect(metadata.video_streams[0].codec_name).toBe('h264')
+      expect(metadata.audio_streams[0].codec_name).toBe('aac')
+    } finally {
+      await processor.unmountInputFile()
+    }
+  })
+
+  test('cancels target-size encoding and can retry with the same mounted video', async () => {
+    const processor = new FFmpegProcessor(ffmpeg)
+    const controller = new AbortController()
+    const abortOnProgress = () => controller.abort()
+    try {
+      await processor.mountInputFile(await fixtureVideo('sample.webm'))
+      ffmpeg.on('progress', abortOnProgress)
+      await expect(
+        processor.compressToSize(45_000, controller.signal),
+      ).rejects.toThrow(/aborted/i)
+      ffmpeg.off('progress', abortOnProgress)
+      const retried = await processor.compressToSize(
+        45_000,
+        new AbortController().signal,
+      )
+      expect(retried.size).toBeLessThanOrEqual(45_000)
+    } finally {
+      ffmpeg.off('progress', abortOnProgress)
+      await processor.unmountInputFile()
+    }
+  })
+
+  test('releases the old video when leaving during target-size encoding', async () => {
+    const processor = new FFmpegProcessor(ffmpeg)
+    const controller = new AbortController()
+    let unmounting: Promise<void> | undefined
+    const leave = () => {
+      if (!unmounting) {
+        unmounting = processor.unmountInputFile()
+        controller.abort()
+      }
+    }
+    try {
+      await processor.mountInputFile(await fixtureVideo('sample.webm'))
+      ffmpeg.on('progress', leave)
+      await expect(
+        processor.compressToSize(45_000, controller.signal),
+      ).rejects.toThrow(/aborted/i)
+      expect(unmounting).toBeDefined()
+      await unmounting
+      expect(processor.inputFile).toBeNull()
+    } finally {
+      ffmpeg.off('progress', leave)
+      await processor.unmountInputFile()
+    }
+  })
+
+  test('joins mixed video containers including clips without an audio track', async () => {
+    const signal = new AbortController().signal
+    const mp4 = await fixtureVideo('sample.mp4')
+    await writeInput(
+      'with-sound.mp4',
+      new Uint8Array(await mp4.file.arrayBuffer()),
+    )
+    expect(
+      await ffmpeg.exec([
+        '-i',
+        'with-sound.mp4',
+        '-t',
+        '0.5',
+        '-c:v',
+        'copy',
+        '-an',
+        'silent.mp4',
+      ]),
+    ).toBe(0)
+    const silent = new File(
+      [(await readOutput('silent.mp4')).slice()],
+      'same-name.mp4',
+    )
+    await ffmpeg.deleteFile('with-sound.mp4')
+    await ffmpeg.deleteFile('silent.mp4')
+    const webm = await fixtureVideo('sample.webm')
+    const blob = await joinVideos(
+      [silent, new File([webm.file], silent.name)],
+      signal,
+    )
+    const processor = new FFmpegProcessor(ffmpeg)
+    const file = new File([blob], 'joined.mp4', { type: blob.type })
+    try {
+      await processor.mountInputFile({
+        file,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        preview: '',
+      })
+      const metadata = await processor.extractMetadata()
+      expect(metadata.video_streams[0].codec_name).toBe('h264')
+      expect(metadata.audio_streams[0].codec_name).toBe('aac')
+      expect(metadata.duration).toBeGreaterThan(1)
+    } finally {
+      await processor.unmountInputFile()
+    }
+  })
+
+  test('converts WAV to MP3, trims M4A, and joins audio-only files', async () => {
+    const signal = new AbortController().signal
+    await writeInput('audio-fixture.mp4', await loadFixture('sample.mp4'))
+    expect(
+      await ffmpeg.exec([
+        '-i',
+        'audio-fixture.mp4',
+        '-t',
+        '0.5',
+        '-vn',
+        'fixture.wav',
+        '-t',
+        '0.5',
+        '-vn',
+        'fixture.m4a',
+      ]),
+    ).toBe(0)
+    const wav = new File(
+      [(await readOutput('fixture.wav')).slice()],
+      'fixture.wav',
+    )
+    const m4a = new File(
+      [(await readOutput('fixture.m4a')).slice()],
+      'fixture.m4a',
+    )
+    for (const file of ['audio-fixture.mp4', 'fixture.wav', 'fixture.m4a'])
+      await ffmpeg.deleteFile(file)
+    const mp3 = await convertAudio(wav, 'mp3', signal)
+    expect(mp3.type).toBe('audio/mpeg')
+    expect(new TextDecoder().decode(await mp3.slice(0, 3).arrayBuffer())).toBe(
+      'ID3',
+    )
+    const clip = await convertAudio(m4a, 'wav', signal, {
+      start: 0.1,
+      end: 0.3,
+    })
+    const joined = await joinAudio([wav, m4a], 'wav', signal)
+    expect(new TextDecoder().decode(await clip.slice(0, 4).arrayBuffer())).toBe(
+      'RIFF',
+    )
+    expect(joined.size).toBeGreaterThan(clip.size * 4)
   })
 })
 

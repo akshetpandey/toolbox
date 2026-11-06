@@ -25,25 +25,8 @@ import {
   type VideoToolsContextType,
 } from '@/contexts/VideoToolsContext'
 
-import {
-  Upload,
-  Info,
-  FileVideo,
-  Settings,
-  Zap,
-  Scissors,
-  Volume2,
-  Loader2,
-  Video as VideoIcon,
-} from 'lucide-react'
-
-const videoTabs = [
-  { value: 'metadata', label: 'Metadata', icon: Info },
-  { value: 'convert', label: 'Convert', icon: Settings },
-  { value: 'compress', label: 'Compress', icon: Zap },
-  { value: 'trim', label: 'Trim', icon: Scissors },
-  { value: 'extract', label: 'Extract', icon: Volume2 },
-]
+import { Upload, FileVideo, Loader2, Video as VideoIcon } from 'lucide-react'
+import { videoTabs } from '@/lib/videoToolsUtils'
 
 function invalidateVideoWork() {
   invalidateWorkspaceState(['videos.', 'result.videos.'], {
@@ -160,6 +143,15 @@ function VideoFileUpload({
 }
 
 function VideoToolsLayout() {
+  const { pathname } = useLocation()
+  return pathname.replace(/\/$/, '') === '/videos/join' ? (
+    <Outlet />
+  ) : (
+    <SingleVideoWorkspace />
+  )
+}
+
+function SingleVideoWorkspace() {
   const { ffmpeg, isInitialized, error, init, setProgressCallback } =
     useInitFFmpeg()
   const { isProcessing, setIsProcessing } = useProcessing()

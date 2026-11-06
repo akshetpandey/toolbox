@@ -41,7 +41,7 @@ afterEach(() => {
   resetWorkspaceState()
 })
 
-test('client navigation replaces the canonical URL and indexing directives', async () => {
+test('client navigation updates the canonical URL for available tools', async () => {
   const router = await openApp()
   const canonical = () =>
     document.head.querySelectorAll('link[rel="canonical"]')
@@ -50,9 +50,12 @@ test('client navigation replaces the canonical URL and indexing directives', asy
   expect(canonical()[0].getAttribute('href')).toBe('https://toolbox.computer/')
 
   await act(() => router.navigate({ to: '/pdfs/split' }))
-  expect(document.title).toBe('Split PDFs (Coming Soon) | Toolbox')
-  expect(canonical()).toHaveLength(0)
-  expect(robots()?.getAttribute('content')).toBe('noindex')
+  expect(document.title).toBe('Split a PDF or Extract Selected Pages | Toolbox')
+  expect(canonical()).toHaveLength(1)
+  expect(canonical()[0].getAttribute('href')).toBe(
+    'https://toolbox.computer/pdfs/split',
+  )
+  expect(robots()).toBeNull()
 
   await act(() => router.navigate({ to: '/pdfs/merge' }))
   expect(document.title).toBe('Merge PDFs into One File | Toolbox')
@@ -92,6 +95,8 @@ test.each([
     ['JPG to PNG', '/images/convert'],
     ['SHA-256', '/utilities/hash'],
     ['compres imgae', '/images/compress'],
+    ['MP4 to GIF', '/videos/trim'],
+    ['OCR PDF', '/pdfs/ocr'],
   ]) {
     fireEvent.change(search, { target: { value: query } })
     const results = screen
@@ -110,7 +115,7 @@ test.each([
     expect(request.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
   }
-  fireEvent.change(search, { target: { value: 'OCR PDF' } })
+  fireEvent.change(search, { target: { value: 'PNG to SVG' } })
   expect(screen.getByRole('status').textContent).toContain('0 tools found')
   expect(screen.getByRole('heading', { name: 'No tools found' })).toBeTruthy()
   expect(
@@ -119,7 +124,7 @@ test.each([
         .getByRole('link', { name: 'Request a tool' })
         .getAttribute('href')!,
     ).searchParams.get('body'),
-  ).toContain('OCR PDF')
+  ).toContain('PNG to SVG')
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
   await userEvent.click(screen.getByRole('button', { name: 'Clear search' }))
   expect(document.activeElement).toBe(search)
@@ -134,12 +139,29 @@ test.each([
     ['/images/convert', 'Convert image'],
     ['/images/compress', 'Compress image'],
     ['/images/metadata', 'Image metadata'],
+    ['/images/crop', 'Crop, rotate and flip image'],
+    ['/images/batch', 'Batch resize or convert images'],
+    ['/images/background', 'Remove image background'],
     ['/videos/compress', 'Compress video'],
     ['/videos/convert', 'Convert video'],
     ['/videos/trim', 'Trim video'],
     ['/videos/extract', 'Extract audio'],
     ['/videos/metadata', 'Video metadata'],
+    ['/videos/join', 'Join videos'],
+    ['/audio/convert', 'Convert audio'],
+    ['/audio/trim', 'Trim audio'],
+    ['/audio/join', 'Join audio'],
     ['/pdfs/merge', 'Merge PDFs'],
+    ['/pdfs/compress', 'Compress PDF'],
+    ['/pdfs/split', 'Split or extract PDF pages'],
+    ['/pdfs/organize', 'Organize PDF pages'],
+    ['/pdfs/from-images', 'Images to PDF'],
+    ['/pdfs/to-images', 'PDF to images'],
+    ['/pdfs/ocr', 'Make PDF searchable'],
+    ['/pdfs/redact', 'Redact PDF'],
+    ['/pdfs/sign', 'Add a signature to PDF'],
+    ['/pdfs/watermark', 'Watermark PDF'],
+    ['/pdfs/to-word', 'PDF to editable Word'],
     ['/office-documents/convert', 'Convert document to PDF'],
     ['/archives/extract', 'Extract archive'],
     ['/archives/compress', 'Create archive'],

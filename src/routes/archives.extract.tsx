@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Loader2,
   FileArchive,
@@ -33,10 +35,12 @@ function ExtractPage() {
   } = useArchiveTools()
   const [error, setError] = useState('')
   const [activity, setActivity] = useState('')
+  const [password, setPassword] = useState('')
   const version = useRef(0)
   const busy = useRef(false)
   useEffect(() => {
     setError('')
+    setPassword('')
   }, [uploadedArchive])
   useEffect(
     () => () => {
@@ -52,6 +56,7 @@ function ExtractPage() {
     if (
       !isInitialized ||
       isProcessing ||
+      busy.current ||
       (action === 'extract'
         ? !uploadedArchive
         : !extractedFiles.some((file) => !file.isDirectory))
@@ -63,8 +68,10 @@ function ExtractPage() {
     setActivity(action)
     setError('')
     try {
-      if (action === 'extract') await decompressArchive()
-      else await downloadAllFiles()
+      if (action === 'extract') {
+        await decompressArchive(password)
+        if (version.current === request) setPassword('')
+      } else await downloadAllFiles()
     } catch (cause) {
       if (version.current === request)
         setError(
@@ -111,8 +118,8 @@ function ExtractPage() {
               className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
             >
               <p>
-                This archive could not be opened or downloaded. Choose another
-                copy and make sure it is not password-protected.
+                This archive could not be opened or downloaded. Check the
+                password if it is protected, or try a fresh copy.
               </p>
               <Button
                 variant="outline"
@@ -127,6 +134,24 @@ function ExtractPage() {
                 <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
               </details>
             </div>
+          )}
+          {uploadedArchive && (
+            <details className="text-sm">
+              <summary className="min-h-11 cursor-pointer py-3 font-medium">
+                Password-protected archive
+              </summary>
+              <div className="space-y-2 pb-2">
+                <Label htmlFor="archive-password">Archive password</Label>
+                <Input
+                  id="archive-password"
+                  type="password"
+                  autoComplete="off"
+                  disabled={isProcessing}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </div>
+            </details>
           )}
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button

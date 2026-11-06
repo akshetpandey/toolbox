@@ -8,6 +8,7 @@ import { describe, test, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import type { SevenZipModule } from '7z-wasm'
+import { ArchiveProcessor } from '../archive'
 
 const fixturesDir = resolve(__dirname, 'fixtures')
 
@@ -62,6 +63,48 @@ function cleanupDir(dirPath: string) {
     // ignore
   }
 }
+
+test.each([
+  ['zip', '-mem=AES256'],
+  ['7z', '-mhe=on'],
+])(
+  'extracts an encrypted %s after a failed password attempt',
+  async (format, option) => {
+    const filename = `locked.${format}`
+    const contents = new TextEncoder().encode('Contents of the protected file')
+    writeTestFile('private.txt', contents)
+    try {
+      sevenZip.callMain([
+        'a',
+        `-t${format}`,
+        '-ptest password',
+        option,
+        filename,
+        'private.txt',
+      ])
+      const data = readArchiveFile(filename)
+      const processor = new ArchiveProcessor()
+      await processor.init()
+
+      expect(() => processor.decompress(data, filename)).toThrow('7-Zip')
+      expect(() =>
+        processor.decompress(data, filename, undefined, 'wrong'),
+      ).toThrow('7-Zip')
+      expect(
+        processor.decompress(data, filename, undefined, 'test password'),
+      ).toEqual([
+        {
+          name: 'private.txt',
+          size: contents.length,
+          data: contents,
+          isDirectory: false,
+        },
+      ])
+    } finally {
+      cleanup('private.txt', filename)
+    }
+  },
+)
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
