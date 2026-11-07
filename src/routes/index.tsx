@@ -8,6 +8,8 @@ import { homePage } from '@/lib/seo'
 import { getToolRequestUrl } from '@/lib/toolRequests'
 
 export const Route = createFileRoute('/')({
+  // The homepage is part of the app shell. Tools keep their split routes.
+  codeSplitGroupings: [],
   component: App,
 })
 
