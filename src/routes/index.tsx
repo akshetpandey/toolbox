@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import { ArrowRight, Search, ShieldCheck, X, ArrowUpRight } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { allTools, findTools, toolCategories } from '@/lib/tools'
+import { buttonVariants } from '@/components/ui/button-variants'
+import { allTools, toolCategories } from '@/lib/tools'
+import type { findTools } from '@/lib/toolSearch'
 import { homePage } from '@/lib/seo'
 import { getToolRequestUrl } from '@/lib/toolRequests'
 
@@ -13,12 +13,25 @@ export const Route = createFileRoute('/')({
 
 function App() {
   const [query, setQuery] = useState('')
+  const [search, setSearch] = useState<
+    'idle' | 'loading' | 'unavailable' | typeof findTools
+  >('idle')
   const searchInput = useRef<HTMLInputElement>(null)
+  const loadSearch = () => {
+    if (search === 'loading' || typeof search === 'function') return
+    setSearch('loading')
+    void import('@/lib/toolSearch').then(
+      (module) => setSearch(() => module.findTools),
+      () => setSearch('unavailable'),
+    )
+  }
   const clearSearch = () => {
     setQuery('')
     searchInput.current?.focus()
   }
-  const matches = findTools(query)
+  const hasQuery = Boolean(query.trim())
+  const matches =
+    hasQuery && typeof search === 'function' ? search(query) : null
   const popularRoutes = [
     '/images/resize',
     '/images/compress',
@@ -57,41 +70,52 @@ function App() {
               aria-hidden="true"
               className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
             />
-            <Input
+            <input
               ref={searchInput}
               id="tool-search"
               type="search"
               placeholder="Try “JPG to PNG” or “merge PDFs”"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="h-14 rounded-xl bg-card pl-12 pr-12 text-base"
+              onFocus={loadSearch}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                if (event.target.value.trim()) loadSearch()
+              }}
+              className="flex h-14 w-full min-w-0 rounded-xl border border-input bg-card py-1 pl-12 pr-12 text-base shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 dark:bg-input/30"
             />
             {query && (
-              <Button
+              <button
+                type="button"
                 aria-label="Clear search"
-                variant="ghost"
-                size="icon"
                 onClick={clearSearch}
-                className="absolute right-1 top-1"
+                className={buttonVariants({
+                  variant: 'ghost',
+                  size: 'icon',
+                  className: 'absolute right-1 top-1',
+                })}
               >
                 <X aria-hidden="true" />
-              </Button>
+              </button>
             )}
           </div>
         </div>
         <section aria-labelledby="popular-tools" className="mt-9">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 id="popular-tools" className="text-lg font-semibold">
-              {query.trim() ? 'Search results' : 'Popular tools'}
+              {hasQuery ? 'Search results' : 'Popular tools'}
             </h2>
-            {query.trim() && (
+            {hasQuery && (
               <p role="status" className="text-sm text-muted-foreground">
-                {matches.length} {matches.length === 1 ? 'tool' : 'tools'} found
+                {matches
+                  ? `${matches.length} ${matches.length === 1 ? 'tool' : 'tools'} found`
+                  : search === 'unavailable'
+                    ? 'Search could not load. Try typing again or browse the categories below.'
+                    : 'Loading search…'}
               </p>
             )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(query.trim() ? matches : popular).map((tool) => (
+            {(hasQuery ? (matches ?? []) : popular).map((tool) => (
               <Link
                 key={tool.route}
                 to={tool.route}
@@ -113,19 +137,26 @@ function App() {
               </Link>
             ))}
           </div>
-          {query.trim() && matches.length === 0 && (
+          {matches?.length === 0 && (
             <div className="rounded-xl border border-border bg-card p-6">
               <h3 className="font-medium">No tools found</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 Try a file type such as image, PDF, or ZIP, or browse the
                 categories below.
               </p>
-              <Button variant="outline" className="mt-4" onClick={clearSearch}>
+              <button
+                type="button"
+                className={buttonVariants({
+                  variant: 'outline',
+                  className: 'mt-4',
+                })}
+                onClick={clearSearch}
+              >
                 Show popular tools
-              </Button>
+              </button>
             </div>
           )}
-          {query.trim() && (
+          {hasQuery && (
             <div className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-medium">
@@ -136,16 +167,18 @@ function App() {
                   issue draft.
                 </p>
               </div>
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <a
-                  href={getToolRequestUrl(query)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Request a tool
-                  <ArrowUpRight aria-hidden="true" className="size-4" />
-                </a>
-              </Button>
+              <a
+                className={buttonVariants({
+                  variant: 'outline',
+                  className: 'w-full sm:w-auto',
+                })}
+                href={getToolRequestUrl(query)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Request a tool
+                <ArrowUpRight aria-hidden="true" className="size-4" />
+              </a>
             </div>
           )}
         </section>

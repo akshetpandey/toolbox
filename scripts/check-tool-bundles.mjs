@@ -44,12 +44,17 @@ export async function checkToolBundles(browser, origin) {
     await page.goto(origin)
     await page.locator('#workspace-controls:not([disabled])').waitFor()
     const search = page.getByRole('searchbox')
+    const searchChunk = /\/toolSearch-[^/]+\.js$/u
+    assert(
+      !requested.some((asset) => searchChunk.test(asset)),
+      'Homepage should defer fuzzy search until the search field is used',
+    )
     const homepageRequests = requested.filter((asset) =>
       /\.m?js$/u.test(asset),
     ).length
     assert(
-      homepageRequests > 0 && homepageRequests <= 5,
-      `Homepage should load at most 5 JavaScript files; got ${homepageRequests}`,
+      homepageRequests > 0 && homepageRequests <= 4,
+      `Homepage should load at most 4 JavaScript files; got ${homepageRequests}`,
     )
     const homepageJS = await page.evaluate(() => {
       const sizes = new Map()
@@ -63,14 +68,18 @@ export async function checkToolBundles(browser, origin) {
       return [...sizes.values()].reduce((total, size) => total + size, 0)
     })
     assert(
-      homepageJS > 0 && homepageJS < 140 * 1024,
-      `Homepage JS should stay below 140 KiB compressed; got ${homepageJS} bytes`,
+      homepageJS > 0 && homepageJS < 121 * 1024,
+      `Homepage JS should stay below 121 KiB compressed; got ${homepageJS} bytes`,
     )
     await search.fill('trim video')
     const videoLink = page
       .getByRole('link', { name: 'Trim video', exact: true })
       .first()
     await videoLink.hover()
+    assert(
+      requested.some((asset) => searchChunk.test(asset)),
+      'Using search should load its separate JavaScript chunk',
+    )
     // Intent preloading would schedule work after hovering, even without a click.
     await page.waitForTimeout(300)
     assert(
