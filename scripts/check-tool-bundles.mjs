@@ -53,8 +53,8 @@ export async function checkToolBundles(browser, origin) {
       /\.m?js$/u.test(asset),
     ).length
     assert(
-      homepageRequests > 0 && homepageRequests <= 4,
-      `Homepage should load at most 4 JavaScript files; got ${homepageRequests}`,
+      homepageRequests > 0 && homepageRequests <= 2,
+      `Homepage should load at most 2 JavaScript files; got ${homepageRequests}`,
     )
     const homepageJS = await page.evaluate(() => {
       const sizes = new Map()
@@ -68,8 +68,8 @@ export async function checkToolBundles(browser, origin) {
       return [...sizes.values()].reduce((total, size) => total + size, 0)
     })
     assert(
-      homepageJS > 0 && homepageJS < 121 * 1024,
-      `Homepage JS should stay below 121 KiB compressed; got ${homepageJS} bytes`,
+      homepageJS > 0 && homepageJS < 114 * 1024,
+      `Homepage JS should stay below 114 KiB compressed; got ${homepageJS} bytes`,
     )
     await search.fill('trim video')
     const videoLink = page
