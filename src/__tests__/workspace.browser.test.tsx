@@ -71,16 +71,21 @@ test('desktop PDF navigation keeps every category visible on a short viewport', 
   expect(nav.scrollTop).toBe(0)
 })
 
-test('client navigation updates the canonical URL for available tools', async () => {
+test('client navigation updates search metadata for available tools', async () => {
   const router = await openApp()
   const canonical = () =>
     document.head.querySelectorAll('link[rel="canonical"]')
   const robots = () => document.head.querySelector('meta[name="robots"]')
+  const description = () =>
+    document.head
+      .querySelector('meta[name="description"]')
+      ?.getAttribute('content')
   expect(canonical()).toHaveLength(1)
   expect(canonical()[0].getAttribute('href')).toBe('https://toolbox.computer/')
 
   await act(() => router.navigate({ to: '/pdfs/split' }))
-  expect(document.title).toBe('Split a PDF or Extract Selected Pages | Toolbox')
+  expect(document.title).toBe('Split PDF Online or Extract Pages | Toolbox')
+  expect(description()).toContain('Split a PDF into separate files')
   expect(canonical()).toHaveLength(1)
   expect(canonical()[0].getAttribute('href')).toBe(
     'https://toolbox.computer/pdfs/split',
@@ -88,7 +93,8 @@ test('client navigation updates the canonical URL for available tools', async ()
   expect(robots()).toBeNull()
 
   await act(() => router.navigate({ to: '/pdfs/merge' }))
-  expect(document.title).toBe('Merge PDFs into One File | Toolbox')
+  expect(document.title).toBe('Merge PDF Files Online into One PDF | Toolbox')
+  expect(description()).toContain('Combine two or more PDFs into one document')
   expect(canonical()).toHaveLength(1)
   expect(canonical()[0].getAttribute('href')).toBe(
     'https://toolbox.computer/pdfs/merge',
@@ -110,7 +116,7 @@ test.each([
   await page.viewport(width, height)
   const router = await openApp()
   expect(screen.getByRole('heading', { level: 1 }).textContent).toContain(
-    'Private file tools',
+    'Free online file tools',
   )
   expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
   const search = screen.getByRole('searchbox')
@@ -177,7 +183,7 @@ test.each([
     ['/videos/compress', 'Compress video'],
     ['/videos/convert', 'Convert video'],
     ['/videos/trim', 'Trim video'],
-    ['/videos/extract', 'Extract audio'],
+    ['/videos/extract', 'Extract audio from video'],
     ['/videos/metadata', 'Video metadata'],
     ['/videos/join', 'Join videos'],
     ['/audio/convert', 'Convert audio'],
@@ -191,12 +197,12 @@ test.each([
     ['/pdfs/to-images', 'PDF to images'],
     ['/pdfs/ocr', 'Make PDF searchable'],
     ['/pdfs/redact', 'Redact PDF'],
-    ['/pdfs/sign', 'Add a signature to PDF'],
+    ['/pdfs/sign', 'Sign a PDF'],
     ['/pdfs/watermark', 'Watermark PDF'],
     ['/pdfs/to-word', 'PDF to editable Word'],
     ['/office-documents/convert', 'Convert document to PDF'],
-    ['/archives/extract', 'Extract archive'],
-    ['/archives/compress', 'Create archive'],
+    ['/archives/extract', 'Unzip or extract an archive'],
+    ['/archives/compress', 'Create a ZIP or other archive'],
     ['/utilities/hash', 'File hashes'],
     ['/utilities/metadata', 'File metadata'],
   ]

@@ -4,12 +4,12 @@ export const siteUrl = 'https://toolbox.computer'
 
 export const homePage = {
   path: '/',
-  title: 'Free, Private File Tools for Your Browser | Toolbox',
-  heading: 'Private file tools, right in your browser.',
+  title: 'Free Online File Tools for PDFs, Images and Video | Toolbox',
+  heading: 'Free online file tools',
   description:
-    'Resize images, trim videos, merge PDFs, open archives, and more. Toolbox is free and open source and processes files in your browser without uploads.',
+    'Merge PDFs, resize images, trim video and audio, convert documents, and unzip files for free. Toolbox processes files on your device without uploads.',
   intro:
-    'Resize, convert, and organize your files. Everything is processed on your device, with no uploads or account required.',
+    'Merge PDFs, resize photos, trim video and audio, convert documents, and open ZIP files. Your files stay on your device.',
   canonical: `${siteUrl}/`,
 }
 
