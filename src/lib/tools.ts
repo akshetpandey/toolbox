@@ -98,10 +98,10 @@ export const toolCategories = [
       {
         name: 'Redact image',
         route: toolPaths.imageRedact,
-        pageTitle: 'Redact Images and Screenshots Online',
+        pageTitle: 'Image Redaction Tool for Photos and Screenshots',
         description: 'Cover private details before sharing.',
         instructions:
-          'Black out text in a screenshot with a solid box. Blur or pixelate areas such as faces, then download the edited image.',
+          'Redact a photo or screenshot by covering private details with solid boxes. You can also blur or pixelate parts of the image.',
         keywords:
           'photo picture hide cover blur pixelate privacy censor mask black out sensitive face',
         icon: ScanEye,
@@ -148,10 +148,10 @@ export const toolCategories = [
       {
         name: 'Trim video',
         route: toolPaths.videoTrim,
-        pageTitle: 'Trim Video Online and Save a Clip',
+        pageTitle: 'Online Video Trimmer for MP4, MOV and WebM',
         description: 'Keep just the part you need.',
         instructions:
-          'Cut a video by setting the start and end times. Save the trimmed clip in its original format or turn it into a silent animated GIF or WebP.',
+          'Trim a video by setting its start and end times. Save the clip in its original video format or turn it into a silent animated GIF or WebP.',
         keywords: 'cut clip movie length mp4 gif animated webp',
         icon: Scissors,
       },
@@ -380,10 +380,10 @@ export const toolCategories = [
       {
         name: 'Unzip or extract an archive',
         route: toolPaths.archiveExtract,
-        pageTitle: 'Unzip Files Online and Extract RAR or 7z',
+        pageTitle: 'Online Archive Extractor for ZIP, RAR and 7z',
         description: 'Open an archive and download its files.',
         instructions:
-          'Open a ZIP, RAR, 7z, TAR, or GZIP archive in your browser. Enter its password if needed, then extract one file or download everything.',
+          'Extract files from ZIP, RAR, 7z, TAR, or GZIP archives in your browser. Enter a password if needed, then download the files you want.',
         keywords: 'unzip zip 7z rar unpack encrypted password protected',
         icon: FolderOpen,
       },
