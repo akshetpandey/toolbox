@@ -58,7 +58,7 @@ export const toolCategories = [
       {
         name: 'Convert image',
         route: toolPaths.imageConvert,
-        pageTitle: 'Image Converter for HEIC, JPG, PNG and WebP',
+        pageTitle: 'Convert HEIC and Other Images to JPG, PNG or WebP',
         description: 'Save an image in a different format.',
         instructions:
           'Convert HEIC to JPG, JPG to PNG, or WebP to JPG in your browser. Choose PNG or WebP to preserve transparency.',
@@ -178,7 +178,7 @@ export const toolCategories = [
       {
         name: 'Video metadata',
         route: toolPaths.videoMetadata,
-        pageTitle: 'View and Remove Video Metadata',
+        pageTitle: 'Video Metadata Viewer and Tag Remover',
         description: 'Inspect duration, dimensions, and codecs.',
         instructions:
           'Check video duration, resolution, and codecs. Download a copy with descriptive metadata removed while keeping the video and audio streams.',
@@ -352,7 +352,7 @@ export const toolCategories = [
       {
         name: 'Convert document to PDF',
         route: toolPaths.documentConvert,
-        pageTitle: 'Convert Word, Excel or PowerPoint to PDF',
+        pageTitle: 'Office to PDF Converter for DOCX, XLSX and PPTX',
         description: 'Turn office documents into a shareable PDF.',
         instructions:
           'Convert Word to PDF from DOCX, Excel to PDF from XLSX, or PowerPoint to PDF from PPTX. Review the PDF layout before sharing.',
@@ -408,7 +408,7 @@ export const toolCategories = [
       {
         name: 'File metadata',
         route: toolPaths.fileMetadata,
-        pageTitle: 'Identify File Type and Detect MIME Type Online',
+        pageTitle: 'File Type Detector and MIME Checker',
         description: 'Inspect the type and details of a file.',
         instructions:
           'Check a file to see its detected MIME type, format description, and size. Identify an unknown file even if its extension is missing or wrong.',
