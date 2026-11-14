@@ -32,15 +32,16 @@ pnpm format         # Format with Oxfmt
 pnpm format:check   # Check formatting without writing files
 pnpm typecheck      # Check types with TypeScript 7
 pnpm check          # Format, lint fix, and check types
-pnpm test           # Run Node, Chromium, and complete tool workflows
+pnpm test           # Run Node and complete browser suites/workflows in Chromium and WebKit
 pnpm test:unit      # Run unit and real-WASM integration tests in Node
-pnpm test:browser   # Run real-WASM, redaction canvas, and keyboard tests in Chromium
+pnpm test:browser   # Run all browser tests in Chromium and WebKit
 pnpm test:workflows # Run all tools in Chromium and verify their results with representative files
                     # Add --preview to check production bundles and optional --screenshots <dir>
+pnpm test:workflows:webkit # Run all tools and verify their results in WebKit
 ```
 
 Before the first browser test run (and after Playwright upgrades), install its
-matching browser with `pnpm exec playwright install chromium`.
+matching browsers with `pnpm exec playwright install chromium webkit`.
 
 ### Deployment
 

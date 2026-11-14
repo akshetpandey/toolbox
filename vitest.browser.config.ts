@@ -63,7 +63,7 @@ export default defineConfig({
     browser: {
       enabled: true,
       provider: playwright(),
-      instances: [{ browser: 'chromium' }],
+      instances: [{ browser: 'chromium' }, { browser: 'webkit' }],
       headless: true,
     },
     // Longer timeouts for WASM loading from local package

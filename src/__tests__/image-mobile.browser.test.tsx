@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import type { ImageFile } from '@/lib/shared'
@@ -70,6 +76,98 @@ afterEach(() => {
   cleanup()
   resetWorkspaceState()
 })
+
+test.each([
+  { mode: 'Blur', scale: 1 },
+  { mode: 'Blur', scale: 2 },
+  { mode: 'Pixelate', scale: 1 },
+  { mode: 'Box', scale: 1 },
+])(
+  'touch-drawn $mode changes preview and downloaded pixels at source scale $scale on a phone',
+  async ({ mode, scale }) => {
+    await page.viewport(390, 844)
+    const sourceCanvas = document.createElement('canvas')
+    sourceCanvas.width = scale === 1 ? 350 : 1600
+    sourceCanvas.height = scale === 1 ? 208 : 960
+    const sourceCtx = sourceCanvas.getContext('2d')!
+    for (let x = 0; x < sourceCanvas.width; x++) {
+      sourceCtx.fillStyle = Math.floor(x / scale) % 2 ? '#ffffff' : '#000000'
+      sourceCtx.fillRect(x, 0, 1, sourceCanvas.height)
+    }
+    source.selected = {
+      ...source.selected!,
+      preview: sourceCanvas.toDataURL(),
+      dimensions: { width: sourceCanvas.width, height: sourceCanvas.height },
+    }
+    const Redact = RedactRoute.options.component!
+    const view = render(
+      <div className="min-w-0 p-4">
+        <Redact />
+      </div>,
+    )
+    const canvas = view.container.querySelector('canvas')!
+    await waitFor(() => expect(canvas.width).toBe(sourceCanvas.width / scale))
+    await userEvent.click(screen.getByRole('button', { name: mode }))
+    const bounds = canvas.getBoundingClientRect()
+    const touchAt = (position: number) => ({
+      clientX: bounds.left + (position * bounds.width) / canvas.width,
+      clientY: bounds.top + (position * bounds.height) / canvas.height,
+    })
+    const touch = (type: string, position?: number) => {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'touches', {
+        value: position === undefined ? [] : [touchAt(position)],
+      })
+      fireEvent(canvas, event)
+    }
+    touch('touchstart', 40)
+    touch('touchmove', 120)
+    touch('touchend')
+    await screen.findByRole('button', {
+      name: `Area 1 · ${mode.toLowerCase()}`,
+    })
+
+    const checkPixels = (context: CanvasRenderingContext2D, factor: number) => {
+      const pixels = context.getImageData(
+        65 * factor,
+        65 * factor,
+        20 * factor,
+        20 * factor,
+      ).data
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (mode === 'Box') expect(pixels[i]).toBe(0)
+        else {
+          expect(pixels[i]).toBeGreaterThan(70)
+          expect(pixels[i]).toBeLessThan(185)
+        }
+        expect(pixels[i + 3]).toBe(255)
+      }
+      // Pixels outside the touch selection retain the original sharp stripes.
+      expect([
+        ...context.getImageData(4 * factor, 4 * factor, 1, 1).data,
+      ]).toEqual([0, 0, 0, 255])
+      expect([
+        ...context.getImageData(5 * factor, 4 * factor, 1, 1).data,
+      ]).toEqual([255, 255, 255, 255])
+    }
+    await waitFor(() => checkPixels(canvas.getContext('2d')!, 1))
+    await userEvent.click(screen.getByRole('button', { name: 'Download' }))
+    await screen.findByRole('region', { name: 'Result' })
+    expect(download).toHaveBeenCalledOnce()
+    const output = await createImageBitmap(download.mock.calls[0][0] as Blob)
+    expect([output.width, output.height]).toEqual([
+      sourceCanvas.width,
+      sourceCanvas.height,
+    ])
+    sourceCtx.drawImage(output, 0, 0)
+    output.close()
+    checkPixels(sourceCtx, scale)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Download again' }),
+    )
+    expect(download.mock.calls[1]).toEqual(download.mock.calls[0])
+  },
+)
 
 test.each([375, 390])(
   'populated redaction controls and export actions fit a %s px phone',

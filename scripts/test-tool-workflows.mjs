@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { chromium } from 'playwright'
+import { chromium, webkit } from 'playwright'
 import { allTools } from '../src/lib/tools.ts'
 import { checkToolBundles } from './check-tool-bundles.mjs'
 import { workflows } from './tool-workflow-cases.mjs'
@@ -14,9 +14,12 @@ const { values } = parseArgs({
     preview: { type: 'boolean' },
     screenshots: { type: 'string' },
     only: { type: 'string', multiple: true },
+    browser: { type: 'string', default: 'chromium' },
   },
 })
 const screenshots = values.screenshots ? resolve(values.screenshots) : null
+const browserType = { chromium, webkit }[values.browser]
+assert(browserType, 'Choose --browser chromium or --browser webkit')
 const profiles = screenshots
   ? [
       { name: 'desktop', viewport: { width: 1440, height: 1000 } },
@@ -27,7 +30,7 @@ const profiles = screenshots
         hasTouch: true,
       },
     ]
-  : [{ name: 'chromium', viewport: { width: 1440, height: 1000 } }]
+  : [{ name: values.browser, viewport: { width: 1440, height: 1000 } }]
 
 assert.deepEqual(
   Object.keys(workflows).sort(),
@@ -77,7 +80,7 @@ try {
     server.stdout.on('data', collect)
     server.stderr.on('data', collect)
   })
-  browser = await chromium.launch()
+  browser = await browserType.launch()
   if (values.preview) await checkToolBundles(browser, origin)
   const fixturePage = await browser.newPage()
   const fixtures = await workflowFixtures(fixturePage)

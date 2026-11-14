@@ -153,7 +153,12 @@ export function ToolSidebar() {
           className={buttonVariants({ variant: 'outline' })}
           aria-expanded={open}
           aria-controls="tools-drawer"
-          onClick={() => setOpen(true)}
+          onClick={(event) => {
+            // Safari does not focus clicked buttons. Give the native dialog a
+            // focused opener so Escape/close can restore keyboard focus.
+            event.currentTarget.focus()
+            setOpen(true)
+          }}
         >
           <Menu aria-hidden="true" />
           Tools

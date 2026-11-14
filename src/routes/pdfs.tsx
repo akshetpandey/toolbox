@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Outlet,
+  useLocation,
+  useChildMatches,
+} from '@tanstack/react-router'
 import { useState, useCallback, useEffect } from 'react'
 import {
   invalidateWorkspaceState,
@@ -145,7 +150,9 @@ export const Route = createFileRoute('/pdfs')({
 function PDFToolsLayout() {
   const { isProcessing } = useProcessing()
   const location = useLocation()
-  const path = location.pathname.replace(/\/$/, '')
+  // Outlet can still render the previous child while the location advances.
+  // Choose its provider/layout from the same active matches as Outlet.
+  const path = useChildMatches({ select: (matches) => matches[0]?.routeId })
   const merging = path === '/pdfs/merge'
   const [mergeFiles, setMergeFiles] = useWorkspaceState<PDFFile[]>(
     'pdfs.files',

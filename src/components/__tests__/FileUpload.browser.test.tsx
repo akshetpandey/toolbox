@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { server, userEvent } from 'vitest/browser'
 import { FileUpload } from '@/components/FileUpload'
 
 afterEach(cleanup)
@@ -34,7 +34,11 @@ test.each([false, true])(
       presses < 3 && document.activeElement !== choose;
       presses++
     ) {
-      await userEvent.tab()
+      // macOS WebKit uses Option-Tab to include buttons when Keyboard
+      // Navigation is off. This is a browser preference, not a widget setting.
+      if (server.browser === 'webkit' && navigator.platform.includes('Mac'))
+        await userEvent.keyboard('{Alt>}{Tab}{/Alt}')
+      else await userEvent.tab()
     }
     expect(document.activeElement).toBe(choose)
     await userEvent.keyboard('{Enter}')
