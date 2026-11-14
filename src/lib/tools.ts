@@ -137,10 +137,10 @@ export const toolCategories = [
       {
         name: 'Convert video',
         route: toolPaths.videoConvert,
-        pageTitle: 'Video, GIF and APNG Converter',
-        description: 'Convert videos, GIFs, and animated PNGs.',
+        pageTitle: 'Video Converter for MP4, WebM, GIF and APNG',
+        description: 'Convert MP4, WebM, GIF, and APNG files.',
         instructions:
-          'Convert video to GIF, APNG, or animated WebP, or turn a GIF or APNG into MP4. Choose dimensions, frame rate, and looping for animated images.',
+          'Convert MP4 and WebM videos, create GIF, APNG, or animated WebP, or turn GIF and APNG into video. Set dimensions, frame rate, and looping.',
         icon: SlidersHorizontal,
       },
       {
