@@ -42,9 +42,16 @@ import {
   Crop,
   Images,
   Eraser,
+  ScanText,
 } from 'lucide-react'
 
 const imageTabs = [
+  {
+    value: 'ocr',
+    label: 'Image to text',
+    title: 'Image to text (OCR)',
+    icon: ScanText,
+  },
   { value: 'metadata', label: 'Metadata', title: 'Image metadata', icon: Info },
   { value: 'resize', label: 'Resize', title: 'Resize image', icon: Maximize },
   {
@@ -156,7 +163,7 @@ function ImageToolsLayout() {
     imageTabs.find(
       ({ value }) =>
         location.pathname.replace(/\/$/, '') === `/images/${value}`,
-    ) ?? imageTabs[0]
+    ) ?? imageTabs.find(({ value }) => value === 'metadata')!
   const isBatch = activeTab.value === 'batch'
 
   const showMetadata = activeTab.value === 'metadata'

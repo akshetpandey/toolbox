@@ -30,12 +30,14 @@ import { Route as ImagesCompressRouteImport } from './routes/images.compress'
 import { Route as ImagesConvertRouteImport } from './routes/images.convert'
 import { Route as ImagesCropRouteImport } from './routes/images.crop'
 import { Route as ImagesMetadataRouteImport } from './routes/images.metadata'
+import { Route as ImagesOcrRouteImport } from './routes/images.ocr'
 import { Route as ImagesRedactRouteImport } from './routes/images.redact'
 import { Route as ImagesResizeRouteImport } from './routes/images.resize'
 import { Route as OfficeDocumentsIndexRouteImport } from './routes/office-documents.index'
 import { Route as OfficeDocumentsConvertRouteImport } from './routes/office-documents.convert'
 import { Route as PdfsIndexRouteImport } from './routes/pdfs.index'
 import { Route as PdfsCompressRouteImport } from './routes/pdfs.compress'
+import { Route as PdfsEditRouteImport } from './routes/pdfs.edit'
 import { Route as PdfsFromImagesRouteImport } from './routes/pdfs.from-images'
 import { Route as PdfsMergeRouteImport } from './routes/pdfs.merge'
 import { Route as PdfsOcrRouteImport } from './routes/pdfs.ocr'
@@ -49,6 +51,7 @@ import { Route as PdfsWatermarkRouteImport } from './routes/pdfs.watermark'
 import { Route as UtilitiesIndexRouteImport } from './routes/utilities.index'
 import { Route as UtilitiesHashRouteImport } from './routes/utilities.hash'
 import { Route as UtilitiesMetadataRouteImport } from './routes/utilities.metadata'
+import { Route as UtilitiesQrRouteImport } from './routes/utilities.qr'
 import { Route as VideosIndexRouteImport } from './routes/videos.index'
 import { Route as VideosCompressRouteImport } from './routes/videos.compress'
 import { Route as VideosConvertRouteImport } from './routes/videos.convert'
@@ -162,6 +165,11 @@ const ImagesMetadataRoute = ImagesMetadataRouteImport.update({
   path: '/metadata',
   getParentRoute: () => ImagesRoute,
 } as any)
+const ImagesOcrRoute = ImagesOcrRouteImport.update({
+  id: '/ocr',
+  path: '/ocr',
+  getParentRoute: () => ImagesRoute,
+} as any)
 const ImagesRedactRoute = ImagesRedactRouteImport.update({
   id: '/redact',
   path: '/redact',
@@ -190,6 +198,11 @@ const PdfsIndexRoute = PdfsIndexRouteImport.update({
 const PdfsCompressRoute = PdfsCompressRouteImport.update({
   id: '/compress',
   path: '/compress',
+  getParentRoute: () => PdfsRoute,
+} as any)
+const PdfsEditRoute = PdfsEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
   getParentRoute: () => PdfsRoute,
 } as any)
 const PdfsFromImagesRoute = PdfsFromImagesRouteImport.update({
@@ -257,6 +270,11 @@ const UtilitiesMetadataRoute = UtilitiesMetadataRouteImport.update({
   path: '/metadata',
   getParentRoute: () => UtilitiesRoute,
 } as any)
+const UtilitiesQrRoute = UtilitiesQrRouteImport.update({
+  id: '/qr',
+  path: '/qr',
+  getParentRoute: () => UtilitiesRoute,
+} as any)
 const VideosIndexRoute = VideosIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -312,10 +330,12 @@ export interface FileRoutesByFullPath {
   '/images/convert': typeof ImagesConvertRoute
   '/images/crop': typeof ImagesCropRoute
   '/images/metadata': typeof ImagesMetadataRoute
+  '/images/ocr': typeof ImagesOcrRoute
   '/images/redact': typeof ImagesRedactRoute
   '/images/resize': typeof ImagesResizeRoute
   '/office-documents/convert': typeof OfficeDocumentsConvertRoute
   '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/edit': typeof PdfsEditRoute
   '/pdfs/from-images': typeof PdfsFromImagesRoute
   '/pdfs/merge': typeof PdfsMergeRoute
   '/pdfs/ocr': typeof PdfsOcrRoute
@@ -328,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/pdfs/watermark': typeof PdfsWatermarkRoute
   '/utilities/hash': typeof UtilitiesHashRoute
   '/utilities/metadata': typeof UtilitiesMetadataRoute
+  '/utilities/qr': typeof UtilitiesQrRoute
   '/videos/compress': typeof VideosCompressRoute
   '/videos/convert': typeof VideosConvertRoute
   '/videos/extract': typeof VideosExtractRoute
@@ -355,10 +376,12 @@ export interface FileRoutesByTo {
   '/images/convert': typeof ImagesConvertRoute
   '/images/crop': typeof ImagesCropRoute
   '/images/metadata': typeof ImagesMetadataRoute
+  '/images/ocr': typeof ImagesOcrRoute
   '/images/redact': typeof ImagesRedactRoute
   '/images/resize': typeof ImagesResizeRoute
   '/office-documents/convert': typeof OfficeDocumentsConvertRoute
   '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/edit': typeof PdfsEditRoute
   '/pdfs/from-images': typeof PdfsFromImagesRoute
   '/pdfs/merge': typeof PdfsMergeRoute
   '/pdfs/ocr': typeof PdfsOcrRoute
@@ -371,6 +394,7 @@ export interface FileRoutesByTo {
   '/pdfs/watermark': typeof PdfsWatermarkRoute
   '/utilities/hash': typeof UtilitiesHashRoute
   '/utilities/metadata': typeof UtilitiesMetadataRoute
+  '/utilities/qr': typeof UtilitiesQrRoute
   '/videos/compress': typeof VideosCompressRoute
   '/videos/convert': typeof VideosConvertRoute
   '/videos/extract': typeof VideosExtractRoute
@@ -405,10 +429,12 @@ export interface FileRoutesById {
   '/images/convert': typeof ImagesConvertRoute
   '/images/crop': typeof ImagesCropRoute
   '/images/metadata': typeof ImagesMetadataRoute
+  '/images/ocr': typeof ImagesOcrRoute
   '/images/redact': typeof ImagesRedactRoute
   '/images/resize': typeof ImagesResizeRoute
   '/office-documents/convert': typeof OfficeDocumentsConvertRoute
   '/pdfs/compress': typeof PdfsCompressRoute
+  '/pdfs/edit': typeof PdfsEditRoute
   '/pdfs/from-images': typeof PdfsFromImagesRoute
   '/pdfs/merge': typeof PdfsMergeRoute
   '/pdfs/ocr': typeof PdfsOcrRoute
@@ -421,6 +447,7 @@ export interface FileRoutesById {
   '/pdfs/watermark': typeof PdfsWatermarkRoute
   '/utilities/hash': typeof UtilitiesHashRoute
   '/utilities/metadata': typeof UtilitiesMetadataRoute
+  '/utilities/qr': typeof UtilitiesQrRoute
   '/videos/compress': typeof VideosCompressRoute
   '/videos/convert': typeof VideosConvertRoute
   '/videos/extract': typeof VideosExtractRoute
@@ -456,10 +483,12 @@ export interface FileRouteTypes {
     | '/images/convert'
     | '/images/crop'
     | '/images/metadata'
+    | '/images/ocr'
     | '/images/redact'
     | '/images/resize'
     | '/office-documents/convert'
     | '/pdfs/compress'
+    | '/pdfs/edit'
     | '/pdfs/from-images'
     | '/pdfs/merge'
     | '/pdfs/ocr'
@@ -472,6 +501,7 @@ export interface FileRouteTypes {
     | '/pdfs/watermark'
     | '/utilities/hash'
     | '/utilities/metadata'
+    | '/utilities/qr'
     | '/videos/compress'
     | '/videos/convert'
     | '/videos/extract'
@@ -499,10 +529,12 @@ export interface FileRouteTypes {
     | '/images/convert'
     | '/images/crop'
     | '/images/metadata'
+    | '/images/ocr'
     | '/images/redact'
     | '/images/resize'
     | '/office-documents/convert'
     | '/pdfs/compress'
+    | '/pdfs/edit'
     | '/pdfs/from-images'
     | '/pdfs/merge'
     | '/pdfs/ocr'
@@ -515,6 +547,7 @@ export interface FileRouteTypes {
     | '/pdfs/watermark'
     | '/utilities/hash'
     | '/utilities/metadata'
+    | '/utilities/qr'
     | '/videos/compress'
     | '/videos/convert'
     | '/videos/extract'
@@ -548,10 +581,12 @@ export interface FileRouteTypes {
     | '/images/convert'
     | '/images/crop'
     | '/images/metadata'
+    | '/images/ocr'
     | '/images/redact'
     | '/images/resize'
     | '/office-documents/convert'
     | '/pdfs/compress'
+    | '/pdfs/edit'
     | '/pdfs/from-images'
     | '/pdfs/merge'
     | '/pdfs/ocr'
@@ -564,6 +599,7 @@ export interface FileRouteTypes {
     | '/pdfs/watermark'
     | '/utilities/hash'
     | '/utilities/metadata'
+    | '/utilities/qr'
     | '/videos/compress'
     | '/videos/convert'
     | '/videos/extract'
@@ -742,6 +778,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ImagesMetadataRouteImport
       parentRoute: typeof ImagesRoute
     }
+    '/images/ocr': {
+      id: '/images/ocr'
+      path: '/ocr'
+      fullPath: '/images/ocr'
+      preLoaderRoute: typeof ImagesOcrRouteImport
+      parentRoute: typeof ImagesRoute
+    }
     '/images/redact': {
       id: '/images/redact'
       path: '/redact'
@@ -782,6 +825,13 @@ declare module '@tanstack/react-router' {
       path: '/compress'
       fullPath: '/pdfs/compress'
       preLoaderRoute: typeof PdfsCompressRouteImport
+      parentRoute: typeof PdfsRoute
+    }
+    '/pdfs/edit': {
+      id: '/pdfs/edit'
+      path: '/edit'
+      fullPath: '/pdfs/edit'
+      preLoaderRoute: typeof PdfsEditRouteImport
       parentRoute: typeof PdfsRoute
     }
     '/pdfs/from-images': {
@@ -875,6 +925,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UtilitiesMetadataRouteImport
       parentRoute: typeof UtilitiesRoute
     }
+    '/utilities/qr': {
+      id: '/utilities/qr'
+      path: '/qr'
+      fullPath: '/utilities/qr'
+      preLoaderRoute: typeof UtilitiesQrRouteImport
+      parentRoute: typeof UtilitiesRoute
+    }
     '/videos/': {
       id: '/videos/'
       path: '/'
@@ -950,6 +1007,7 @@ interface ImagesRouteChildren {
   ImagesConvertRoute: typeof ImagesConvertRoute
   ImagesCropRoute: typeof ImagesCropRoute
   ImagesMetadataRoute: typeof ImagesMetadataRoute
+  ImagesOcrRoute: typeof ImagesOcrRoute
   ImagesRedactRoute: typeof ImagesRedactRoute
   ImagesResizeRoute: typeof ImagesResizeRoute
   ImagesIndexRoute: typeof ImagesIndexRoute
@@ -962,6 +1020,7 @@ const ImagesRouteChildren: ImagesRouteChildren = {
   ImagesConvertRoute: ImagesConvertRoute,
   ImagesCropRoute: ImagesCropRoute,
   ImagesMetadataRoute: ImagesMetadataRoute,
+  ImagesOcrRoute: ImagesOcrRoute,
   ImagesRedactRoute: ImagesRedactRoute,
   ImagesResizeRoute: ImagesResizeRoute,
   ImagesIndexRoute: ImagesIndexRoute,
@@ -986,6 +1045,7 @@ const OfficeDocumentsRouteWithChildren = OfficeDocumentsRoute._addFileChildren(
 
 interface PdfsRouteChildren {
   PdfsCompressRoute: typeof PdfsCompressRoute
+  PdfsEditRoute: typeof PdfsEditRoute
   PdfsFromImagesRoute: typeof PdfsFromImagesRoute
   PdfsMergeRoute: typeof PdfsMergeRoute
   PdfsOcrRoute: typeof PdfsOcrRoute
@@ -1001,6 +1061,7 @@ interface PdfsRouteChildren {
 
 const PdfsRouteChildren: PdfsRouteChildren = {
   PdfsCompressRoute: PdfsCompressRoute,
+  PdfsEditRoute: PdfsEditRoute,
   PdfsFromImagesRoute: PdfsFromImagesRoute,
   PdfsMergeRoute: PdfsMergeRoute,
   PdfsOcrRoute: PdfsOcrRoute,
@@ -1019,12 +1080,14 @@ const PdfsRouteWithChildren = PdfsRoute._addFileChildren(PdfsRouteChildren)
 interface UtilitiesRouteChildren {
   UtilitiesHashRoute: typeof UtilitiesHashRoute
   UtilitiesMetadataRoute: typeof UtilitiesMetadataRoute
+  UtilitiesQrRoute: typeof UtilitiesQrRoute
   UtilitiesIndexRoute: typeof UtilitiesIndexRoute
 }
 
 const UtilitiesRouteChildren: UtilitiesRouteChildren = {
   UtilitiesHashRoute: UtilitiesHashRoute,
   UtilitiesMetadataRoute: UtilitiesMetadataRoute,
+  UtilitiesQrRoute: UtilitiesQrRoute,
   UtilitiesIndexRoute: UtilitiesIndexRoute,
 }
 

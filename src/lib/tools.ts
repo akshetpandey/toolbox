@@ -25,6 +25,7 @@ import {
   PenLine,
   ScanText,
   Stamp,
+  QrCode,
 } from 'lucide-react'
 import { toolPaths } from './toolPaths.ts'
 
@@ -42,7 +43,6 @@ export const toolCategories = [
         description: 'Change dimensions while keeping the right proportions.',
         instructions:
           'Resize a JPG, PNG, WebP, or GIF by entering a width or height in pixels. Lock the aspect ratio to keep the original proportions.',
-        keywords: 'photo picture scale resolution dimensions enlarge',
         icon: Maximize,
       },
       {
@@ -52,7 +52,6 @@ export const toolCategories = [
         description: 'Make a photo or image file smaller.',
         instructions:
           'Reduce photo file size with a compression preset, or compress a JPG to a maximum size in KB for a form or attachment.',
-        keywords: 'photo picture shrink reduce size limit kb',
         icon: Minimize2,
       },
       {
@@ -62,7 +61,6 @@ export const toolCategories = [
         description: 'Save an image in a different format.',
         instructions:
           'Convert HEIC to JPG, JPG to PNG, or WebP to JPG in your browser. Choose PNG or WebP to preserve transparency.',
-        keywords: 'jpg jpeg png webp gif heic heif format',
         icon: SlidersHorizontal,
       },
       {
@@ -72,7 +70,6 @@ export const toolCategories = [
         description: 'Keep a selected area or change the image orientation.',
         instructions:
           'Crop a photo to keep the area you want, rotate it in 90-degree steps, or flip it horizontally or vertically. Preview your edits before saving.',
-        keywords: 'photo picture crop rotate flip mirror aspect ratio',
         icon: Crop,
       },
       {
@@ -82,7 +79,6 @@ export const toolCategories = [
         description: 'Apply the same settings to multiple images.',
         instructions:
           'Resize multiple images to fit the same dimensions or convert them to JPG, PNG, or WebP in bulk. Download the results together as a ZIP.',
-        keywords: 'bulk batch multiple photos zip dimensions',
         icon: Layers,
       },
       {
@@ -92,8 +88,16 @@ export const toolCategories = [
         description: 'Keep the subject and make the background transparent.',
         instructions:
           'Remove a photo background by detecting the subject automatically or picking a solid color to make transparent. Download a transparent PNG.',
-        keywords: 'background transparent photo chroma key green screen',
         icon: Eraser,
+      },
+      {
+        name: 'Image to text (OCR)',
+        route: toolPaths.imageOCR,
+        pageTitle: 'Image to Text Converter for Photos and Screenshots',
+        description: 'Extract printed text from a photo or screenshot.',
+        instructions:
+          'Extract printed English text from a photo or screenshot. Review the recognized text, then copy it or download a text file.',
+        icon: ScanText,
       },
       {
         name: 'Redact image',
@@ -102,8 +106,6 @@ export const toolCategories = [
         description: 'Cover private details before sharing.',
         instructions:
           'Redact a photo or screenshot by covering private details with solid boxes. You can also blur or pixelate parts of the image.',
-        keywords:
-          'photo picture hide cover blur pixelate privacy censor mask black out sensitive face',
         icon: ScanEye,
       },
       {
@@ -113,8 +115,6 @@ export const toolCategories = [
         description: 'Inspect image details and remove metadata.',
         instructions:
           'Check a photo for camera settings and GPS location. Remove supported EXIF, GPS, and XMP metadata from JPG, PNG, WebP, or TIFF files.',
-        keywords:
-          'photo picture exif gps location geotag privacy remove delete personal data',
         icon: Info,
       },
     ],
@@ -132,7 +132,6 @@ export const toolCategories = [
         description: 'Reduce video size with a preset or a maximum size.',
         instructions:
           'Reduce video file size with a quality preset or a maximum size in MB. Compare the compressed MP4 with the original before sharing.',
-        keywords: 'movie shrink smaller reduce limit mb',
         icon: Minimize2,
       },
       {
@@ -142,7 +141,6 @@ export const toolCategories = [
         description: 'Change a video’s output format.',
         instructions:
           'Convert WebM, MKV, or AVI to MP4, or export a video in one of those formats. Choose compatible video and audio codecs in your browser.',
-        keywords: 'movie mp4 webm format',
         icon: SlidersHorizontal,
       },
       {
@@ -152,7 +150,6 @@ export const toolCategories = [
         description: 'Keep just the part you need.',
         instructions:
           'Trim a video by setting its start and end times. Save the clip in its original video format or turn it into a silent animated GIF or WebP.',
-        keywords: 'cut clip movie length mp4 gif animated webp',
         icon: Scissors,
       },
       {
@@ -162,7 +159,6 @@ export const toolCategories = [
         description: 'Combine clips in the order you choose.',
         instructions:
           'Combine two or more video clips into a single MP4. Arrange the clips in playback order before downloading the merged video.',
-        keywords: 'merge combine concatenate movie clips',
         icon: Merge,
       },
       {
@@ -172,7 +168,6 @@ export const toolCategories = [
         description: 'Save the sound from a video.',
         instructions:
           'Extract the audio track from an MP4 or another video and save it as MP3, AAC, or uncompressed WAV.',
-        keywords: 'music sound movie mp4 webm mp3 wav aac',
         icon: Music2,
       },
       {
@@ -182,7 +177,6 @@ export const toolCategories = [
         description: 'Inspect duration, dimensions, and codecs.',
         instructions:
           'Check video duration, resolution, and codecs. Download a copy with descriptive metadata removed while keeping the video and audio streams.',
-        keywords: 'movie info details',
         icon: Info,
       },
     ],
@@ -200,7 +194,6 @@ export const toolCategories = [
         description: 'Save a sound file in a different format.',
         instructions:
           'Convert M4A voice memos or WAV recordings to MP3. Choose MP3, uncompressed WAV, or M4A with AAC audio for the output.',
-        keywords: 'sound music mp3 wav aac m4a voice memo format',
         icon: SlidersHorizontal,
       },
       {
@@ -210,7 +203,6 @@ export const toolCategories = [
         description: 'Keep part of a recording.',
         instructions:
           'Cut an audio recording by setting the start and end times. Preview the source and save the selected clip as MP3, WAV, or M4A.',
-        keywords: 'cut clip sound recording music',
         icon: Scissors,
       },
       {
@@ -220,7 +212,6 @@ export const toolCategories = [
         description: 'Combine recordings in playback order.',
         instructions:
           'Merge audio files in the order you choose. Combine recordings, voice memos, or music clips into one MP3, WAV, or M4A file.',
-        keywords: 'merge combine concatenate sound recording music',
         icon: Merge,
       },
     ],
@@ -232,13 +223,22 @@ export const toolCategories = [
     color: 'text-emerald-700 dark:text-emerald-400',
     tools: [
       {
+        name: 'Edit PDF or fill a form',
+        route: toolPaths.pdfEditor,
+        pageTitle: 'PDF Editor and Form Filler for Text and Highlights',
+        description:
+          'Fill form fields and add text, checkmarks, or highlights.',
+        instructions:
+          'Fill standard PDF form fields, or add text, checkmarks, highlights, and boxes. Review the page preview, then download the PDF with fillable or flattened fields.',
+        icon: PenLine,
+      },
+      {
         name: 'Merge PDFs',
         route: toolPaths.pdfMerge,
         pageTitle: 'Merge PDF Files Online into One PDF',
         description: 'Combine documents in the order you choose.',
         instructions:
           'Combine two or more PDFs into one document. Drag the files into the order you want, then download the merged PDF.',
-        keywords: 'join combine pages documents',
         icon: Merge,
       },
       {
@@ -248,7 +248,6 @@ export const toolCategories = [
         description: 'Reduce PDF file size in your browser.',
         instructions:
           'Reduce PDF file size while keeping text and page layout. Choose lossless compression or reduce the quality of embedded photos.',
-        keywords: 'pdf shrink reduce size optimize scan document',
         icon: Minimize2,
       },
       {
@@ -258,7 +257,6 @@ export const toolCategories = [
         description: 'Put one or more images into a PDF.',
         instructions:
           'Convert JPG or PNG images to PDF. Add photos or scans, arrange them in page order, and download them as one document.',
-        keywords: 'photo photos jpg jpeg png picture pdf combine',
         icon: FileImage,
       },
       {
@@ -268,7 +266,6 @@ export const toolCategories = [
         description: 'Save selected pages or split a PDF into parts.',
         instructions:
           'Split a PDF into separate files or extract selected pages into one new PDF. Enter page ranges or save each page separately.',
-        keywords: 'pdf separate divide select extract pages ranges',
         icon: Scissors,
       },
       {
@@ -278,7 +275,6 @@ export const toolCategories = [
         description: 'Change the order, orientation, or contents of a PDF.',
         instructions:
           'Rearrange PDF pages, rotate sideways pages, or delete pages you no longer need. Save the edited document as a new PDF.',
-        keywords: 'pdf rearrange reorder rotate delete remove pages',
         icon: ListOrdered,
       },
       {
@@ -288,7 +284,6 @@ export const toolCategories = [
         description: 'Save PDF pages as images.',
         instructions:
           'Convert PDF pages to JPG or PNG images at your chosen resolution. Export a single page or download multiple pages as a ZIP.',
-        keywords: 'pdf jpg jpeg png render image export',
         icon: FileImage,
       },
       {
@@ -298,7 +293,6 @@ export const toolCategories = [
         description: 'Recognize English text in scanned pages.',
         instructions:
           'Run OCR on a scanned PDF to recognize English text. Download a copy with a text layer you can search, select, and copy.',
-        keywords: 'ocr pdf scanned scan text recognition searchable copy',
         icon: ScanText,
       },
       {
@@ -308,7 +302,6 @@ export const toolCategories = [
         description: 'Black out sensitive areas in a new PDF copy.',
         instructions:
           'Black out text or images in a PDF before sharing. Mark the areas to redact and download a copy made from the redacted page images.',
-        keywords: 'pdf redact hide black out sensitive remove private',
         icon: Eraser,
       },
       {
@@ -318,7 +311,6 @@ export const toolCategories = [
         description: 'Place a visible signature on a selected page.',
         instructions:
           'Type your name to add a visible signature to a PDF. Choose a page and position, then download a copy with the signature.',
-        keywords: 'pdf sign signature stamp',
         icon: PenLine,
       },
       {
@@ -328,7 +320,6 @@ export const toolCategories = [
         description: 'Stamp a text label on PDF pages.',
         instructions:
           'Add a text watermark such as Draft or Confidential to every page of a PDF. Enter your own label and save the watermarked copy.',
-        keywords: 'pdf watermark text draft confidential stamp',
         icon: Stamp,
       },
       {
@@ -338,7 +329,6 @@ export const toolCategories = [
         description: 'Save selectable text as an editable DOCX.',
         instructions:
           'Export selectable text from a PDF into an editable Word DOCX. This experimental converter focuses on text, so review the layout and tables.',
-        keywords: 'pdf word docx extract editable text',
         icon: FileText,
       },
     ],
@@ -356,7 +346,6 @@ export const toolCategories = [
         description: 'Turn office documents into a shareable PDF.',
         instructions:
           'Convert Word to PDF from DOCX, Excel to PDF from XLSX, or PowerPoint to PDF from PPTX. Review the PDF layout before sharing.',
-        keywords: 'word docx excel xlsx spreadsheet office',
         icon: FileText,
       },
     ],
@@ -374,7 +363,6 @@ export const toolCategories = [
         description: 'Bundle files into a ZIP or another archive.',
         instructions:
           'Bundle multiple files into a ZIP, 7z, or TAR archive. Select GZIP for a compressed TAR.GZ download.',
-        keywords: 'zip gzip tar 7z compress package',
         icon: Package,
       },
       {
@@ -384,7 +372,6 @@ export const toolCategories = [
         description: 'Open an archive and download its files.',
         instructions:
           'Extract files from ZIP, RAR, 7z, TAR, or GZIP archives in your browser. Enter a password if needed, then download the files you want.',
-        keywords: 'unzip zip 7z rar unpack encrypted password protected',
         icon: FolderOpen,
       },
     ],
@@ -396,13 +383,21 @@ export const toolCategories = [
     color: 'text-slate-600 dark:text-slate-400',
     tools: [
       {
+        name: 'Generate a QR code',
+        route: toolPaths.qrCode,
+        pageTitle: 'Free QR Code Generator for Websites, Text and Wi-Fi',
+        description: 'Create a QR code and save it as PNG or SVG.',
+        instructions:
+          'Create a QR code for a website, text, or Wi-Fi network. Download a PNG or SVG and scan it to check the content before printing.',
+        icon: QrCode,
+      },
+      {
         name: 'File hashes',
         route: toolPaths.fileHash,
         pageTitle: 'File Checksum Calculator for MD5, SHA-1 and SHA-256',
         description: 'Calculate, copy, and verify a checksum.',
         instructions:
           'Generate MD5, SHA-1, and SHA-256 hashes for a file in your browser. Paste an expected checksum to verify it against the calculated value.',
-        keywords: 'md5 sha1 sha256 checksum verify',
         icon: Hash,
       },
       {
@@ -412,7 +407,6 @@ export const toolCategories = [
         description: 'Inspect the type and details of a file.',
         instructions:
           'Check a file to see its detected MIME type, format description, and size. Identify an unknown file even if its extension is missing or wrong.',
-        keywords: 'mime info identify details',
         icon: Info,
       },
     ],

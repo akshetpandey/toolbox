@@ -13,6 +13,9 @@ export default defineConfig({
     // Discover React component-test dependencies before Chromium starts so
     // first-run optimization cannot reload the page during test collection.
     include: [
+      '@pdf-lib/fontkit',
+      'qrcode',
+      'jsqr',
       '@radix-ui/react-slot',
       '@testing-library/react',
       'class-variance-authority',

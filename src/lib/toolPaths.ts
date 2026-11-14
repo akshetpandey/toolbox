@@ -7,6 +7,7 @@ export const toolPaths = {
   imageCrop: '/images/crop',
   imageBatch: '/images/batch',
   imageBackground: '/images/background',
+  imageOCR: '/images/ocr',
   videoCompress: '/videos/compress',
   videoConvert: '/videos/convert',
   videoTrim: '/videos/trim',
@@ -16,6 +17,7 @@ export const toolPaths = {
   audioConvert: '/audio/convert',
   audioTrim: '/audio/trim',
   audioJoin: '/audio/join',
+  pdfEditor: '/pdfs/edit',
   pdfMerge: '/pdfs/merge',
   pdfCompress: '/pdfs/compress',
   pdfSplit: '/pdfs/split',
@@ -30,6 +32,7 @@ export const toolPaths = {
   documentConvert: '/office-documents/convert',
   archiveCompress: '/archives/compress',
   archiveExtract: '/archives/extract',
+  qrCode: '/utilities/qr',
   fileHash: '/utilities/hash',
   fileMetadata: '/utilities/metadata',
 } as const

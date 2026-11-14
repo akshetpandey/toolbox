@@ -1,4 +1,5 @@
 import { canvasBlob, loadEditablePDF, savePDF } from './pdf-edit'
+import { abortable, createOCRWorker } from './ocr'
 import {
   openBrowserPDF,
   PDF_REDACTION_SCALE,
@@ -79,21 +80,6 @@ export async function redactPDF(
   }
 }
 
-function abortable<T>(
-  promise: Promise<T>,
-  signal: AbortSignal,
-  message = 'OCR was stopped.',
-) {
-  return new Promise<T>((resolve, reject) => {
-    const abort = () => reject(new Error(message))
-    signal.addEventListener('abort', abort, { once: true })
-    if (signal.aborted) abort()
-    void promise
-      .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', abort))
-  })
-}
-
 export async function makeSearchablePDF(
   file: Blob,
   signal: AbortSignal,
@@ -101,17 +87,9 @@ export async function makeSearchablePDF(
 ) {
   const { PDFDocument } = await import('pdf-lib')
   const output = await PDFDocument.create()
-  const [
-    original,
-    {
-      default: { createWorker, OEM, PSM },
-    },
-  ] = await Promise.all([
-    loadEditablePDF(file),
-    import('tesseract.js/dist/tesseract.esm.min.js'),
-  ])
+  const original = await loadEditablePDF(file)
   const source = await openBrowserPDF(file)
-  let worker: Awaited<ReturnType<typeof createWorker>> | undefined
+  let worker: Awaited<ReturnType<typeof createOCRWorker>> | undefined
   let recognized = 0
   try {
     for (let page = 1; page <= source.numPages; page++) {
@@ -125,45 +103,7 @@ export async function makeSearchablePDF(
       }
       onStatus(`Recognizing page ${page} of ${source.numPages}…`)
       signal.throwIfAborted()
-      if (!worker) {
-        const assetBase = new URL('/pdf-engines/tesseract/', location.origin)
-          .href
-        const startupSignal = AbortSignal.any([
-          signal,
-          AbortSignal.timeout(30_000),
-        ])
-        const initialization = new Promise<
-          Awaited<ReturnType<typeof createWorker>>
-        >((resolve, reject) => {
-          void createWorker('eng', OEM.LSTM_ONLY, {
-            workerPath: `${assetBase}worker.min.js`,
-            corePath: assetBase,
-            langPath: assetBase,
-            workerBlobURL: false,
-            errorHandler: (cause: unknown) => {
-              reject(
-                new Error(
-                  typeof cause === 'string'
-                    ? cause
-                    : 'Could not load the OCR engine.',
-                ),
-              )
-            },
-          }).then((instance) => {
-            if (startupSignal.aborted) void instance.terminate()
-            else resolve(instance)
-          }, reject)
-        })
-        worker = await abortable(
-          initialization,
-          startupSignal,
-          'The OCR engine took too long to load. Try again.',
-        )
-        await abortable(
-          worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO }),
-          signal,
-        )
-      }
+      worker ??= await createOCRWorker(signal)
       signal.throwIfAborted()
       const { canvas, width, height } = await renderPDFPage(
         originalPage,

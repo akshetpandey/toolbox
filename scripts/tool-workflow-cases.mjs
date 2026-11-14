@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { strFromU8, unzipSync } from 'fflate'
@@ -165,6 +166,74 @@ function mp4VideoDuration(bytes) {
 }
 
 export const workflows = {
+  '/utilities/qr': async (page, _f, capture) => {
+    await fill(page, 'Website address', 'https://toolbox.computer/?source=qr')
+    const { bytes } = await run(page, 'Generate and download QR code')
+    await visible(page, 'qr-code.png')
+    await capture('edit', page.getByRole('img', { name: 'Generated QR code' }))
+    await page.addScriptTag({
+      path: createRequire(import.meta.url).resolve('jsqr'),
+    })
+    const payload = await page.evaluate(async (encoded) => {
+      const bitmap = await createImageBitmap(
+        new Blob([Uint8Array.fromBase64(encoded)], { type: 'image/png' }),
+      )
+      const canvas = document.createElement('canvas')
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+      const context = canvas.getContext('2d')
+      context.drawImage(bitmap, 0, 0)
+      bitmap.close()
+      return window.jsQR(
+        context.getImageData(0, 0, canvas.width, canvas.height).data,
+        canvas.width,
+        canvas.height,
+      )?.data
+    }, bytes.toString('base64'))
+    assert.equal(payload, 'https://toolbox.computer/?source=qr')
+    await select(page, 'Download format', 'svg')
+    const svg = await run(page, 'Generate and download QR code')
+    assert.match(svg.bytes.toString(), /<svg[^>]+viewBox=/)
+  },
+  '/images/ocr': async (page, f) => {
+    await upload(page, f.textImage)
+    await click(page, 'Recognize text')
+    const recognized = field(page, 'Recognized text')
+    await recognized.waitFor()
+    assert.match(await recognized.inputValue(), /EQUIPMENT INSPECTION/)
+    await recognized.fill('Reviewed equipment inspection')
+    const { bytes } = await run(page, 'Download text')
+    assert.equal(bytes.toString(), 'Reviewed equipment inspection')
+  },
+  '/pdfs/edit': async (page, f, capture) => {
+    await upload(page, f.formPDF)
+    await fill(page, 'Full name', 'Taylor Morgan')
+    await field(page, 'Accept terms').check()
+    await select(page, 'Department', 'Research')
+    await select(page, 'Delivery', 'Email')
+    await fill(page, 'Text to add', 'Reviewed by Taylor')
+    await fill(page, 'Top %', '70')
+    await click(page, 'Add to page')
+    await capture(
+      'edit',
+      page.getByRole('img', { name: 'Preview of PDF page 1' }),
+    )
+    const { bytes } = await run(page, 'Save and download PDF')
+    const document = await PDFDocument.load(bytes)
+    const form = document.getForm()
+    assert.equal(form.getTextField('Full name').getText(), 'Taylor Morgan')
+    assert(form.getCheckBox('Accept terms').isChecked())
+    assert.deepEqual(form.getDropdown('Department').getSelected(), ['Research'])
+    assert.equal(form.getRadioGroup('Delivery').getSelected(), 'Email')
+    assert.match((await pdfText(bytes)).join(' '), /Reviewed by Taylor/)
+    await field(page, 'Flatten form fields in the saved PDF').check()
+    const flattened = await run(page, 'Save and download PDF')
+    assert.equal(
+      (await PDFDocument.load(flattened.bytes)).getForm().getFields().length,
+      0,
+    )
+    assert.match((await pdfText(flattened.bytes)).join(' '), /Taylor Morgan/)
+  },
   '/images/resize': async (page, f) => {
     await upload(page, f.photo)
     await fill(page, 'Width (px)', '1280')

@@ -1,6 +1,7 @@
 import Fuse from 'fuse.js'
 import { allTools } from './tools'
 import { toolPaths } from './toolPaths'
+import { toolSearchKeywords } from './toolSearchKeywords'
 
 // Ignore conversational glue while keeping meaningful task and format words.
 const searchStopWords = new Set([
@@ -50,6 +51,12 @@ const officeInputs = new Set([
 ])
 
 function conversionRoute(from: string, to: string) {
+  if (
+    (imageInputs.has(from) ||
+      ['image', 'photo', 'picture', 'screenshot'].includes(from)) &&
+    ['text', 'txt'].includes(to)
+  )
+    return toolPaths.imageOCR
   if (imageInputs.has(from) && imageOutputs.has(to))
     return toolPaths.imageConvert
   if (to === 'pdf' && ['jpg', 'jpeg', 'png'].includes(from))
@@ -75,14 +82,15 @@ function normalizeSearchText(value: string) {
 }
 
 const searchableTools = allTools.map((tool) => {
+  const keywords = toolSearchKeywords[tool.route]
   const text = normalizeSearchText(
-    `${tool.name} ${tool.description} ${tool.keywords} ${tool.category}`,
+    `${tool.name} ${tool.description} ${keywords} ${tool.category}`,
   )
   return {
     tool,
     name: normalizeSearchText(tool.name),
     description: normalizeSearchText(tool.description),
-    keywords: normalizeSearchText(tool.keywords),
+    keywords: normalizeSearchText(keywords),
     category: normalizeSearchText(tool.category),
     text,
     words: [...new Set(text.split(' '))],
@@ -139,6 +147,7 @@ export function findTools(query: string) {
       ? toolPaths.imageConvert
       : undefined
   if (route) return allTools.filter((tool) => tool.route === route)
+  if (pair && imageInputs.has(pair[1])) return []
   // Short format/digest tokens must stay literal: MP3 must not become MP4,
   // and an unsupported format should lead to the request link, not a guess.
   const exactMatch = (text: string) =>

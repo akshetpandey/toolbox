@@ -74,7 +74,13 @@ test('matches everyday descriptions and word order without a model', () => {
 })
 
 test('unavailable tasks and short format names do not become misleading fuzzy matches', () => {
-  for (const query of ['JPG to SVG', 'MP4 to MP2', 'sha257', 'zzzzzzzz']) {
+  for (const query of [
+    'JPG to SVG',
+    'PNG to SVG',
+    'MP4 to MP2',
+    'sha257',
+    'zzzzzzzz',
+  ]) {
     expect(routes(query), query).toEqual([])
   }
   expect(routes('MP4 to MP3')).toEqual(['/videos/extract'])
@@ -88,4 +94,13 @@ test('matching is case insensitive and ranks direct matches ahead of approximate
   ])
   expect(routes('image metadata')).toEqual(['/images/metadata'])
   expect(findTools('compres imgae')).toEqual(findTools('COMPRES IMGAE'))
+})
+
+test.each([
+  ['image to text', '/images/ocr'],
+  ['PNG to text', '/images/ocr'],
+  ['QR code generator', '/utilities/qr'],
+  ['fill pdf form', '/pdfs/edit'],
+])('finds the new tool for %s', (query, route) => {
+  expect(routes(query)[0]).toBe(route)
 })
