@@ -88,3 +88,55 @@ test('replaces transparent pixels instead of showing original pixels below them'
   const pixels = ctx.getImageData(4, 4, 8, 8).data
   expect(pixels.every((value) => value === 0)).toBe(true)
 })
+
+test.each(['missing', 'ignored'])(
+  'blurs preview and exported pixels when the canvas filter is %s',
+  async (support) => {
+    const prototype = CanvasRenderingContext2D.prototype
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, 'filter')
+    if (support === 'missing') Reflect.deleteProperty(prototype, 'filter')
+    else
+      Object.defineProperty(prototype, 'filter', {
+        configurable: true,
+        get: () => 'none',
+        set: () => undefined,
+      })
+    try {
+      const { canvas, ctx } = stripedCanvas(40, 32)
+      applyBlurRedaction(ctx, { x: 8, y: 8, width: 24, height: 16 }, 10)
+      const preview = ctx.getImageData(0, 0, 40, 32)
+      const exported = await exportedPixels(canvas)
+      expect(exported.data).toEqual(preview.data)
+      for (let y = 8; y < 24; y++) {
+        for (let x = 8; x < 32; x++) {
+          const offset = (y * 40 + x) * 4
+          expect(preview.data[offset]).toBeGreaterThan(70)
+          expect(preview.data[offset]).toBeLessThan(185)
+          expect(preview.data[offset + 3]).toBe(255)
+        }
+      }
+    } finally {
+      if (descriptor) Object.defineProperty(prototype, 'filter', descriptor)
+      else Reflect.deleteProperty(prototype, 'filter')
+    }
+  },
+)
+
+test('blurs both axes and keeps transparent edges free of dark halos', () => {
+  const { ctx } = stripedCanvas(32, 32)
+  ctx.clearRect(0, 0, 32, 32)
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(8, 8, 16, 16)
+  applyBlurRedaction(ctx, { x: 0, y: 0, width: 32, height: 32 }, 4)
+  for (const [x, y] of [
+    [7, 16],
+    [16, 7],
+    [24, 16],
+    [16, 24],
+  ]) {
+    const pixel = ctx.getImageData(x, y, 1, 1).data
+    expect([...pixel.slice(0, 3)]).toEqual([255, 255, 255])
+    expect(pixel[3]).toBeGreaterThan(0)
+    expect(pixel[3]).toBeLessThan(255)
+  }
+})

@@ -41,16 +41,19 @@ by using browser APIs in effects or event handlers.
 ## Testing
 
 This project uses [Vitest](https://vitest.dev/) for Node and browser tests.
-Install the matching Chromium browser before the first run and after Playwright
+Install the matching Chromium and WebKit browsers before the first run and after Playwright
 upgrades, then run both suites:
 
 ```bash
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium webkit
 pnpm test
 ```
 
 Use `pnpm test:unit` or `pnpm test:browser` to run a suite individually. Run
 `pnpm check` and `pnpm build` to validate formatting, linting, types, and bundling.
+All browser tests and complete tool workflows run in WebKit as well as Chromium.
+Use `pnpm test:workflows:webkit` to run only the WebKit workflows, or append
+`--only /pdfs/sign` to either workflow command to select a tool.
 
 Type checking runs TypeScript 7 directly with `tsc`.
 

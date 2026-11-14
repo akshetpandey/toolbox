@@ -3,6 +3,7 @@ import {
   Outlet,
   useLocation,
   useNavigate,
+  useChildMatches,
 } from '@tanstack/react-router'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
@@ -143,12 +144,10 @@ function VideoFileUpload({
 }
 
 function VideoToolsLayout() {
-  const { pathname } = useLocation()
-  return pathname.replace(/\/$/, '') === '/videos/join' ? (
-    <Outlet />
-  ) : (
-    <SingleVideoWorkspace />
-  )
+  // Keep the provider choice in sync with Outlet's rendered match, rather
+  // than the location, which can advance before a navigation commits.
+  const child = useChildMatches({ select: (matches) => matches[0]?.routeId })
+  return child === '/videos/join' ? <Outlet /> : <SingleVideoWorkspace />
 }
 
 function SingleVideoWorkspace() {

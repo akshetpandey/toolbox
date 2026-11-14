@@ -14,7 +14,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDict, PDFDocument, PDFName, degrees } from 'pdf-lib'
 import { routeTree } from '@/routeTree.gen'
 import { ProcessingProvider } from '@/contexts/ProcessingContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
@@ -25,6 +25,64 @@ afterEach(() => {
   cleanup()
   resetWorkspaceState()
   vi.restoreAllMocks()
+})
+
+test('a typed signature is embedded on the chosen rotated page while other pages stay unchanged', async () => {
+  const document = await PDFDocument.create()
+  for (let index = 0; index < 3; index++) document.addPage([300, 200])
+  const canvas = window.document.createElement('canvas')
+  canvas.width = canvas.height = 8
+  canvas.getContext('2d')!.fillRect(0, 0, 8, 8)
+  const image = await document.embedPng(canvas.toDataURL())
+  document.getPage(1).drawImage(image, { x: 20, y: 20, width: 8, height: 8 })
+  document.getPage(1).setRotation(degrees(90))
+  const file = new File(
+    [Uint8Array.from(await document.save())],
+    'signature.pdf',
+    { type: 'application/pdf' },
+  )
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/pdfs/sign'] }),
+    defaultPendingMinMs: 0,
+  })
+  await router.load()
+  render(
+    <ThemeProvider>
+      <ProcessingProvider>
+        <RouterProvider router={router} />
+      </ProcessingProvider>
+    </ThemeProvider>,
+  )
+  fireEvent.change(await screen.findByLabelText('Upload file'), {
+    target: { files: [file] },
+  })
+  await screen.findByText('signature.pdf')
+  await userEvent.fill(screen.getByLabelText('Signature name'), 'Jordan Rivera')
+  await userEvent.fill(screen.getByLabelText('Page', { exact: true }), '2')
+  const outputs: Blob[] = []
+  const createObjectURL = URL.createObjectURL.bind(URL)
+  vi.spyOn(URL, 'createObjectURL').mockImplementation((value) => {
+    if (value instanceof Blob) outputs.push(value)
+    return createObjectURL(value)
+  })
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Add signature and download' }),
+  )
+  await screen.findByText('Typed signature on page 2')
+  expect(outputs).toHaveLength(1)
+  const signed = await PDFDocument.load(await outputs[0].arrayBuffer())
+  expect(
+    signed
+      .getPages()
+      .map(
+        (page) =>
+          page.node
+            .Resources()
+            ?.lookupMaybe(PDFName.of('XObject'), PDFDict)
+            ?.keys().length ?? 0,
+      ),
+  ).toEqual([0, 2, 0])
 })
 
 test('real browser Files expose page counts, keyboard ordering, and a reusable three-page merge result', async () => {

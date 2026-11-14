@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import {
   createMemoryHistory,
@@ -39,6 +39,7 @@ async function openApp(path = '/') {
 afterEach(() => {
   cleanup()
   resetWorkspaceState()
+  vi.restoreAllMocks()
 })
 
 test('desktop PDF navigation keeps every category visible on a short viewport', async () => {
@@ -206,6 +207,7 @@ test.each([
     ['/utilities/hash', 'File hashes'],
     ['/utilities/metadata', 'File metadata'],
   ]
+  const renderErrors = vi.spyOn(console, 'error')
   for (const [to, title] of routes) {
     await act(() => router.navigate({ to }))
     await waitFor(() =>
@@ -264,6 +266,12 @@ test.each([
     }
     expect(document.querySelectorAll('a button')).toHaveLength(0)
   }
+  expect(
+    renderErrors.mock.calls
+      .flat()
+      .map(String)
+      .filter((message) => /must be used within a .*Provider/.test(message)),
+  ).toEqual([])
   if (width < 1280) {
     const tools = screen.getByRole('button', { name: 'Tools' })
     await userEvent.click(tools)

@@ -27,6 +27,11 @@ vi.mock('@/lib/shared', async (original) => ({
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
   useLocation: () => ({ pathname: '/pdfs/merge' }),
+  useChildMatches: ({
+    select,
+  }: {
+    select: (matches: { routeId: string }[]) => unknown
+  }) => select([{ routeId: '/pdfs/merge' }]),
   Outlet: () => {
     const Merge = MergeRoute.options.component!
     return <Merge />

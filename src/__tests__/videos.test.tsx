@@ -45,6 +45,11 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: unknown) => ({ options }),
   useNavigate: () => mocks.navigate,
   useLocation: () => ({ pathname: '/videos/metadata' }),
+  useChildMatches: ({
+    select,
+  }: {
+    select: (matches: { routeId: string }[]) => unknown
+  }) => select([{ routeId: '/videos/metadata' }]),
   Outlet: () => <VideoState />,
 }))
 vi.mock('@/hooks/useInitFFmpeg', () => ({
