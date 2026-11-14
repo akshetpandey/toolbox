@@ -29,7 +29,7 @@ import {
   type UploadedFile,
 } from '@/contexts/UtilitiesContext'
 
-import { Upload, Hash, Info, FileText, Settings } from 'lucide-react'
+import { Upload, Hash, Info, FileText, Settings, QrCode } from 'lucide-react'
 
 interface UtilityAnalysis {
   hashes?: FileHashes
@@ -112,6 +112,7 @@ function readExif(file: UploadedFile, analysis: UtilityAnalysis) {
 }
 
 const utilityTabs = [
+  { value: 'qr', label: 'QR code', icon: QrCode },
   { value: 'hash', label: 'Hash', icon: Hash },
   { value: 'metadata', label: 'Metadata', icon: Info },
 ]
@@ -124,9 +125,11 @@ function UtilitiesLayout() {
   const { isProcessing, setIsProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
-  const currentTab = location.pathname.includes('/metadata')
-    ? 'metadata'
-    : 'hash'
+  const currentTab = location.pathname.includes('/qr')
+    ? 'qr'
+    : location.pathname.includes('/metadata')
+      ? 'metadata'
+      : 'hash'
   const [selectedFile, updateSelectedFile] =
     useWorkspaceState<UploadedFile | null>('utilities.file', null)
   const selectedFileRef = useRef<UploadedFile | null>(selectedFile)
@@ -181,7 +184,7 @@ function UtilitiesLayout() {
 
   useEffect(() => {
     selectedFileRef.current = selectedFile
-    if (!selectedFile) return
+    if (!selectedFile || currentTab === 'qr') return
     const file = selectedFile
     const analysis = analysisFor(file)
     const owner = Symbol('utility analysis')
@@ -413,7 +416,7 @@ function UtilitiesLayout() {
         icon={Settings}
         iconColor="text-orange-500"
         iconBgColor="bg-gradient-to-br from-orange-500/10 to-orange-500/5"
-        fileUploadComponent={utilityFileUpload}
+        fileUploadComponent={currentTab === 'qr' ? null : utilityFileUpload}
         navigationComponent={utilityToolsNav}
       >
         {analysisError && (

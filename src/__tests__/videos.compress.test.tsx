@@ -434,3 +434,37 @@ test('source replacement invalidates an outstanding encoding result', async () =
   expect(downloadBlob).not.toHaveBeenCalled()
   expect(screen.queryByRole('region', { name: 'Result' })).toBeNull()
 })
+
+test('animation exports live in Convert and expose frame rate and looping instead of codecs', async () => {
+  const { processor } = context()
+  const view = render(<VideoConvert />)
+  fireEvent.change(screen.getByLabelText('Output format'), {
+    target: { value: 'apng' },
+  })
+  expect(screen.queryByLabelText('Video codec')).toBeNull()
+  expect(screen.queryByLabelText('Audio codec')).toBeNull()
+  fireEvent.change(screen.getByLabelText('Frame rate (fps)'), {
+    target: { value: '10' },
+  })
+  fireEvent.click(screen.getByLabelText('Loop animation continuously'))
+  fireEvent.click(screen.getByRole('button', { name: 'Convert to APNG' }))
+  await waitFor(() =>
+    expect(processor.convertVideo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetFormat: 'apng',
+        animation: { fps: 10, loop: false },
+      }),
+    ),
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Download again' })).toBeTruthy(),
+  )
+  fireEvent.change(screen.getByLabelText('Output format'), {
+    target: { value: 'gif' },
+  })
+  expect(screen.queryByRole('button', { name: 'Download again' })).toBeNull()
+  view.unmount()
+  render(<VideoTrim />)
+  expect(screen.queryByLabelText('Export format')).toBeNull()
+  expect(screen.queryByLabelText('Loop animation continuously')).toBeNull()
+})

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { strFromU8, unzipSync } from 'fflate'
@@ -165,6 +166,74 @@ function mp4VideoDuration(bytes) {
 }
 
 export const workflows = {
+  '/utilities/qr': async (page, _f, capture) => {
+    await fill(page, 'Website address', 'https://toolbox.computer/?source=qr')
+    const { bytes } = await run(page, 'Generate and download QR code')
+    await visible(page, 'qr-code.png')
+    await capture('edit', page.getByRole('img', { name: 'Generated QR code' }))
+    await page.addScriptTag({
+      path: createRequire(import.meta.url).resolve('jsqr'),
+    })
+    const payload = await page.evaluate(async (encoded) => {
+      const bitmap = await createImageBitmap(
+        new Blob([Uint8Array.fromBase64(encoded)], { type: 'image/png' }),
+      )
+      const canvas = document.createElement('canvas')
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+      const context = canvas.getContext('2d')
+      context.drawImage(bitmap, 0, 0)
+      bitmap.close()
+      return window.jsQR(
+        context.getImageData(0, 0, canvas.width, canvas.height).data,
+        canvas.width,
+        canvas.height,
+      )?.data
+    }, bytes.toString('base64'))
+    assert.equal(payload, 'https://toolbox.computer/?source=qr')
+    await select(page, 'Download format', 'svg')
+    const svg = await run(page, 'Generate and download QR code')
+    assert.match(svg.bytes.toString(), /<svg[^>]+viewBox=/)
+  },
+  '/images/ocr': async (page, f) => {
+    await upload(page, f.textImage)
+    await click(page, 'Recognize text')
+    const recognized = field(page, 'Recognized text')
+    await recognized.waitFor()
+    assert.match(await recognized.inputValue(), /EQUIPMENT INSPECTION/)
+    await recognized.fill('Reviewed equipment inspection')
+    const { bytes } = await run(page, 'Download text')
+    assert.equal(bytes.toString(), 'Reviewed equipment inspection')
+  },
+  '/pdfs/edit': async (page, f, capture) => {
+    await upload(page, f.formPDF)
+    await fill(page, 'Full name', 'Taylor Morgan')
+    await field(page, 'Accept terms').check()
+    await select(page, 'Department', 'Research')
+    await select(page, 'Delivery', 'Email')
+    await fill(page, 'Text to add', 'Reviewed by Taylor')
+    await fill(page, 'Top %', '70')
+    await click(page, 'Add to page')
+    await capture(
+      'edit',
+      page.getByRole('img', { name: 'Preview of PDF page 1' }),
+    )
+    const { bytes } = await run(page, 'Save and download PDF')
+    const document = await PDFDocument.load(bytes)
+    const form = document.getForm()
+    assert.equal(form.getTextField('Full name').getText(), 'Taylor Morgan')
+    assert(form.getCheckBox('Accept terms').isChecked())
+    assert.deepEqual(form.getDropdown('Department').getSelected(), ['Research'])
+    assert.equal(form.getRadioGroup('Delivery').getSelected(), 'Email')
+    assert.match((await pdfText(bytes)).join(' '), /Reviewed by Taylor/)
+    await field(page, 'Flatten form fields in the saved PDF').check()
+    const flattened = await run(page, 'Save and download PDF')
+    assert.equal(
+      (await PDFDocument.load(flattened.bytes)).getForm().getFields().length,
+      0,
+    )
+    assert.match((await pdfText(flattened.bytes)).join(' '), /Taylor Morgan/)
+  },
   '/images/resize': async (page, f) => {
     await upload(page, f.photo)
     await fill(page, 'Width (px)', '1280')
@@ -252,12 +321,75 @@ export const workflows = {
     assert(bytes.length <= 1_700_000)
     between((await videoInfo(page, bytes)).duration, 8.9, 9.2)
   },
-  '/videos/convert': async (page, f) => {
+  '/videos/convert': async (page, f, capture) => {
     await upload(page, f.portrait)
     const { bytes } = await run(page, 'Convert to MP4')
     const result = await videoInfo(page, bytes)
     assert.deepEqual([result.width, result.height], [540, 960])
     between(result.duration, 4.9, 5.1)
+
+    await select(page, 'Output format', 'gif')
+    await select(page, 'Video size', 'custom')
+    await fill(page, 'Width (pixels)', '81')
+    await fill(page, 'Height (pixels)', '144')
+    await field(page, 'Keep original aspect ratio').uncheck()
+    await select(page, 'Frame rate (fps)', '5')
+    await field(page, 'Loop animation continuously').uncheck()
+    assert.equal(await field(page, 'Audio codec').count(), 0)
+    await capture('edit', field(page, 'Output format'))
+    const gif = await run(page, 'Convert to GIF')
+    assert.match(gif.name, /\.gif$/)
+    assert.equal(gif.bytes.toString('ascii', 0, 3), 'GIF')
+    assert(!gif.bytes.includes('NETSCAPE2.0'), 'Play-once GIF must not loop')
+    assert.equal((await imageInfo(page, gif.bytes, 'image/gif')).width, 81)
+
+    await select(page, 'Output format', 'apng')
+    await field(page, 'Loop animation continuously').check()
+    const apng = await run(page, 'Convert to APNG')
+    assert.match(apng.name, /\.apng$/)
+    let frameCount = 0
+    for (let offset = 8; offset + 12 <= apng.bytes.length;) {
+      const length = apng.bytes.readUInt32BE(offset)
+      if (apng.bytes.toString('ascii', offset + 4, offset + 8) === 'acTL') {
+        frameCount = apng.bytes.readUInt32BE(offset + 8)
+        assert.equal(
+          apng.bytes.readUInt32BE(offset + 12),
+          0,
+          'APNG should loop continuously',
+        )
+      }
+      offset += length + 12
+    }
+    between(frameCount, 24, 26)
+    assert.equal((await imageInfo(page, apng.bytes, 'image/png')).width, 81)
+
+    await select(page, 'Output format', 'webp')
+    const webp = await run(page, 'Convert to WEBP')
+    assert(webp.bytes.includes('ANIM'), 'WebP must contain animation frames')
+
+    for (const [animation, name, mimeType] of [
+      [gif, 'animation.gif', 'image/gif'],
+      [apng, 'animation.png', 'image/png'],
+    ]) {
+      await upload(page, { name, mimeType, buffer: animation.bytes })
+      const video = await run(page, 'Convert to MP4')
+      const info = await videoInfo(page, video.bytes)
+      assert.deepEqual([info.width, info.height], [82, 144])
+      between(info.duration, 4.9, 5.25)
+      await select(
+        page,
+        'Output format',
+        name.endsWith('.gif') ? 'apng' : 'gif',
+      )
+      const converted = await run(
+        page,
+        name.endsWith('.gif') ? 'Convert to APNG' : 'Convert to GIF',
+      )
+      assert(
+        converted.bytes.length > 100,
+        'Animation-to-animation output must contain data',
+      )
+    }
   },
   '/videos/trim': async (page, f) => {
     await upload(page, f.video)

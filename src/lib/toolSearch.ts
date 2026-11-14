@@ -1,6 +1,7 @@
 import Fuse from 'fuse.js'
 import { allTools } from './tools'
 import { toolPaths } from './toolPaths'
+import { toolSearchKeywords } from './toolSearchKeywords'
 
 // Ignore conversational glue while keeping meaningful task and format words.
 const searchStopWords = new Set([
@@ -50,6 +51,23 @@ const officeInputs = new Set([
 ])
 
 function conversionRoute(from: string, to: string) {
+  const videos = ['video', 'mp4', 'webm', 'avi', 'mkv', 'mov']
+  const animations = ['gif', 'apng']
+  if (
+    (videos.includes(from) &&
+      [...videos, ...animations, 'webp'].includes(to)) ||
+    (animations.includes(from) &&
+      (videos.includes(to) || [...animations, 'webp'].includes(to)))
+  )
+    return toolPaths.videoConvert
+  if (
+    (imageInputs.has(from) ||
+      ['image', 'photo', 'picture', 'screenshot'].includes(from)) &&
+    ['text', 'txt'].includes(to)
+  )
+    return toolPaths.imageOCR
+  if (videos.includes(from) && ['mp3', 'wav', 'aac'].includes(to))
+    return toolPaths.videoExtract
   if (imageInputs.has(from) && imageOutputs.has(to))
     return toolPaths.imageConvert
   if (to === 'pdf' && ['jpg', 'jpeg', 'png'].includes(from))
@@ -59,7 +77,6 @@ function conversionRoute(from: string, to: string) {
   if (from === 'pdf' && ['word', 'docx'].includes(to))
     return toolPaths.pdfToWord
   if (to === 'pdf' && officeInputs.has(from)) return toolPaths.documentConvert
-  if (from === 'mp4' && to === 'gif') return toolPaths.videoTrim
 }
 
 function normalizeSearchText(value: string) {
@@ -71,18 +88,20 @@ function normalizeSearchText(value: string) {
     .replace(/\bmd[\s_-]*5\b/g, 'md5')
     .replace(/\b7[\s_-]*(?:zip|z)\b/g, '7z')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\banimated\s+png\b/g, 'apng')
     .trim()
 }
 
 const searchableTools = allTools.map((tool) => {
+  const keywords = toolSearchKeywords[tool.route]
   const text = normalizeSearchText(
-    `${tool.name} ${tool.description} ${tool.keywords} ${tool.category}`,
+    `${tool.name} ${tool.description} ${keywords} ${tool.category}`,
   )
   return {
     tool,
     name: normalizeSearchText(tool.name),
     description: normalizeSearchText(tool.description),
-    keywords: normalizeSearchText(tool.keywords),
+    keywords: normalizeSearchText(keywords),
     category: normalizeSearchText(tool.category),
     text,
     words: [...new Set(text.split(' '))],
@@ -139,6 +158,12 @@ export function findTools(query: string) {
       ? toolPaths.imageConvert
       : undefined
   if (route) return allTools.filter((tool) => tool.route === route)
+  if (
+    pair &&
+    (imageInputs.has(pair[1]) ||
+      ['video', 'mp4', 'webm', 'avi', 'mkv', 'mov', 'apng'].includes(pair[1]))
+  )
+    return []
   // Short format/digest tokens must stay literal: MP3 must not become MP4,
   // and an unsupported format should lead to the request link, not a guess.
   const exactMatch = (text: string) =>

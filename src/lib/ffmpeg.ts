@@ -1,4 +1,5 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
+import { isAnimationFormat, type AnimationInfo } from './animation'
 import { loadFFmpeg } from '@/hooks/useInitFFmpeg'
 import { compressVideoToSize, MediaInputError } from '@/lib/media'
 
@@ -79,6 +80,7 @@ export interface VideoFile {
   size: number
   type: string
   duration?: number
+  animation?: AnimationInfo
   dimensions?: { width: number; height: number }
 }
 
@@ -87,6 +89,7 @@ export interface VideoConvertOptions {
   videoCodec: string
   audioCodec: string
   preset: string
+  animation?: { fps: number; loop: boolean }
   downscale?: {
     enabled: boolean
     resolution?: string // e.g., '1920x1080', '1280x720', etc.
@@ -106,8 +109,6 @@ export interface VideoCompressOptions {
 export interface TrimOptions {
   startTime: string
   endTime: string
-  format?: 'original' | 'gif' | 'webp'
-  loop?: boolean // true for infinite loop, false for play once
   signal?: AbortSignal
 }
 
@@ -335,9 +336,12 @@ export class FFmpegProcessor {
           probeData.format?.filename ?? this.inputFile?.name ?? 'Unknown',
         format_name: probeData.format?.format_name ?? 'Unknown',
         format_long_name: probeData.format?.format_long_name ?? 'Unknown',
-        duration: probeData.format?.duration
-          ? parseFloat(probeData.format.duration)
-          : (this.inputFile?.duration ?? 0),
+        duration:
+          Number(probeData.format?.duration) > 0
+            ? Number(probeData.format?.duration)
+            : (this.inputFile?.animation?.duration ??
+              this.inputFile?.duration ??
+              0),
         size: probeData.format?.size
           ? parseInt(probeData.format.size)
           : (this.inputFile?.size ?? 0),
@@ -518,7 +522,136 @@ export class FFmpegProcessor {
     return codecMap[codec.toLowerCase()] || codec
   }
 
+  private scaleFilters(options: VideoConvertOptions) {
+    const downscale = options.downscale
+    if (!downscale?.enabled) return []
+    const [width, height] = downscale.resolution
+      ? downscale.resolution.split('x').map(Number)
+      : [downscale.customWidth ?? -1, downscale.customHeight ?? -1]
+    if (
+      ![width, height].every(
+        (value) => Number.isInteger(value) && (value === -1 || value >= 1),
+      )
+    )
+      throw new MediaInputError('Choose valid output dimensions.')
+    const aspect = downscale.maintainAspectRatio
+      ? `:force_original_aspect_ratio=decrease${isAnimationFormat(options.targetFormat) ? '' : ':force_divisible_by=2'}`
+      : ''
+    return [`scale=${width}:${height}${aspect}:flags=lanczos`]
+  }
+
+  private async convertAnimation(options: VideoConvertOptions): Promise<Blob> {
+    const format = options.targetFormat
+    const fps = options.animation?.fps ?? 15
+    if (!Number.isInteger(fps) || fps < 1 || fps > 60)
+      throw new MediaInputError('Choose a frame rate from 1 to 60.')
+    const loop = options.animation?.loop ?? true
+    const job = crypto.randomUUID()
+    const output = `${job}.${format}`
+    const palette = `${job}-palette.png`
+    const filters = [`fps=${fps}`, ...this.scaleFilters(options)]
+    const input = [
+      ...this.animationInputOptions(),
+      '-threads',
+      '4',
+      '-i',
+      this.inputFileName ?? '',
+    ]
+    const command = [...input]
+    try {
+      if (format === 'gif') {
+        // Two passes avoid retaining every decoded frame behind palettegen.
+        await this.exec(
+          [
+            ...input,
+            '-an',
+            '-filter_threads',
+            '1',
+            '-vf',
+            `${filters.join(',')},palettegen=stats_mode=diff`,
+            '-frames:v',
+            '1',
+            '-threads',
+            '1',
+            '-f',
+            'image2',
+            palette,
+          ],
+          options.signal,
+        )
+        command.push(
+          '-i',
+          palette,
+          '-an',
+          '-filter_complex_threads',
+          '1',
+          '-lavfi',
+          `[0:v]${filters.join(',')}[v];[v][1:v]paletteuse=dither=sierra2_4a`,
+          '-c:v',
+          'gif',
+          '-loop',
+          loop ? '0' : '-1',
+        )
+      } else if (format === 'apng') {
+        command.push(
+          '-an',
+          '-filter_threads',
+          '1',
+          '-vf',
+          filters.join(','),
+          '-c:v',
+          'apng',
+          '-pix_fmt',
+          'rgba',
+          '-plays',
+          loop ? '0' : '1',
+        )
+      } else {
+        command.push(
+          '-an',
+          '-filter_threads',
+          '1',
+          '-vf',
+          filters.join(','),
+          '-c:v',
+          'libwebp',
+          '-lossless',
+          '0',
+          '-quality',
+          '80',
+          '-compression_level',
+          '6',
+          '-loop',
+          loop ? '0' : '1',
+        )
+      }
+      command.push('-threads', '4', '-f', format, output)
+      await this.exec(command, options.signal)
+      const data = await this.ffmpeg.readFile(output)
+      return this.createBlobFromFFmpegOutput(data, `image/${format}`)
+    } catch (error) {
+      await this.reloadFFmpeg()
+      throw error
+    } finally {
+      if (this.ffmpeg.loaded !== false) {
+        await this.ffmpeg.deleteFile(output).catch(() => undefined)
+        if (format === 'gif')
+          await this.ffmpeg.deleteFile(palette).catch(() => undefined)
+      }
+    }
+  }
+
+  private animationInputOptions() {
+    return this.inputFile?.animation ||
+      /^image\/(?:gif|apng|png)$/.test(this.inputFile?.type ?? '') ||
+      /\.(?:gif|apng)$/i.test(this.inputFileName ?? '')
+      ? ['-ignore_loop', '1']
+      : []
+  }
+
   async convertVideo(options: VideoConvertOptions): Promise<Blob> {
+    if (isAnimationFormat(options.targetFormat))
+      return this.convertAnimation(options)
     console.log('🎬 FFmpeg: Starting video conversion', {
       fileName: this.inputFileName,
       options,
@@ -526,7 +659,11 @@ export class FFmpegProcessor {
 
     const outputFileName = `output.${options.targetFormat}`
     // Build FFmpeg command based on format
-    const command = ['-i', this.inputFileName ?? '']
+    const command = [
+      ...this.animationInputOptions(),
+      '-i',
+      this.inputFileName ?? '',
+    ]
 
     // Get current video and audio codec information
     const currentVideoCodec = this.inputFile
@@ -546,36 +683,15 @@ export class FFmpegProcessor {
       this.mapCodecToFfmpegCodec(currentAudioCodec) === options.audioCodec
 
     // Add memory-efficient encoding options
-    command.push('-movflags', '+faststart') // Optimize for streaming
+    if (['mp4', 'mov'].includes(options.targetFormat))
+      command.push('-movflags', '+faststart')
     command.push('-max_muxing_queue_size', '1024') // Limit muxing queue
     command.push('-threads', '4')
 
     // Build video filter chain (all filters go into a single -vf argument)
-    const videoFilters: string[] = []
-
-    // Add user-requested downscaling filter
-    if (options.downscale?.enabled) {
-      if (options.downscale.resolution) {
-        const [width, height] = options.downscale.resolution
-          .split('x')
-          .map(Number)
-        if (options.downscale.maintainAspectRatio) {
-          videoFilters.push(
-            `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
-          )
-        } else {
-          videoFilters.push(`scale=${width}:${height}`)
-        }
-      } else if (
-        options.downscale.customWidth ||
-        options.downscale.customHeight
-      ) {
-        const width = options.downscale.customWidth ?? -1
-        const height = options.downscale.customHeight ?? -1
-        videoFilters.push(`scale=${width}:${height}`)
-      }
-    }
-
+    const videoFilters = this.scaleFilters(options)
+    if (this.animationInputOptions().length)
+      videoFilters.push('pad=ceil(iw/2)*2:ceil(ih/2)*2')
     if (videoFilters.length > 0) {
       command.push('-vf', videoFilters.join(','))
       console.log('🎬 FFmpeg: Video filters', { videoFilters })
@@ -586,7 +702,10 @@ export class FFmpegProcessor {
       command.push('-c:v', 'copy')
       console.log('🎬 FFmpeg: Using video stream copy')
     } else {
-      command.push('-c:v', options.videoCodec, '-preset', options.preset)
+      command.push('-c:v', options.videoCodec)
+      if (['libx264', 'libx265'].includes(options.videoCodec))
+        command.push('-preset', options.preset)
+      command.push('-pix_fmt', 'yuv420p')
       // Add quality constraints to prevent memory issues
       if (options.videoCodec === 'libx264') {
         command.push('-crf', '23') // Reasonable quality
@@ -646,7 +765,11 @@ export class FFmpegProcessor {
 
     return this.createBlobFromFFmpegOutput(
       data,
-      `video/${options.targetFormat}`,
+      options.targetFormat === 'mkv'
+        ? 'video/x-matroska'
+        : options.targetFormat === 'avi'
+          ? 'video/x-msvideo'
+          : `video/${options.targetFormat}`,
     )
   }
 
@@ -737,16 +860,11 @@ export class FFmpegProcessor {
       options,
     })
 
-    const format = options.format ?? 'original'
     const extension =
-      format === 'original'
-        ? this.getFileExtension(this.inputFileName ?? '').toLowerCase()
-        : format
+      this.inputFile?.animation?.format ??
+      this.getFileExtension(this.inputFileName ?? '').toLowerCase()
     const outputFileName = `trimmed.${extension}`
-    const outputMimeType =
-      format === 'original'
-        ? (this.inputFile?.type ?? 'video/mp4')
-        : `image/${format}`
+    const outputMimeType = this.inputFile?.type ?? 'video/mp4'
     const seconds = (time: string) =>
       time.split(':').reduce((sum, part) => sum * 60 + Number(part), 0)
     const duration = seconds(options.endTime) - seconds(options.startTime)
@@ -755,6 +873,7 @@ export class FFmpegProcessor {
       options.startTime,
       '-threads',
       '4',
+      ...this.animationInputOptions(),
       '-i',
       this.inputFileName ?? '',
       '-t',
@@ -763,28 +882,10 @@ export class FFmpegProcessor {
       '1',
     ]
 
-    if (format === 'gif' || format === 'webp') {
-      command.push('-an')
-      if (format === 'gif') {
-        command.push('-vf', 'fps=15', '-c:v', 'gif')
-      } else {
-        command.push(
-          '-vf',
-          'fps=20',
-          '-c:v',
-          'libwebp',
-          '-lossless',
-          '0',
-          '-compression_level',
-          '6',
-          '-quality',
-          '80',
-          '-preset',
-          'default',
-        )
-      }
-      if (options.loop) command.push('-loop', '0')
-      command.push('-f', format)
+    if (extension === 'gif') {
+      command.push('-an', '-c:v', 'gif', '-f', 'gif')
+    } else if (extension === 'apng') {
+      command.push('-an', '-c:v', 'apng', '-f', 'apng', '-plays', '1')
     } else if (extension === 'webm') {
       command.push(
         '-c:v',
@@ -813,7 +914,7 @@ export class FFmpegProcessor {
     }
     command.push('-threads', '4', outputFileName)
 
-    console.log('🎬 FFmpeg: Executing trim command', { command, format })
+    console.log('🎬 FFmpeg: Executing trim command', { command, extension })
     try {
       await this.exec(command, options.signal)
     } catch (error) {

@@ -28,6 +28,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    include: ['@pdf-lib/fontkit', 'qrcode'],
     exclude: [
       '@ffmpeg/core-mt',
       '@ffmpeg/ffmpeg',
@@ -35,7 +36,6 @@ export default defineConfig({
       '7z-wasm',
       '@imagemagick/magick-wasm',
       'libimagequant-wasm',
-      '@pdf-lib/fontkit',
       'pdfjs-dist',
       'tesseract.js',
       'tesseract.js-core',

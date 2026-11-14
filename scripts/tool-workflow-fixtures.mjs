@@ -102,6 +102,7 @@ async function makeReports(photo, page) {
   }
 
   const scans = await PDFDocument.create()
+  let textImage
   for (const title of ['EQUIPMENT INSPECTION', 'FIELD SAFETY CHECKLIST']) {
     const dataUrl = await page.evaluate(
       ({ title, notes }) => {
@@ -127,16 +128,50 @@ async function makeReports(photo, page) {
       },
       { title, notes },
     )
+    textImage ??= {
+      name: 'inspection.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from(dataUrl.split(',')[1], 'base64'),
+    }
     const scan = await scans.embedJpg(dataUrl)
     scans
       .addPage([612, 792])
       .drawImage(scan, { x: 0, y: 0, width: 612, height: 792 })
   }
   return {
+    textImage,
     report: await pdfFile('field-survey.pdf', report),
     appendix: await pdfFile('inventory-appendix.pdf', appendix),
     scan: await pdfFile('inspection-scan.pdf', scans),
   }
+}
+
+async function makeFormPDF() {
+  const document = await PDFDocument.create()
+  const page = document.addPage([612, 792])
+  page.drawText('Field team registration', { x: 50, y: 740, size: 24 })
+  const form = document.getForm()
+  const name = form.createTextField('Full name')
+  name.addToPage(page, { x: 50, y: 650, width: 300, height: 30 })
+  const terms = form.createCheckBox('Accept terms')
+  terms.addToPage(page, { x: 50, y: 600, width: 20, height: 20 })
+  const department = form.createDropdown('Department')
+  department.addOptions(['Research', 'Operations'])
+  department.addToPage(page, { x: 50, y: 540, width: 240, height: 30 })
+  const delivery = form.createRadioGroup('Delivery')
+  delivery.addOptionToPage('Email', page, {
+    x: 50,
+    y: 490,
+    width: 20,
+    height: 20,
+  })
+  delivery.addOptionToPage('Post', page, {
+    x: 100,
+    y: 490,
+    width: 20,
+    height: 20,
+  })
+  return pdfFile('registration.pdf', document)
 }
 
 async function makeWordFile(photo) {
@@ -269,6 +304,7 @@ export async function workflowFixtures(page) {
     sheet,
     slides,
     ...reports,
+    formPDF: await makeFormPDF(),
     word,
     archive,
   }
