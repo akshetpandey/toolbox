@@ -96,7 +96,7 @@ export const toolCategories = [
         pageTitle: 'Image to Text Converter for Photos and Screenshots',
         description: 'Extract printed text from a photo or screenshot.',
         instructions:
-          'Extract printed English text from a photo or screenshot. Review the recognized text, then copy it or download a text file.',
+          'Recognize printed English text in a photo or screenshot. Review, copy, or download the text.',
         icon: ScanText,
       },
       {
@@ -149,7 +149,7 @@ export const toolCategories = [
         pageTitle: 'Online Video Trimmer for MP4, MOV and WebM',
         description: 'Keep just the part you need.',
         instructions:
-          'Choose a start and end time to save a clip in its original format. Use Convert video to change formats or create an animated image.',
+          'Set a start and end time to save a clip in its original format.',
         icon: Scissors,
       },
       {
@@ -229,7 +229,7 @@ export const toolCategories = [
         description:
           'Fill form fields and add text, checkmarks, or highlights.',
         instructions:
-          'Fill standard PDF form fields, or add text, checkmarks, highlights, and boxes. Review the page preview, then download the PDF with fillable or flattened fields.',
+          'Fill PDF forms or add text, checkmarks, highlights, and boxes. Preview your edits, then download the PDF.',
         icon: PenLine,
       },
       {
@@ -388,7 +388,7 @@ export const toolCategories = [
         pageTitle: 'Free QR Code Generator for Websites, Text and Wi-Fi',
         description: 'Create a QR code and save it as PNG or SVG.',
         instructions:
-          'Create a QR code for a website, text, or Wi-Fi network. Download a PNG or SVG and scan it to check the content before printing.',
+          'Create a QR code for a website, text, or Wi-Fi network. Download it as PNG or SVG.',
         icon: QrCode,
       },
       {
