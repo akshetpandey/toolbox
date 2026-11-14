@@ -376,6 +376,50 @@ describe('FFmpegProcessor.convertVideo', () => {
   })
 })
 
+describe('animated image conversion', () => {
+  test.each(['gif', 'apng', 'webp'])(
+    'exports %s with image MIME, explicit looping, and no audio',
+    async (format) => {
+      await processor.mountInputFile(createVideoFile())
+      const output = await processor.convertVideo({
+        targetFormat: format,
+        videoCodec: 'libx264',
+        audioCodec: 'aac',
+        preset: 'fast',
+        animation: { fps: 10, loop: false },
+      })
+      const command = vi.mocked(ffmpeg.exec).mock.calls.at(-1)![0]
+      expect(output.type).toBe(`image/${format}`)
+      expect(command).toContain('-an')
+      expect(command).not.toContain('-c:a')
+      expect(command).not.toContain('-movflags')
+      expect(command).not.toContain('-preset')
+      expect(command.join(' ')).toContain('fps=10')
+      const repeat = command.indexOf(format === 'apng' ? '-plays' : '-loop')
+      expect(command[repeat + 1]).toBe(format === 'gif' ? '-1' : '1')
+      if (format === 'gif') {
+        expect(vi.mocked(ffmpeg.exec).mock.calls).toHaveLength(2)
+        expect(ffmpeg.deleteFile).toHaveBeenCalledWith(
+          expect.stringMatching(/-palette\.png$/),
+        )
+      }
+    },
+  )
+  test('rejects invalid animation frame rates before running FFmpeg', async () => {
+    await processor.mountInputFile(createVideoFile())
+    await expect(
+      processor.convertVideo({
+        targetFormat: 'apng',
+        videoCodec: 'libx264',
+        audioCodec: 'aac',
+        preset: 'fast',
+        animation: { fps: 0, loop: true },
+      }),
+    ).rejects.toThrow('frame rate')
+    expect(ffmpeg.exec).not.toHaveBeenCalled()
+  })
+})
+
 // ─── compressVideo ───────────────────────────────────────────────────────────
 
 describe('FFmpegProcessor.compressVideo', () => {
@@ -485,39 +529,6 @@ describe('FFmpegProcessor.trimVideo', () => {
     expect(execCall).toContain('10')
     expect(execCall).toContain('libx264')
     expect(blob).toBeInstanceOf(Blob)
-  })
-
-  test('trims to GIF format with loop', async () => {
-    await processor.trimVideo({
-      startTime: '00:00:00',
-      endTime: '00:00:03',
-      format: 'gif',
-      loop: true,
-    })
-
-    const execCall = vi.mocked(ffmpeg.exec).mock.calls[0][0]
-    expect(execCall).toContain('-c:v')
-    expect(execCall).toContain('gif')
-    expect(execCall).toContain('-loop')
-    expect(execCall).toContain('0')
-    expect(execCall).toContain('-f')
-    expect(execCall).toContain('gif')
-  })
-
-  test('trims to WebP format with loop', async () => {
-    await processor.trimVideo({
-      startTime: '00:00:00',
-      endTime: '00:00:02',
-      format: 'webp',
-      loop: true,
-    })
-
-    const execCall = vi.mocked(ffmpeg.exec).mock.calls[0][0]
-    expect(execCall).toContain('libwebp')
-    expect(execCall).toContain('-loop')
-    expect(execCall).toContain('0')
-    expect(execCall).toContain('-f')
-    expect(execCall).toContain('webp')
   })
 
   test('cleans up output file', async () => {

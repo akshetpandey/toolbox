@@ -18,6 +18,7 @@ import {
   type VideoFile,
   type VideoMetadata,
 } from '@/lib/ffmpeg'
+import { readAnimationInfo } from '@/lib/animation'
 import { formatFileSize, formatDuration } from '@/lib/shared'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
@@ -84,10 +85,10 @@ function VideoFileUpload({
       disabled={disabled}
       onFileSelect={(files) => void onFileSelect(files)}
       onClearFiles={onClear}
-      acceptedTypes="video/*,.mp4,.webm,.avi,.mov,.mkv"
-      title="Drop a video here"
-      description="Supports MP4, WebM, AVI, MOV, MKV"
-      supportedFormats={['MP4', 'WebM', 'AVI', 'MOV', 'MKV']}
+      acceptedTypes="video/*,image/gif,image/apng,image/png,.mp4,.webm,.avi,.mov,.mkv,.gif,.apng,.png"
+      title="Drop a video or animation here"
+      description="Video files, GIFs, and animated PNGs"
+      supportedFormats={['MP4', 'WebM', 'AVI', 'MOV', 'MKV', 'GIF', 'APNG']}
       emptyStateIcon={Upload}
       selectedFileIcon={FileVideo}
     >
@@ -116,16 +117,24 @@ function VideoFileUpload({
                 </div>
                 <details open={showPreview} className="mt-2">
                   <summary className="cursor-pointer py-2 text-sm font-medium">
-                    Preview video
+                    {file.animation ? 'Preview animation' : 'Preview video'}
                   </summary>
-                  <video
-                    aria-label="Source video preview"
-                    src={file.preview}
-                    className="mt-2 max-h-64 w-full rounded-lg bg-muted"
-                    controls
-                    preload="metadata"
-                    onError={() => setFailedPreview(file.preview)}
-                  />
+                  {file.animation ? (
+                    <img
+                      src={file.preview}
+                      alt="Source animation preview"
+                      className="mt-2 max-h-64 max-w-full rounded-lg object-contain"
+                    />
+                  ) : (
+                    <video
+                      aria-label="Source video preview"
+                      src={file.preview}
+                      className="mt-2 max-h-64 w-full rounded-lg bg-muted"
+                      controls
+                      preload="metadata"
+                      onError={() => setFailedPreview(file.preview)}
+                    />
+                  )}
                   {failedPreview === file.preview && (
                     <p className="mt-2 text-sm text-muted-foreground">
                       Preview is unavailable for this video. You can still
@@ -346,11 +355,18 @@ function SingleVideoWorkspace() {
       })
 
       const file = files[0]
-      if (
-        file &&
-        (file.type.startsWith('video/') ||
-          /\.(mp4|webm|avi|mov|mkv)$/i.test(file.name))
-      ) {
+      if (!file || isProcessing) return
+      const request = ++fileSelectionId.current
+      setIsPreparing(true)
+      setPreparationError(null)
+      try {
+        const video =
+          file.type.startsWith('video/') ||
+          /\.(mp4|webm|avi|mov|mkv)$/i.test(file.name)
+        const animation = video ? null : await readAnimationInfo(file)
+        if (request !== fileSelectionId.current) return
+        if (!video && !animation)
+          throw new Error('Choose a video, GIF, or animated PNG file.')
         console.log('🎬 VideoTools: Processing video file', {
           name: file.name,
           size: file.size,
@@ -365,7 +381,8 @@ function SingleVideoWorkspace() {
           preview,
           name: file.name,
           size: file.size,
-          type: file.type,
+          type: animation ? `image/${animation.format}` : file.type,
+          ...(animation ? { animation } : {}),
         }
 
         setSelectedFiles([videoFile])
@@ -373,9 +390,24 @@ function SingleVideoWorkspace() {
         invalidateVideoWork()
 
         await prepareVideoFile(videoFile)
+      } catch (cause) {
+        if (request === fileSelectionId.current) {
+          setPreparationError(
+            cause instanceof Error
+              ? cause.message
+              : 'This file could not be opened.',
+          )
+          setIsPreparing(false)
+        }
       }
     },
-    [prepareVideoFile, selectedFiles, setSelectedFiles, setMetadata],
+    [
+      prepareVideoFile,
+      selectedFiles,
+      setSelectedFiles,
+      setMetadata,
+      isProcessing,
+    ],
   )
 
   const clearSelectedFile = useCallback(() => {

@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { isAnimationFormat } from '@/lib/animation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,16 +26,26 @@ function VideoConvertComponent() {
     'videos.convert',
     'The video could not be converted. Try another format or change the advanced settings.',
   )
-  const [settings, setSettings] = useVideoSettings('videos.convert.settings', {
-    format: 'mp4',
-    videoCodec: 'libx264',
-    audioCodec: 'aac',
-    preset: 'veryfast',
-    resolution: 'original',
-    width: '',
-    height: '',
-    aspect: true,
-  })
+  const [settings, updateSettings] = useVideoSettings(
+    'videos.convert.settings',
+    {
+      format: 'mp4',
+      videoCodec: 'libx264',
+      audioCodec: 'aac',
+      preset: 'veryfast',
+      resolution: 'original',
+      width: '',
+      height: '',
+      aspect: true,
+      fps: '15',
+      loop: true,
+    },
+  )
+  const setSettings: typeof updateSettings = (next) => {
+    action.clearResult()
+    updateSettings(next)
+  }
+  const animationOutput = isAnimationFormat(settings.format)
   const resolutions = action.selectedFile?.dimensions
     ? getCompatibleResolutions(
         action.selectedFile.dimensions.width,
@@ -55,9 +66,9 @@ function VideoConvertComponent() {
     settings.resolution === 'custom' &&
     ![settings.width, settings.height].every(
       (value) =>
-        Number(value) >= 2 &&
+        Number(value) >= (animationOutput ? 1 : 2) &&
         Number.isInteger(Number(value)) &&
-        Number(value) % 2 === 0,
+        (animationOutput || Number(value) % 2 === 0),
     )
   return (
     <div className="flex min-w-0 flex-col gap-5">
@@ -79,8 +90,12 @@ function VideoConvertComponent() {
                   setSettings({
                     ...settings,
                     format,
-                    videoCodec: getCompatibleCodecs(format, 'video')[0],
-                    audioCodec: getCompatibleCodecs(format, 'audio')[0],
+                    videoCodec:
+                      getCompatibleCodecs(format, 'video')[0] ??
+                      settings.videoCodec,
+                    audioCodec:
+                      getCompatibleCodecs(format, 'audio')[0] ??
+                      settings.audioCodec,
                   })
                 }}
               >
@@ -91,7 +106,9 @@ function VideoConvertComponent() {
                 ))}
               </select>
               <p className="text-sm text-muted-foreground">
-                MP4 is a good choice for sharing and playback.
+                {animationOutput
+                  ? 'Animated images have no audio. Smaller dimensions and fewer frames per second usually make smaller files.'
+                  : 'MP4 is a good choice for sharing and playback.'}
               </p>
             </div>
             <div className="space-y-2">
@@ -127,8 +144,8 @@ function VideoConvertComponent() {
                 <Input
                   id="video-width"
                   type="number"
-                  min="2"
-                  step="2"
+                  min={animationOutput ? 1 : 2}
+                  step={animationOutput ? 1 : 2}
                   value={settings.width}
                   aria-invalid={customInvalid}
                   aria-describedby="video-dimension-help"
@@ -142,8 +159,8 @@ function VideoConvertComponent() {
                 <Input
                   id="video-height"
                   type="number"
-                  min="2"
-                  step="2"
+                  min={animationOutput ? 1 : 2}
+                  step={animationOutput ? 1 : 2}
                   value={settings.height}
                   aria-invalid={customInvalid}
                   aria-describedby="video-dimension-help"
@@ -156,100 +173,151 @@ function VideoConvertComponent() {
                 id="video-dimension-help"
                 className="text-sm text-muted-foreground sm:col-span-2"
               >
-                Enter even dimensions of at least 2 pixels for video
-                compatibility.
+                {animationOutput
+                  ? 'Enter positive dimensions in pixels.'
+                  : 'Enter even dimensions of at least 2 pixels for video compatibility.'}
               </p>
             </fieldset>
           )}
-          <details className="rounded-lg border p-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              Advanced settings
-            </summary>
+          {settings.resolution !== 'original' && (
+            <fieldset disabled={action.busy}>
+              <label className="flex min-h-11 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.aspect}
+                  onChange={(event) =>
+                    setSettings({ ...settings, aspect: event.target.checked })
+                  }
+                />
+                Keep original aspect ratio
+              </label>
+            </fieldset>
+          )}
+          {animationOutput && (
             <fieldset
               disabled={action.busy}
-              className="mt-4 grid gap-4 sm:grid-cols-2"
+              className="grid gap-4 sm:grid-cols-2"
             >
               <div className="space-y-2">
-                <Label htmlFor="video-codec">Video codec</Label>
+                <Label htmlFor="animation-fps">Frame rate (fps)</Label>
                 <select
-                  id="video-codec"
+                  id="animation-fps"
                   className="h-11 w-full rounded-md border bg-background px-3 text-base"
-                  value={settings.videoCodec}
+                  value={settings.fps}
                   onChange={(event) =>
-                    setSettings({ ...settings, videoCodec: event.target.value })
+                    setSettings({ ...settings, fps: event.target.value })
                   }
                 >
-                  {videoCodecOptions
-                    .filter((codec) =>
-                      getCompatibleCodecs(settings.format, 'video').includes(
-                        codec.value,
-                      ),
-                    )
-                    .map((codec) => (
-                      <option key={codec.value} value={codec.value}>
-                        {codec.label}
-                      </option>
-                    ))}
+                  {[5, 10, 15, 20, 24, 30, 60].map((fps) => (
+                    <option key={fps} value={fps}>
+                      {fps}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="video-audio-codec">Audio codec</Label>
-                <select
-                  id="video-audio-codec"
-                  className="h-11 w-full rounded-md border bg-background px-3 text-base"
-                  value={settings.audioCodec}
+              <label className="flex min-h-11 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.loop}
                   onChange={(event) =>
-                    setSettings({ ...settings, audioCodec: event.target.value })
+                    setSettings({ ...settings, loop: event.target.checked })
                   }
-                >
-                  {audioCodecOptions
-                    .filter((codec) =>
-                      getCompatibleCodecs(settings.format, 'audio').includes(
-                        codec.value,
-                      ),
-                    )
-                    .map((codec) => (
-                      <option key={codec.value} value={codec.value}>
-                        {codec.label}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="convert-speed">Encoding speed</Label>
-                <select
-                  id="convert-speed"
-                  className="h-11 w-full rounded-md border bg-background px-3 text-base"
-                  value={settings.preset}
-                  onChange={(event) =>
-                    setSettings({ ...settings, preset: event.target.value })
-                  }
-                >
-                  {['ultrafast', 'veryfast', 'fast', 'medium', 'slow'].map(
-                    (preset) => (
-                      <option key={preset} value={preset}>
-                        {preset}
-                      </option>
-                    ),
-                  )}
-                </select>
-              </div>
-              {settings.resolution !== 'original' && (
-                <label className="flex min-h-11 items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={settings.aspect}
-                    onChange={(event) =>
-                      setSettings({ ...settings, aspect: event.target.checked })
-                    }
-                  />
-                  Keep original aspect ratio
-                </label>
-              )}
+                />
+                Loop animation continuously
+              </label>
             </fieldset>
-          </details>
+          )}
+          {!animationOutput && (
+            <details className="rounded-lg border p-4">
+              <summary className="cursor-pointer text-sm font-medium">
+                Advanced settings
+              </summary>
+              <fieldset
+                disabled={action.busy}
+                className="mt-4 grid gap-4 sm:grid-cols-2"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="video-codec">Video codec</Label>
+                  <select
+                    id="video-codec"
+                    className="h-11 w-full rounded-md border bg-background px-3 text-base"
+                    value={settings.videoCodec}
+                    onChange={(event) =>
+                      setSettings({
+                        ...settings,
+                        videoCodec: event.target.value,
+                      })
+                    }
+                  >
+                    {videoCodecOptions
+                      .filter((codec) =>
+                        getCompatibleCodecs(settings.format, 'video').includes(
+                          codec.value,
+                        ),
+                      )
+                      .map((codec) => (
+                        <option key={codec.value} value={codec.value}>
+                          {codec.label}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="video-audio-codec">Audio codec</Label>
+                  <select
+                    id="video-audio-codec"
+                    className="h-11 w-full rounded-md border bg-background px-3 text-base"
+                    value={settings.audioCodec}
+                    onChange={(event) =>
+                      setSettings({
+                        ...settings,
+                        audioCodec: event.target.value,
+                      })
+                    }
+                  >
+                    {audioCodecOptions
+                      .filter((codec) =>
+                        getCompatibleCodecs(settings.format, 'audio').includes(
+                          codec.value,
+                        ),
+                      )
+                      .map((codec) => (
+                        <option key={codec.value} value={codec.value}>
+                          {codec.label}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="convert-speed">Encoding speed</Label>
+                  <select
+                    id="convert-speed"
+                    className="h-11 w-full rounded-md border bg-background px-3 text-base"
+                    value={settings.preset}
+                    onChange={(event) =>
+                      setSettings({ ...settings, preset: event.target.value })
+                    }
+                  >
+                    {['ultrafast', 'veryfast', 'fast', 'medium', 'slow'].map(
+                      (preset) => (
+                        <option key={preset} value={preset}>
+                          {preset}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+              </fieldset>
+            </details>
+          )}
+          {action.selectedFile?.animation && (
+            <p className="text-sm text-muted-foreground">
+              Converts one complete animation cycle.
+            </p>
+          )}
           <VideoActionStatus
-            label="Converting video"
+            label={animationOutput ? 'Creating animation' : 'Converting video'}
+            indeterminate={animationOutput}
             error={action.error}
             diagnostic={action.diagnostic}
           />
@@ -263,6 +331,14 @@ function VideoConvertComponent() {
                   videoCodec: settings.videoCodec,
                   audioCodec: settings.audioCodec,
                   preset: settings.preset,
+                  ...(animationOutput
+                    ? {
+                        animation: {
+                          fps: Number(settings.fps),
+                          loop: settings.loop,
+                        },
+                      }
+                    : {}),
                   ...(settings.resolution !== 'original'
                     ? {
                         downscale: {
@@ -281,7 +357,12 @@ function VideoConvertComponent() {
                 }),
                 filename: `${action.selectedFile!.name.replace(/\.[^/.]+$/, '')}.${settings.format}`,
                 details: [
-                  `${settings.format.toUpperCase()} video`,
+                  `${settings.format.toUpperCase()} ${animationOutput ? 'animation · No audio' : 'video'}`,
+                  ...(animationOutput
+                    ? [
+                        `${settings.fps} fps · ${settings.loop ? 'Continuous loop' : 'Plays once'}`,
+                      ]
+                    : []),
                   settings.resolution === 'original'
                     ? 'Original dimensions'
                     : settings.resolution === 'custom'

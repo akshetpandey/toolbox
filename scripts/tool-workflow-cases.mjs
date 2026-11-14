@@ -321,12 +321,75 @@ export const workflows = {
     assert(bytes.length <= 1_700_000)
     between((await videoInfo(page, bytes)).duration, 8.9, 9.2)
   },
-  '/videos/convert': async (page, f) => {
+  '/videos/convert': async (page, f, capture) => {
     await upload(page, f.portrait)
     const { bytes } = await run(page, 'Convert to MP4')
     const result = await videoInfo(page, bytes)
     assert.deepEqual([result.width, result.height], [540, 960])
     between(result.duration, 4.9, 5.1)
+
+    await select(page, 'Output format', 'gif')
+    await select(page, 'Video size', 'custom')
+    await fill(page, 'Width (pixels)', '81')
+    await fill(page, 'Height (pixels)', '144')
+    await field(page, 'Keep original aspect ratio').uncheck()
+    await select(page, 'Frame rate (fps)', '5')
+    await field(page, 'Loop animation continuously').uncheck()
+    assert.equal(await field(page, 'Audio codec').count(), 0)
+    await capture('edit', field(page, 'Output format'))
+    const gif = await run(page, 'Convert to GIF')
+    assert.match(gif.name, /\.gif$/)
+    assert.equal(gif.bytes.toString('ascii', 0, 3), 'GIF')
+    assert(!gif.bytes.includes('NETSCAPE2.0'), 'Play-once GIF must not loop')
+    assert.equal((await imageInfo(page, gif.bytes, 'image/gif')).width, 81)
+
+    await select(page, 'Output format', 'apng')
+    await field(page, 'Loop animation continuously').check()
+    const apng = await run(page, 'Convert to APNG')
+    assert.match(apng.name, /\.apng$/)
+    let frameCount = 0
+    for (let offset = 8; offset + 12 <= apng.bytes.length;) {
+      const length = apng.bytes.readUInt32BE(offset)
+      if (apng.bytes.toString('ascii', offset + 4, offset + 8) === 'acTL') {
+        frameCount = apng.bytes.readUInt32BE(offset + 8)
+        assert.equal(
+          apng.bytes.readUInt32BE(offset + 12),
+          0,
+          'APNG should loop continuously',
+        )
+      }
+      offset += length + 12
+    }
+    between(frameCount, 24, 26)
+    assert.equal((await imageInfo(page, apng.bytes, 'image/png')).width, 81)
+
+    await select(page, 'Output format', 'webp')
+    const webp = await run(page, 'Convert to WEBP')
+    assert(webp.bytes.includes('ANIM'), 'WebP must contain animation frames')
+
+    for (const [animation, name, mimeType] of [
+      [gif, 'animation.gif', 'image/gif'],
+      [apng, 'animation.png', 'image/png'],
+    ]) {
+      await upload(page, { name, mimeType, buffer: animation.bytes })
+      const video = await run(page, 'Convert to MP4')
+      const info = await videoInfo(page, video.bytes)
+      assert.deepEqual([info.width, info.height], [82, 144])
+      between(info.duration, 4.9, 5.25)
+      await select(
+        page,
+        'Output format',
+        name.endsWith('.gif') ? 'apng' : 'gif',
+      )
+      const converted = await run(
+        page,
+        name.endsWith('.gif') ? 'Convert to APNG' : 'Convert to GIF',
+      )
+      assert(
+        converted.bytes.length > 100,
+        'Animation-to-animation output must contain data',
+      )
+    }
   },
   '/videos/trim': async (page, f) => {
     await upload(page, f.video)

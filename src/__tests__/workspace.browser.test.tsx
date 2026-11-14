@@ -133,7 +133,7 @@ test.each([
     ['JPG to PNG', '/images/convert'],
     ['SHA-256', '/utilities/hash'],
     ['compres imgae', '/images/compress'],
-    ['MP4 to GIF', '/videos/trim'],
+    ['MP4 to GIF', '/videos/convert'],
     ['OCR PDF', '/pdfs/ocr'],
   ]) {
     fireEvent.change(search, { target: { value: query } })

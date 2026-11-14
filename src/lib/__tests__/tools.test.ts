@@ -32,7 +32,12 @@ test('keeps meaningful terms, curated aliases, and category matches', () => {
 })
 
 test.each([
-  ['MP4 to GIF', '/videos/trim'],
+  ['MP4 to GIF', '/videos/convert'],
+  ['Video to APNG', '/videos/convert'],
+  ['animated PNG to GIF', '/videos/convert'],
+  ['MP4 to animated PNG', '/videos/convert'],
+  ['GIF to MP4', '/videos/convert'],
+  ['APNG to GIF', '/videos/convert'],
   ['split PDF', '/pdfs/split'],
   ['PDF to Word', '/pdfs/to-word'],
   ['JPG to PDF', '/pdfs/from-images'],
@@ -77,6 +82,8 @@ test('unavailable tasks and short format names do not become misleading fuzzy ma
   for (const query of [
     'JPG to SVG',
     'PNG to SVG',
+    'MP4 to PNG',
+    'APNG to JPG',
     'MP4 to MP2',
     'sha257',
     'zzzzzzzz',

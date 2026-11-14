@@ -16,8 +16,9 @@ export const toolSearchKeywords = {
   [toolPaths.imageMetadata]:
     'photo picture exif gps location geotag privacy remove delete personal data',
   [toolPaths.videoCompress]: 'movie shrink smaller reduce limit mb',
-  [toolPaths.videoConvert]: 'movie mp4 webm format',
-  [toolPaths.videoTrim]: 'cut clip movie length mp4 gif animated webp',
+  [toolPaths.videoConvert]:
+    'movie mp4 webm avi mkv mov gif apng animated png webp animation format converter',
+  [toolPaths.videoTrim]: 'cut clip movie length mp4',
   [toolPaths.videoJoin]: 'merge combine concatenate movie clips',
   [toolPaths.videoExtract]: 'music sound movie mp4 webm mp3 wav aac',
   [toolPaths.videoMetadata]: 'movie info details',

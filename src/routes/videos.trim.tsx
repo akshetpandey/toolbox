@@ -6,11 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { ResultCard } from '@/components/ResultCard'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
-import {
-  useVideoSettings,
-  useVideoAction,
-  VideoActionStatus,
-} from '@/lib/videoToolsUtils'
+import { useVideoAction, VideoActionStatus } from '@/lib/videoToolsUtils'
 
 export const Route = createFileRoute('/videos/trim')({
   component: VideoTrimComponent,
@@ -19,7 +15,7 @@ export const Route = createFileRoute('/videos/trim')({
 function VideoTrimComponent() {
   const action = useVideoAction(
     'videos.trim',
-    'The clip could not be created. Try another time range or choose a different export format.',
+    'The clip could not be created. Try another time range or replace the file.',
   )
   const source = action.selectedFile?.file
   const duration = Number.isFinite(action.selectedFile?.duration)
@@ -36,10 +32,6 @@ function VideoTrimComponent() {
     start: '0',
     end: String(duration),
   })
-  const [settings, setSettings] = useVideoSettings<{
-    format: 'original' | 'gif' | 'webp'
-    loop: boolean
-  }>('videos.trim.settings', { format: 'original', loop: false })
   const current =
     range.source === source
       ? range
@@ -68,9 +60,9 @@ function VideoTrimComponent() {
     })
   }
   const extension =
-    settings.format === 'original'
-      ? (action.selectedFile?.name.split('.').pop() ?? 'mp4')
-      : settings.format
+    action.selectedFile?.animation?.format ??
+    action.selectedFile?.name.split('.').pop() ??
+    'mp4'
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <Card>
@@ -208,38 +200,10 @@ function VideoTrimComponent() {
               {duration.toFixed(3)} seconds.
             </p>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="trim-format">Export format</Label>
-            <select
-              id="trim-format"
-              className="h-11 w-full rounded-md border bg-background px-3 text-base"
-              value={settings.format}
-              disabled={action.busy}
-              onChange={(event) =>
-                setSettings({
-                  ...settings,
-                  format: event.target.value as 'original' | 'gif' | 'webp',
-                })
-              }
-            >
-              <option value="original">Keep original video format</option>
-              <option value="gif">Animated GIF — no audio</option>
-              <option value="webp">Animated WebP — no audio</option>
-            </select>
-          </div>
-          {settings.format !== 'original' && (
-            <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={settings.loop}
-                disabled={action.busy}
-                onChange={(event) =>
-                  setSettings({ ...settings, loop: event.target.checked })
-                }
-              />
-              Loop animation continuously
-            </label>
-          )}
+          <p className="text-sm text-muted-foreground">
+            The clip keeps its original format. Use Convert video for GIF, APNG,
+            or another output format.
+          </p>
           <VideoActionStatus
             label="Trimming video"
             error={action.error}
@@ -253,15 +217,12 @@ function VideoTrimComponent() {
                 blob: await processor.trimVideo({
                   startTime: String(start),
                   endTime: String(end),
-                  format: settings.format,
-                  loop:
-                    settings.format === 'original' ? undefined : settings.loop,
                   signal,
                 }),
                 filename: `${action.selectedFile!.name.replace(/\.[^/.]+$/, '')}_trimmed.${extension}`,
                 details: [
                   `${start.toFixed(2)}–${end.toFixed(2)} s · ${(end - start).toFixed(2)} s clip`,
-                  `${extension.toUpperCase()}${settings.format !== 'original' ? ' · No audio' : ''}`,
+                  extension.toUpperCase(),
                 ],
               }))
             }

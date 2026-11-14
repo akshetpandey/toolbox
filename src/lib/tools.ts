@@ -137,10 +137,10 @@ export const toolCategories = [
       {
         name: 'Convert video',
         route: toolPaths.videoConvert,
-        pageTitle: 'Video Converter for MP4, WebM, MKV and AVI',
-        description: 'Change a video’s output format.',
+        pageTitle: 'Video, GIF and APNG Converter',
+        description: 'Convert videos, GIFs, and animated PNGs.',
         instructions:
-          'Convert WebM, MKV, or AVI to MP4, or export a video in one of those formats. Choose compatible video and audio codecs in your browser.',
+          'Convert video to GIF, APNG, or animated WebP, or turn a GIF or APNG into MP4. Choose dimensions, frame rate, and looping for animated images.',
         icon: SlidersHorizontal,
       },
       {
@@ -149,7 +149,7 @@ export const toolCategories = [
         pageTitle: 'Online Video Trimmer for MP4, MOV and WebM',
         description: 'Keep just the part you need.',
         instructions:
-          'Trim a video by setting its start and end times. Save the clip in its original video format or turn it into a silent animated GIF or WebP.',
+          'Choose a start and end time to save a clip in its original format. Use Convert video to change formats or create an animated image.',
         icon: Scissors,
       },
       {

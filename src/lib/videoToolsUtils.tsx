@@ -47,6 +47,9 @@ export const formatOptions = [
     description: 'Flexible container',
   },
   { value: 'avi', icon: Monitor, label: 'AVI', description: 'Legacy format' },
+  { value: 'gif', label: 'GIF', description: 'Animated image — no audio' },
+  { value: 'apng', label: 'APNG', description: 'Animated PNG — no audio' },
+  { value: 'webp', label: 'WebP', description: 'Animated image — no audio' },
 ] as const
 
 export const videoCodecOptions = [
