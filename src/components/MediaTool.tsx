@@ -1,4 +1,5 @@
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -120,7 +121,7 @@ export function MediaTool({ mode }: { mode: Mode }) {
     end: string
   }>(`${key}.settings`, { format: 'mp3', start: '0', end: '' })
   const { result, setResult, clearResult } = useToolResult(files, key)
-  const [error, setError] = useState<string>()
+  const [error, setError] = useState<MessageText>()
   const [cancelled, setCancelled] = useState(false)
   const operation = useRef<AbortController | null>(null)
   useEffect(
@@ -170,7 +171,7 @@ export function MediaTool({ mode }: { mode: Mode }) {
       )
     ) {
       setError(
-        t(
+        message(
           video
             ? 'mediaToolChooseSupportedVideo'
             : 'mediaToolChooseSupportedAudio',
@@ -180,7 +181,7 @@ export function MediaTool({ mode }: { mode: Mode }) {
     }
     const current = joining ? files : []
     if (current.length + accepted.length > maxJoinFiles) {
-      setError(t('mediaToolChooseUpToFilesAtA', { maxJoinFiles }))
+      setError(message('mediaToolChooseUpToFilesAtA', { maxJoinFiles }))
       return
     }
     updateFiles([
@@ -243,12 +244,12 @@ export function MediaTool({ mode }: { mode: Mode }) {
       if (operation.current !== controller) return
       if (signal.aborted) setCancelled(true)
       else if (cause instanceof MediaInputError)
-        setError(t(cause.key, cause.values))
+        setError(message(cause.key, cause.values))
       else
         setError(
           joining
-            ? t('mediaToolTheseFilesCouldNotBeJoined')
-            : t('mediaToolThisAudioFileCouldNotBe'),
+            ? message('mediaToolTheseFilesCouldNotBeJoined')
+            : message('mediaToolThisAudioFileCouldNotBe'),
         )
     } finally {
       if (operation.current === controller) {
@@ -482,7 +483,7 @@ export function MediaTool({ mode }: { mode: Mode }) {
               role="alert"
               className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
             >
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {cancelled && (

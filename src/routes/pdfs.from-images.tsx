@@ -1,3 +1,5 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -30,7 +32,7 @@ function ImagesToPDFRoute() {
     'pdfs.photos.layout',
     'photo',
   )
-  const [selectionError, setSelectionError] = useState('')
+  const [selectionError, setSelectionError] = useState<MessageText>('')
   const reset = () => {
     setImages([])
     setSelectionError('')
@@ -63,7 +65,7 @@ function ImagesToPDFRoute() {
             setSelectionError(
               added.length === files.length
                 ? ''
-                : t('pdfsFromImagesChooseJPGOrPNGImages'),
+                : message('pdfsFromImagesChooseJPGOrPNGImages'),
             )
           }}
           onClearFiles={reset}
@@ -133,7 +135,7 @@ function ImagesToPDFRoute() {
     >
       {selectionError && (
         <p role="alert" className="text-sm text-destructive">
-          {selectionError}
+          {renderMessage(t, selectionError)}
         </p>
       )}
       <PDFAction

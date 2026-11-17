@@ -2,7 +2,9 @@ import { expect, test } from 'vitest'
 import shell from '@/i18n/locales/en.json'
 import workspace from '@/i18n/en-workspaces.json'
 import toolContent from '@/i18n/en-tool-content.json'
+import { createTranslator, imageDimensions } from '@/i18n/messages'
 import type { Catalog } from '@/i18n/messages'
+import ar from '@/i18n/locales/ar.json'
 import {
   getLanguagePreference,
   languagePath,
@@ -34,6 +36,16 @@ test('validates the cookie independently of locale URLs', () => {
 })
 
 const source = { ...shell, ...workspace, ...toolContent }
+
+test('keeps non-square dimensions in width-by-height order in Arabic', () => {
+  const values = { dimensions: imageDimensions(300, 200) }
+  expect(createTranslator('ar', ar)('mediaDimensions', values)).toBe(
+    '\u2066300 × 200\u2069',
+  )
+  expect(createTranslator('en', {}, source)('mediaDimensions', values)).toBe(
+    '300 × 200',
+  )
+})
 
 const catalogs = import.meta.glob<Catalog>('../i18n/locales/*.json', {
   import: 'default',

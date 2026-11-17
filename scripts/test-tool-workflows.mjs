@@ -102,9 +102,39 @@ async function checkLanguageSettings(browser, origin) {
     const explicitSettings = explicit.locator(
       'aside [data-slot="language-settings"] select',
     )
+    await explicit.waitForFunction(
+      () =>
+        document.querySelector('aside [data-slot="language-settings"] select')
+          ?.value === 'ar',
+    )
+    await explicitSettings.selectOption('ja')
+    await explicit.waitForFunction(() =>
+      document.cookie.split('; ').includes('toolbox-language=ja'),
+    )
+
     await explicitSettings.selectOption('en')
     await explicit.waitForURL((url) => url.pathname === '/pdfs/merge')
-    await explicit.waitForFunction(() => document.documentElement.lang === 'en')
+    await explicit.waitForFunction(
+      () =>
+        document.documentElement.lang === 'en' &&
+        document.cookie.split('; ').includes('toolbox-language=en'),
+    )
+
+    const qr = await context.newPage()
+    qr.on('pageerror', (error) => errors.push(error.message))
+    await qr.goto(origin + '/utilities/qr')
+    await qr.locator('#qr-content').fill('not-a-website')
+    await qr
+      .getByRole('button', { name: 'Generate and download QR code' })
+      .click()
+    const alert = qr.getByRole('alert')
+    await alert.filter({ hasText: 'Enter a full website address' }).waitFor()
+    await qr
+      .locator('aside [data-slot="language-settings"] select')
+      .selectOption('es')
+    await qr.waitForURL('**/es/utilities/qr')
+    await alert.filter({ hasText: 'dirección' }).waitFor()
+    assert.equal(await qr.locator('#qr-content').inputValue(), 'not-a-website')
     assert.deepEqual(errors, [])
     console.log(
       'PASS language settings, cookie, localized links and retained file',

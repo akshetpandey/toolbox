@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
@@ -26,7 +27,7 @@ function PDFCompressRoute() {
       label={t('pdfsCompressCompressAndDownload')}
       onReset={clearFiles}
       run={async (signal) => {
-        if (!file) throw new Error(t('pdfsCompressChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsCompressChooseAPDFFirst')
         const blob = await compressPDF(file, mode, signal)
         return {
           blob,

@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
@@ -24,7 +25,7 @@ function PDFWatermarkRoute() {
       onReset={clearFiles}
       disabled={!text.trim()}
       run={async () => {
-        if (!file) throw new Error(t('pdfsWatermarkChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsWatermarkChooseAPDFFirst')
         return {
           blob: await stampPDF(file, { type: 'watermark', text }),
           filename: `${pdfBaseName(file.name)}-watermarked.pdf`,

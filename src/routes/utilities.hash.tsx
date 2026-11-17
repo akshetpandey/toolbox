@@ -1,3 +1,5 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,7 +26,7 @@ function HashGenerationPage() {
     hashProgress,
   } = useUtilities()
   const { isProcessing } = useProcessing()
-  const [copyStatus, setCopyStatus] = useState('')
+  const [copyStatus, setCopyStatus] = useState<MessageText>('')
   useEffect(() => {
     setCopyStatus('')
   }, [selectedFile])
@@ -42,13 +44,17 @@ function HashGenerationPage() {
       ? hashes.find(({ value }) => value.toLowerCase() === normalized)
       : null
 
-  const copy = async (label: string, value: string) => {
+  const copy = async (label: string | undefined, value: string) => {
     try {
       if (!navigator.clipboard) throw new Error('Clipboard unavailable')
       await navigator.clipboard.writeText(value)
-      setCopyStatus(`${label} copied`)
+      setCopyStatus(
+        label
+          ? message('utilitiesHashCopied', { label })
+          : message('utilitiesHashAllCopied'),
+      )
     } catch {
-      setCopyStatus(t('utilitiesHashCopyFailedSelectTheChecksumText'))
+      setCopyStatus(message('utilitiesHashCopyFailedSelectTheChecksumText'))
     }
   }
 
@@ -152,7 +158,7 @@ function HashGenerationPage() {
                   className="w-full sm:w-auto sm:self-start"
                   onClick={() =>
                     void copy(
-                      t('utilitiesHashAllChecksums'),
+                      undefined,
                       hashes
                         .map(({ label, value }) => `${label}: ${value}`)
                         .join('\n'),
@@ -178,7 +184,7 @@ function HashGenerationPage() {
               aria-live="polite"
               className="text-sm text-muted-foreground"
             >
-              {copyStatus}
+              {renderMessage(t, copyStatus)}
             </p>
           </>
         ) : (

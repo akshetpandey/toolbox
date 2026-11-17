@@ -1,3 +1,4 @@
+import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
@@ -17,7 +18,7 @@ function VideoTrimComponent() {
   const t = useTranslator()
   const action = useVideoAction(
     'videos.trim',
-    t('videosTrimTheClipCouldNotBeCreated'),
+    message('videosTrimTheClipCouldNotBeCreated'),
   )
   const source = action.selectedFile?.file
   const duration = Number.isFinite(action.selectedFile?.duration)
@@ -215,8 +216,9 @@ function VideoTrimComponent() {
               role="alert"
               className="text-sm text-destructive"
             >
-              {t('videosTrimChooseAStartAtOrAfter')} {duration.toFixed(3)}
-              {' ' + t('videosTrimSeconds')}
+              {t('videosTrimChooseAStartAtOrAfter', {
+                duration: duration.toFixed(3),
+              })}
             </p>
           )}
           <p className="text-sm text-muted-foreground">
@@ -239,7 +241,11 @@ function VideoTrimComponent() {
                 }),
                 filename: `${action.selectedFile!.name.replace(/\.[^/.]+$/, '')}_trimmed.${extension}`,
                 details: [
-                  `${start.toFixed(2)}–${end.toFixed(2)} s · ${(end - start).toFixed(2)} s clip`,
+                  message('videosTrimClipDetails', {
+                    start: start.toFixed(2),
+                    end: end.toFixed(2),
+                    duration: (end - start).toFixed(2),
+                  }),
                   extension.toUpperCase(),
                 ],
               }))

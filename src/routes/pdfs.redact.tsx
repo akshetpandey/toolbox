@@ -1,5 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
@@ -42,13 +43,12 @@ function pointerPosition(event: PointerEvent<HTMLDivElement>): Point {
 }
 
 function usePagePreview(file: File | undefined, page: number) {
-  const t = useTranslator()
   const [preview, setPreview] = useState<{
     file: File
     page: number
     url: string
   } | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<MessageText>('')
   useEffect(() => {
     if (!file) return
     const controller = new AbortController()
@@ -80,7 +80,10 @@ function usePagePreview(file: File | undefined, page: number) {
       } catch (cause) {
         if (!signal.aborted)
           setError(
-            errorMessage(t, cause, t('pdfsRedactThePagePreviewCouldNotBe')),
+            messageFromError(
+              cause,
+              message('pdfsRedactThePagePreviewCouldNotBe'),
+            ),
           )
       }
     })()
@@ -143,15 +146,15 @@ function PDFRedactRoute() {
       sourceKey={JSON.stringify([file?.name, areas])}
       name="pdfs.edit.redact"
       label={t('pdfsRedactRedactAndDownload')}
-      status={t('pdfsRedactPreparingYourRedactedPDF')}
+      status={message('pdfsRedactPreparingYourRedactedPDF')}
       disabled={areas.length === 0 || !count}
       onReset={clearFiles}
       run={async (signal, setStatus) => {
-        if (!file) throw new Error(t('pdfsRedactChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsRedactChooseAPDFFirst')
         const { redactPDF } = await import('@/lib/pdf-privacy')
         return {
           blob: await redactPDF(file, areas, signal, (index, total) => {
-            setStatus(t('pdfsRedactRedactingPageOf', { index, total }))
+            setStatus(message('pdfsRedactRedactingPageOf', { index, total }))
           }),
           filename: `${pdfBaseName(file.name)}-redacted.pdf`,
           details: [
@@ -217,7 +220,7 @@ function PDFRedactRoute() {
           </div>
           {error && (
             <p role="alert" className="break-words text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {!url && !error && (

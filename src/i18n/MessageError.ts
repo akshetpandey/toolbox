@@ -1,5 +1,11 @@
 import { workspaceEnglish } from './workspaceMessages'
-import type { MessageKey, MessageValues, Translator } from './messages'
+import { message, renderMessage } from './messages'
+import type {
+  LocalizedMessage,
+  MessageKey,
+  MessageValues,
+  Translator,
+} from './messages'
 
 export class MessageError extends Error {
   readonly key: MessageKey
@@ -13,6 +19,13 @@ export class MessageError extends Error {
 }
 
 export function errorMessage(t: Translator, error: unknown, fallback: string) {
-  if (error instanceof MessageError) return t(error.key, error.values)
+  return renderMessage(t, messageFromError(error, fallback))
+}
+
+export function messageFromError(
+  error: unknown,
+  fallback: LocalizedMessage | string,
+) {
+  if (error instanceof MessageError) return message(error.key, error.values)
   return error instanceof Error ? error.message : fallback
 }

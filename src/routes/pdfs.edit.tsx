@@ -1,5 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState, type MouseEvent } from 'react'
@@ -18,6 +19,13 @@ import {
 import { openBrowserPDF, renderPDFPage } from '@/lib/pdf-render'
 
 export const Route = createFileRoute('/pdfs/edit')({ component: PDFEditorPage })
+
+const markLabels = {
+  text: 'pdfsEditText',
+  check: 'pdfsEditCheckmark',
+  highlight: 'pdfsEditHighlight',
+  box: 'pdfsEditRectangleOutline',
+} as const
 
 const defaultMark = {
   type: 'text' as PDFMark['type'],
@@ -55,9 +63,9 @@ function PDFEditorPage() {
     file: File
     data: Awaited<ReturnType<typeof readPDFForm>>
   } | null>(null)
-  const [loadError, setLoadError] = useState('')
-  const [markError, setMarkError] = useState('')
-  const [previewError, setPreviewError] = useState('')
+  const [loadError, setLoadError] = useState<MessageText>('')
+  const [markError, setMarkError] = useState<MessageText>('')
+  const [previewError, setPreviewError] = useState<MessageText>('')
   const [preview, setPreview] = useState<{
     file: File
     key: string
@@ -80,7 +88,7 @@ function PDFEditorPage() {
       (cause: unknown) => {
         if (active)
           setLoadError(
-            errorMessage(t, cause, t('pdfsEditThisPDFCouldNotBeOpened')),
+            messageFromError(cause, message('pdfsEditThisPDFCouldNotBeOpened')),
           )
       },
     )
@@ -124,7 +132,10 @@ function PDFEditorPage() {
       })().catch((cause: unknown) => {
         if (!abort.signal.aborted)
           setPreviewError(
-            errorMessage(t, cause, t('pdfsEditThePagePreviewCouldNotBe')),
+            messageFromError(
+              cause,
+              message('pdfsEditThePagePreviewCouldNotBe'),
+            ),
           )
       })
     }, 200)
@@ -172,7 +183,7 @@ function PDFEditorPage() {
       geometry.fontSize < 6 ||
       geometry.fontSize > 96
     ) {
-      setMarkError(t('pdfsEditEnterTextIfNeededKeepThe'))
+      setMarkError(message('pdfsEditEnterTextIfNeededKeepThe'))
       return
     }
     setMarks((previous) => [
@@ -197,7 +208,7 @@ function PDFEditorPage() {
       onReset={clearFiles}
       disabled={!currentModel || Boolean(loadError)}
       run={async (signal) => {
-        if (!file) throw new Error(t('pdfsEditChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsEditChooseAPDFFirst')
         return {
           blob: await editPDF(file, values, marks, flatten, signal),
           filename: `${pdfBaseName(file.name)}-edited.pdf`,
@@ -218,7 +229,7 @@ function PDFEditorPage() {
       </p>
       {loadError && (
         <p role="alert" className="text-sm text-destructive">
-          {loadError}
+          {renderMessage(t, loadError)}
         </p>
       )}
       {file && !currentModel && !loadError && (
@@ -375,10 +386,11 @@ function PDFEditorPage() {
                     }))
                   }
                 >
-                  <option value="text">{t('pdfsEditText')}</option>
-                  <option value="check">{t('pdfsEditCheckmark')}</option>
-                  <option value="highlight">{t('pdfsEditHighlight')}</option>
-                  <option value="box">{t('pdfsEditRectangleOutline')}</option>
+                  {Object.entries(markLabels).map(([type, label]) => (
+                    <option key={type} value={type}>
+                      {t(label)}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -452,7 +464,7 @@ function PDFEditorPage() {
             </Button>
             {markError && (
               <p role="alert" className="text-sm text-destructive">
-                {markError}
+                {renderMessage(t, markError)}
               </p>
             )}
             {marks.length > 0 && (
@@ -463,9 +475,13 @@ function PDFEditorPage() {
                     className="flex items-center justify-between gap-3 rounded border p-2 text-sm"
                   >
                     <span className="min-w-0 break-words">
-                      {t('pdfsEditPage') + ' '}
-                      {mark.page}:{' '}
-                      {mark.type === 'text' ? mark.text : mark.type}
+                      {t('pdfsEditMarkSummary', {
+                        page: mark.page,
+                        mark:
+                          mark.type === 'text'
+                            ? mark.text
+                            : t(markLabels[mark.type]),
+                      })}
                     </span>
                     <Button
                       variant="ghost"
@@ -514,7 +530,7 @@ function PDFEditorPage() {
             )}
             {previewError && (
               <p role="alert" className="text-sm text-destructive">
-                {previewError}
+                {renderMessage(t, previewError)}
               </p>
             )}
           </section>

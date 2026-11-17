@@ -1,10 +1,12 @@
+import { message } from '@/i18n/messages'
+import type { LocalizedMessage } from '@/i18n/messages'
 import { MessageError } from '@/i18n/MessageError'
 import { openBrowserPDF } from './pdf-render'
 
 export async function convertPDFToWord(
   file: File,
   signal: AbortSignal,
-  onProgress: (message: string) => void,
+  onProgress: (message: LocalizedMessage) => void,
 ) {
   signal.throwIfAborted()
   const { Document, Packer, Paragraph, TextRun } = await import('docx')
@@ -15,7 +17,9 @@ export async function convertPDFToWord(
 
     for (let number = 1; number <= pdf.numPages; number++) {
       signal.throwIfAborted()
-      onProgress(`Reading page ${number} of ${pdf.numPages}…`)
+      onProgress(
+        message('pdfToWordReadingPage', { page: number, total: pdf.numPages }),
+      )
       const page = await pdf.getPage(number)
       const { items } = await page.getTextContent()
       page.cleanup()
@@ -51,7 +55,7 @@ export async function convertPDFToWord(
     if (!paragraphs.length) {
       throw new MessageError('pdfToWordThisPDFHasNoSelectableText')
     }
-    onProgress('Building the Word document…')
+    onProgress(message('pdfToWordBuilding'))
     const blob = await Packer.toBlob(
       new Document({ sections: [{ children: paragraphs }] }),
     )
@@ -60,10 +64,14 @@ export async function convertPDFToWord(
       blob,
       filename: `${file.name.replace(/\.pdf$/iu, '')}.docx`,
       details: [
-        'Editable text',
+        message('pdfToWordEditableText'),
         ...(emptyPages
           ? [
-              `Skipped ${emptyPages} ${emptyPages === 1 ? 'page' : 'pages'} with no selectable text`,
+              message(
+                'pdfToWordSkippedPages',
+                { count: emptyPages },
+                emptyPages,
+              ),
             ]
           : []),
       ],

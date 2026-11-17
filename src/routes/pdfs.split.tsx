@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, PDFPageRanges, usePDFSource } from '@/components/PDFAction'
@@ -29,7 +30,7 @@ function PDFSplitRoute() {
       }
       onReset={clearFiles}
       run={async (signal) => {
-        if (!file) throw new Error(t('pdfsSplitChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsSplitChooseAPDFFirst')
         const result = await extractPDFPages(file, ranges, separate, signal)
         return {
           blob: result.blob,

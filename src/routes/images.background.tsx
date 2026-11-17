@@ -1,4 +1,5 @@
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
@@ -35,7 +36,10 @@ function RemoveImageBackground() {
     'images.background.tolerance',
     12,
   )
-  const [error, setError] = useWorkspaceState('images.background.error', '')
+  const [error, setError] = useWorkspaceState<MessageText>(
+    'images.background.error',
+    '',
+  )
   const { result, setResult, clearResult } = useToolResult(
     selectedFile?.file,
     'images.background',
@@ -100,7 +104,7 @@ function RemoveImageBackground() {
         `#${[red, green, blue].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`,
       )
     } catch {
-      setError(t('imagesBackgroundThePreviewColorCouldNotBe'))
+      setError(message('imagesBackgroundThePreviewColorCouldNotBe'))
     }
   }
 
@@ -135,8 +139,8 @@ function RemoveImageBackground() {
         console.error('Image background removal failed', failure)
         setError(
           mode === 'auto'
-            ? t('imagesBackgroundTheBackgroundCouldNotBeRemoved')
-            : t('imagesBackgroundTheColorCouldNotBeRemoved'),
+            ? message('imagesBackgroundTheBackgroundCouldNotBeRemoved')
+            : message('imagesBackgroundTheColorCouldNotBeRemoved'),
         )
       }
     } finally {
@@ -233,7 +237,7 @@ function RemoveImageBackground() {
           )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <Button

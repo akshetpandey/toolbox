@@ -1,6 +1,31 @@
 import { expect, test } from 'vitest'
 import { allTools } from '@/lib/tools'
 import { findTools } from '@/lib/toolSearch'
+import { createTranslator } from '@/i18n/messages'
+import es from '@/i18n/locales/es.json'
+import ja from '@/i18n/locales/ja.json'
+import ru from '@/i18n/locales/ru.json'
+import ar from '@/i18n/locales/ar.json'
+import nl from '@/i18n/locales/nl.json'
+
+const localizedCatalogs = { es, ja, ru, ar, nl }
+
+test.each([
+  ['es', 'JPG a PNG', '/images/convert'],
+  ['ja', 'JPGからPNG', '/images/convert'],
+  ['ja', 'WordをPDFに変換', '/office-documents/convert'],
+  ['ru', 'JPG в PNG', '/images/convert'],
+  ['ar', 'تحويل JPG إلى PNG', '/images/convert'],
+  ['nl', 'JPG naar PNG', '/images/convert'],
+] as const)(
+  'finds the right conversion for %s search %s',
+  (language, query, route) => {
+    const t = createTranslator(language, localizedCatalogs[language])
+    expect(findTools(query, t, language).map((tool) => tool.route)).toEqual([
+      route,
+    ])
+  },
+)
 
 const routes = (query: string) => findTools(query).map((tool) => tool.route)
 

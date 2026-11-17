@@ -5,7 +5,7 @@ import { isLanguage, languages, supportedLanguages } from '@/i18n/locales'
 export function LanguageSettings({ disabled }: { disabled: boolean }) {
   const id = useId()
   const t = useTranslator()
-  const { language, preference, browserLanguage, selectLanguage } = useLocale()
+  const { preference, selectLanguage } = useLocale()
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
   return (
@@ -15,11 +15,7 @@ export function LanguageSettings({ disabled }: { disabled: boolean }) {
       </label>
       <select
         id={id}
-        value={
-          preference === 'browser' && language === browserLanguage
-            ? 'browser'
-            : language
-        }
+        value={preference}
         disabled={disabled || pending}
         aria-busy={pending}
         onChange={(event) => {

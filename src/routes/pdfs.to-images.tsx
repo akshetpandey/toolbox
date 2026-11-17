@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
@@ -33,7 +34,7 @@ function PDFToImagesRoute() {
       disabled={!count}
       run={async (signal, setStatus) => {
         if (!file || !count)
-          throw new Error(t('pdfsToImagesChooseAReadablePDFFirst'))
+          throw new MessageError('pdfsToImagesChooseAReadablePDFFirst')
         const pages = parsePageRanges(ranges, count).flat()
         const blob = await exportPDFImages(
           file,
@@ -43,7 +44,10 @@ function PDFToImagesRoute() {
           signal,
           (index) => {
             setStatus(
-              t('pdfsToImagesRenderedOfPages', { index, count: pages.length }),
+              message('pdfsToImagesRenderedOfPages', {
+                index,
+                count: pages.length,
+              }),
             )
           },
         )

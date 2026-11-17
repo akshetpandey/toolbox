@@ -1,4 +1,4 @@
-import { message } from '@/i18n/messages'
+import { imageDimensions, message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
@@ -17,6 +17,7 @@ import {
   getAudioCodecOptions,
   getCompatibleCodecs,
   getCompatibleResolutions,
+  encodingPresets,
 } from '@/lib/videoToolsUtils'
 
 export const Route = createFileRoute('/videos/convert')({
@@ -27,7 +28,7 @@ function VideoConvertComponent() {
   const t = useTranslator()
   const action = useVideoAction(
     'videos.convert',
-    t('videosConvertTheVideoCouldNotBeConverted'),
+    message('videosConvertTheVideoCouldNotBeConverted'),
   )
   const [settings, updateSettings] = useVideoSettings(
     'videos.convert.settings',
@@ -324,13 +325,19 @@ function VideoConvertComponent() {
                       setSettings({ ...settings, preset: event.target.value })
                     }
                   >
-                    {['ultrafast', 'veryfast', 'fast', 'medium', 'slow'].map(
-                      (preset) => (
-                        <option key={preset} value={preset}>
-                          {preset}
-                        </option>
-                      ),
-                    )}
+                    {(
+                      [
+                        'ultrafast',
+                        'veryfast',
+                        'fast',
+                        'medium',
+                        'slow',
+                      ] as const
+                    ).map((preset) => (
+                      <option key={preset} value={preset}>
+                        {t(encodingPresets[preset])}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </fieldset>
@@ -409,10 +416,16 @@ function VideoConvertComponent() {
                     ? message('videosConvertOriginalDimensions')
                     : settings.resolution === 'custom'
                       ? message('videosConvertPixelBoundingBox', {
-                          width: settings.width,
-                          height: settings.height,
+                          dimensions: imageDimensions(
+                            Number(settings.width),
+                            Number(settings.height),
+                          ),
                         })
-                      : settings.resolution.replace('x', ' × '),
+                      : message('mediaDimensions', {
+                          dimensions: {
+                            ltr: settings.resolution.replace('x', ' × '),
+                          },
+                        }),
                 ],
               }))
             }

@@ -1,4 +1,5 @@
-import { english, message } from '@/i18n/messages'
+import { renderMessage, english, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
@@ -29,7 +30,7 @@ function MetadataExtractionPage() {
   // Replacement starts its own analysis; keep stripping progress local.
   const beginOperation = useFileOperation(selectedFile?.file, false)
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
-  const [stripError, setStripError] = useState<string | null>(null)
+  const [stripError, setStripError] = useState<MessageText | null>(null)
   const { result, setResult } = useToolResult(
     selectedFile?.file,
     'utilities.metadata',
@@ -65,7 +66,7 @@ function MetadataExtractionPage() {
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setStripError(t('utilitiesMetadataMetadataCouldNotBeRemovedNo'))
+      setStripError(message('utilitiesMetadataMetadataCouldNotBeRemovedNo'))
     } finally {
       if (operation.isCurrent()) setIsStrippingMetadata(false)
       operation.finish()
@@ -183,7 +184,7 @@ function MetadataExtractionPage() {
             </div>
             {stripError && (
               <p role="alert" className="text-sm text-destructive">
-                {stripError}
+                {renderMessage(t, stripError)}
               </p>
             )}
           </CardContent>

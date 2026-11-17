@@ -1,4 +1,4 @@
-import { message } from '@/i18n/messages'
+import { message, imageDimensions } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,7 +23,7 @@ function VideoMetadataComponent() {
   const t = useTranslator()
   const action = useVideoAction(
     'videos.metadata',
-    t('videosMetadataMetadataCouldNotBeRemovedTry'),
+    message('videosMetadataMetadataCouldNotBeRemovedTry'),
   )
   const { selectedFile, metadata, isProcessing } = action
   const isStrippingMetadata = isProcessing
@@ -154,8 +154,9 @@ function VideoMetadataComponent() {
                       {t('videosMetadataStreams')}
                     </span>
                     <span className="font-medium">
-                      {fileMetadata.format.nb_streams}
-                      {' ' + t('videosMetadataTotal')}
+                      {t('videosMetadataTotal', {
+                        count: fileMetadata.format.nb_streams,
+                      })}
                     </span>
                   </div>
                 </div>
@@ -167,8 +168,9 @@ function VideoMetadataComponent() {
               <div>
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   <VideoIcon className="h-5 w-5 text-purple-500" />
-                  {t('videosMetadataVideoStreams')}
-                  {fileMetadata.video_streams.length})
+                  {t('videosMetadataVideoStreams', {
+                    count: fileMetadata.video_streams.length,
+                  })}
                 </h3>
                 <div className="flex flex-col gap-3">
                   {fileMetadata.video_streams.map((stream) => (
@@ -178,8 +180,7 @@ function VideoMetadataComponent() {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <Badge variant="secondary" className="text-xs">
-                          {t('videosMetadataStream')}
-                          {stream.index}
+                          {t('videosMetadataStream', { number: stream.index })}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {stream.codec_long_name}
@@ -200,7 +201,12 @@ function VideoMetadataComponent() {
                             {t('videosMetadataResolution')}
                           </span>
                           <span className="font-medium">
-                            {stream.width} × {stream.height}
+                            {t('mediaDimensions', {
+                              dimensions: imageDimensions(
+                                stream.width,
+                                stream.height,
+                              ),
+                            })}
                           </span>
                         </div>
                         {stream.display_aspect_ratio && (
@@ -275,8 +281,9 @@ function VideoMetadataComponent() {
               <div>
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   <Volume2 className="h-5 w-5 text-green-500" />
-                  {t('videosMetadataAudioStreams')}
-                  {fileMetadata.audio_streams.length})
+                  {t('videosMetadataAudioStreams', {
+                    count: fileMetadata.audio_streams.length,
+                  })}
                 </h3>
                 <div className="flex flex-col gap-3">
                   {fileMetadata.audio_streams.map((stream) => (
@@ -286,8 +293,7 @@ function VideoMetadataComponent() {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <Badge variant="secondary" className="text-xs">
-                          {t('videosMetadataStream')}
-                          {stream.index}
+                          {t('videosMetadataStream', { number: stream.index })}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {stream.codec_long_name}

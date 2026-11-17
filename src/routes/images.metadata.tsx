@@ -1,4 +1,5 @@
-import { message } from '@/i18n/messages'
+import { renderMessage, message, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
@@ -29,7 +30,7 @@ function MetadataPage() {
   const { isProcessing } = useProcessing()
   const beginOperation = useFileOperation(selectedFile?.file)
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
-  const [stripError, setStripError] = useState<string | null>(null)
+  const [stripError, setStripError] = useState<MessageText | null>(null)
   const { result, setResult } = useToolResult(
     selectedFile?.file,
     'images.metadata',
@@ -62,7 +63,12 @@ function MetadataPage() {
         details: [
           ...(selectedFile.dimensions
             ? [
-                `${selectedFile.dimensions.width} × ${selectedFile.dimensions.height} px`,
+                message('mediaDimensionsPixels', {
+                  dimensions: imageDimensions(
+                    selectedFile.dimensions.width,
+                    selectedFile.dimensions.height,
+                  ),
+                }),
               ]
             : []),
           message('imagesMetadataEmbeddedMetadataRemovedICCColorProfile'),
@@ -71,7 +77,7 @@ function MetadataPage() {
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setStripError(t('imagesMetadataFailedToStripMetadataNoFile'))
+      setStripError(message('imagesMetadataFailedToStripMetadataNoFile'))
     } finally {
       if (operation.isCurrent()) setIsStrippingMetadata(false)
       operation.finish()
@@ -91,7 +97,12 @@ function MetadataPage() {
               {[
                 [
                   t('imagesMetadataDimensions'),
-                  `${imageMetadata.width} × ${imageMetadata.height} px`,
+                  t('mediaDimensionsPixels', {
+                    dimensions: imageDimensions(
+                      imageMetadata.width,
+                      imageMetadata.height,
+                    ),
+                  }),
                 ],
                 [t('imagesMetadataFormat'), imageMetadata.format],
                 [t('imagesMetadataColorSpace'), imageMetadata.colorspace],
@@ -182,7 +193,7 @@ function MetadataPage() {
           )}
           {stripError && (
             <p role="alert" className="break-words text-sm text-destructive">
-              {stripError}
+              {renderMessage(t, stripError)}
             </p>
           )}
         </CardContent>

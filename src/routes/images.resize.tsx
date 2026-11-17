@@ -1,3 +1,5 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
@@ -32,7 +34,7 @@ function ResizePage() {
     height: '',
     maintainAspectRatio: true,
   })
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<MessageText | null>(null)
   const { result, setResult, clearResult } = useToolResult(
     selectedFile?.file,
     'images.resize',
@@ -118,12 +120,16 @@ function ResizePage() {
         blob,
         filename,
         sourceSize: selectedFile.size,
-        details: [`${width} × ${height} px`],
+        details: [
+          message('mediaDimensionsPixels', {
+            dimensions: imageDimensions(width, height),
+          }),
+        ],
       })
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setError(t('imagesResizeThisImageCouldNotBeResized'))
+      setError(message('imagesResizeThisImageCouldNotBeResized'))
     } finally {
       operation.finish()
     }
@@ -209,7 +215,7 @@ function ResizePage() {
           )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <Button

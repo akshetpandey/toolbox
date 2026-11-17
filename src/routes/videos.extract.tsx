@@ -19,7 +19,7 @@ function VideoExtractComponent() {
   const t = useTranslator()
   const action = useVideoAction(
     'videos.extract',
-    t('videosExtractTheAudioCouldNotBeExtracted'),
+    message('videosExtractTheAudioCouldNotBeExtracted'),
   )
   const [audioFormat, setAudioFormat] = useVideoSettings(
     'videos.extract.format',

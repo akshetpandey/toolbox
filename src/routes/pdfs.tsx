@@ -1,3 +1,5 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createFileRoute,
@@ -25,7 +27,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
+import type { DragEndEvent, UniqueIdentifier } from '@dnd-kit/core'
 import {
   SortableContext,
   arrayMove,
@@ -103,7 +105,7 @@ function SortableFileItem({
               ? t('pdfsReadingPages')
               : pageCount === null
                 ? t('pdfsCouldNotReadPDF')
-                : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`}
+                : t('pdfsMergePageCount', undefined, pageCount)}
           </p>
         </div>
       </div>
@@ -168,7 +170,7 @@ function PDFToolsLayout() {
   const [pageCounts, setPageCounts] = useState<Record<string, number | null>>(
     {},
   )
-  const [selectionError, setSelectionError] = useState('')
+  const [selectionError, setSelectionError] = useState<MessageText>('')
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -225,7 +227,7 @@ function PDFToolsLayout() {
         }
       }
       if (pdfFiles.length !== files.length)
-        setSelectionError(t('pdfsOnlyPDFFilesWereAddedChoose'))
+        setSelectionError(message('pdfsOnlyPDFFilesWereAddedChoose'))
     },
     [isProcessing, merging, setSelectedFiles],
   )
@@ -285,9 +287,37 @@ function PDFToolsLayout() {
       disabled={isProcessing}
     />
   )
+  const draggedFile = (id: UniqueIdentifier) =>
+    selectedFiles.find((file) => file.id === id)?.name ?? 'PDF'
+  const filePosition = (id: UniqueIdentifier) =>
+    selectedFiles.findIndex((file) => file.id === id) + 1
+
   const pdfFileUpload = (
     <DndContext
       sensors={sensors}
+      accessibility={{
+        screenReaderInstructions: { draggable: t('pdfsDragInstructions') },
+        announcements: {
+          onDragStart: ({ active }) =>
+            t('pdfsDragPickedUp', { filename: draggedFile(active.id) }),
+          onDragOver: ({ active, over }) =>
+            over
+              ? t('pdfsDragMoved', {
+                  filename: draggedFile(active.id),
+                  position: filePosition(over.id),
+                })
+              : undefined,
+          onDragEnd: ({ active, over }) =>
+            over
+              ? t('pdfsDragDropped', {
+                  filename: draggedFile(active.id),
+                  position: filePosition(over.id),
+                })
+              : t('pdfsDragCancelled', { filename: draggedFile(active.id) }),
+          onDragCancel: ({ active }) =>
+            t('pdfsDragCancelled', { filename: draggedFile(active.id) }),
+        },
+      }}
       onDragStart={({ active }) => setActiveId(String(active.id))}
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
@@ -363,7 +393,7 @@ function PDFToolsLayout() {
       >
         {selectionError && (
           <p role="alert" className="text-sm text-destructive">
-            {selectionError}
+            {renderMessage(t, selectionError)}
           </p>
         )}
         <Outlet />

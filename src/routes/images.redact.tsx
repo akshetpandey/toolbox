@@ -1,4 +1,5 @@
-import { message } from '@/i18n/messages'
+import { renderMessage, message, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
@@ -34,6 +35,13 @@ import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
 const EmojiPicker = lazy(() => import('@/components/RedactionEmojiPicker'))
+
+const redactionModeLabels = {
+  box: 'imagesRedactBox',
+  blur: 'imagesRedactBlur',
+  pixelate: 'imagesRedactPixelate',
+  emoji: 'imagesRedactEmoji',
+} as const
 
 interface RedactionArea {
   x: number
@@ -239,7 +247,7 @@ function RedactPage() {
   const [scaleFactor, setScaleFactor] = useState({ x: 1, y: 1 })
   const [isExporting, setIsExporting] = useState(false)
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
-  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<MessageText | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const originalImageRef = useRef<HTMLImageElement | null>(null)
 
@@ -985,7 +993,7 @@ function RedactPage() {
       if (!operation.isCurrent()) return
       if (latestAreas.current !== redactionAreas) {
         setDownloadError(
-          t('imagesRedactYourRedactionsChangedWhilePreparingThe'),
+          message('imagesRedactYourRedactionsChangedWhilePreparingThe'),
         )
         return
       }
@@ -995,7 +1003,16 @@ function RedactPage() {
         filename,
         sourceSize: selectedFile.size,
         details: [
-          `${selectedFile.dimensions?.width} × ${selectedFile.dimensions?.height} px`,
+          ...(selectedFile.dimensions
+            ? [
+                message('mediaDimensionsPixels', {
+                  dimensions: imageDimensions(
+                    selectedFile.dimensions.width,
+                    selectedFile.dimensions.height,
+                  ),
+                }),
+              ]
+            : []),
           message('imagesRedactRedactionAreas', {
             count: redactionAreas.length,
           }),
@@ -1005,7 +1022,7 @@ function RedactPage() {
     } catch (error) {
       if (!operation.isCurrent()) return
       console.error('RedactionTool: Error during download:', error)
-      setDownloadError(t('imagesRedactFailedToRedactTheImageNo'))
+      setDownloadError(message('imagesRedactFailedToRedactTheImageNo'))
     } finally {
       if (operation.isCurrent()) setIsExporting(false)
       operation.finish()
@@ -1034,7 +1051,7 @@ function RedactPage() {
       if (!operation.isCurrent()) return
       if (latestAreas.current !== redactionAreas) {
         setDownloadError(
-          t('imagesRedactYourRedactionsChangedWhilePreparingThe'),
+          message('imagesRedactYourRedactionsChangedWhilePreparingThe'),
         )
         return
       }
@@ -1044,7 +1061,16 @@ function RedactPage() {
         filename,
         sourceSize: selectedFile.size,
         details: [
-          `${selectedFile.dimensions?.width} × ${selectedFile.dimensions?.height} px`,
+          ...(selectedFile.dimensions
+            ? [
+                message('mediaDimensionsPixels', {
+                  dimensions: imageDimensions(
+                    selectedFile.dimensions.width,
+                    selectedFile.dimensions.height,
+                  ),
+                }),
+              ]
+            : []),
           message('imagesRedactRedactedImageWithEmbeddedMetadataRemoved'),
         ],
       })
@@ -1055,7 +1081,7 @@ function RedactPage() {
         'RedactionTool: Error during download with metadata stripping:',
         error,
       )
-      setDownloadError(t('imagesRedactFailedToStripMetadataFromThe'))
+      setDownloadError(message('imagesRedactFailedToStripMetadataFromThe'))
     } finally {
       if (operation.isCurrent()) setIsExporting(false)
       operation.finish()
@@ -1333,8 +1359,10 @@ function RedactPage() {
                   aria-pressed={selectedIndex === index}
                   onClick={() => setSelectedIndex(index)}
                 >
-                  {t('imagesRedactArea') + ' '}
-                  {index + 1} · {area.mode}
+                  {t('imagesRedactAreaSummary', {
+                    number: index + 1,
+                    mode: t(redactionModeLabels[area.mode]),
+                  })}
                 </Button>
               ))}
             </div>
@@ -1393,7 +1421,7 @@ function RedactPage() {
 
           {downloadError && (
             <p role="alert" className="text-sm text-destructive">
-              {downloadError}
+              {renderMessage(t, downloadError)}
             </p>
           )}
 

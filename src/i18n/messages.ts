@@ -6,7 +6,7 @@ export type MessageKey =
   | keyof typeof import('./en-tool-content.json')
 export type MessageValues = Record<
   string,
-  string | number | boolean | null | undefined
+  string | number | boolean | null | undefined | LeftToRightText
 >
 export type Catalog = Partial<Record<MessageKey, string>>
 export type Translator = (
@@ -14,6 +14,17 @@ export type Translator = (
   values?: MessageValues,
   count?: number,
 ) => string
+
+interface LeftToRightText {
+  ltr: string
+}
+
+export function imageDimensions(
+  width: number,
+  height: number,
+): LeftToRightText {
+  return { ltr: `${width} × ${height}` }
+}
 
 const englishShell: Catalog = sourceMessages
 const englishPluralRules = new Intl.PluralRules('en')
@@ -23,6 +34,7 @@ export function createTranslator(
   catalog: Catalog = {},
   fallback: Catalog = sourceMessages,
 ): Translator {
+  const rightToLeft = locale === 'ar'
   const pluralRules =
     locale === 'en' ? englishPluralRules : new Intl.PluralRules(locale)
   return (key, values, count) => {
@@ -42,9 +54,12 @@ export function createTranslator(
       englishShell[key] ??
       key
     return message.replace(/\{(\w+)\}/g, (placeholder, name: string) => {
-      return name === 'count' && count !== undefined
-        ? String(count)
-        : String(values?.[name] ?? placeholder)
+      const value =
+        name === 'count' && count !== undefined ? count : values?.[name]
+      if (typeof value === 'object' && value) {
+        return rightToLeft ? `\u2066${value.ltr}\u2069` : value.ltr
+      }
+      return String(value ?? placeholder)
     })
   }
 }
@@ -69,6 +84,8 @@ export function message(
   return { key, values, count }
 }
 
-export function renderMessage(t: Translator, text: string | LocalizedMessage) {
+export type MessageText = string | LocalizedMessage
+
+export function renderMessage(t: Translator, text: MessageText) {
   return typeof text === 'string' ? text : t(text.key, text.values, text.count)
 }

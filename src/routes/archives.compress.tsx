@@ -1,4 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
+import { messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
@@ -40,7 +42,7 @@ function CompressPage() {
     compressionResult,
     clearFiles,
   } = useArchiveTools()
-  const [error, setError] = useState('')
+  const [error, setError] = useState<MessageText>('')
   const operation = useRef(0)
   const busy = useRef(false)
   useEffect(
@@ -75,7 +77,10 @@ function CompressPage() {
     } catch (cause) {
       if (operation.current === request)
         setError(
-          errorMessage(t, cause, t('archivesCompressArchiveCreationFailed')),
+          messageFromError(
+            cause,
+            message('archivesCompressArchiveCreationFailed'),
+          ),
         )
     } finally {
       if (operation.current === request) {
@@ -190,7 +195,9 @@ function CompressPage() {
                   <summary className="cursor-pointer font-medium">
                     {t('archivesCompressTechnicalDetails')}
                   </summary>
-                  <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
+                  <p className="mt-2 [overflow-wrap:anywhere]">
+                    {renderMessage(t, error)}
+                  </p>
                 </details>
               </div>
             )}

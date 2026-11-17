@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
@@ -17,10 +18,10 @@ function PDFOCRRoute() {
       sourceKey={file?.name ?? ''}
       name="pdfs.edit.ocr"
       label={t('pdfsOcrMakeSearchableAndDownload')}
-      status={t('pdfsOcrOpeningYourPDF')}
+      status={message('pdfsOcrOpeningYourPDF')}
       onReset={clearFiles}
       run={async (signal, setStatus) => {
-        if (!file) throw new Error(t('pdfsOcrChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsOcrChooseAPDFFirst')
         const { makeSearchablePDF } = await import('@/lib/pdf-privacy')
         const { blob, recognized } = await makeSearchablePDF(
           file,

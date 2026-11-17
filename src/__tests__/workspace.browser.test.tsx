@@ -352,7 +352,7 @@ test.each([375, 1440])(
       .getBoundingClientRect()
     expect(resizeUpload.width).toBeCloseTo(upload.width, 0)
     await act(() => router.navigate({ to: '/images/redact' }))
-    expect(screen.getByRole('button', { name: 'Area 1 · box' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Area 1 · Box' })).toBeTruthy()
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
   },
 )

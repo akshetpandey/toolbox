@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import type { LocalizedMessage } from '@/i18n/messages'
 import { MessageError } from '@/i18n/MessageError'
 import { canvasBlob, loadEditablePDF, savePDF } from './pdf-edit'
 import { abortable, createOCRWorker } from './ocr'
@@ -86,7 +88,7 @@ export async function redactPDF(
 export async function makeSearchablePDF(
   file: Blob,
   signal: AbortSignal,
-  onStatus: (message: string) => void,
+  onStatus: (message: LocalizedMessage) => void,
 ) {
   const { PDFDocument } = await import('pdf-lib')
   const output = await PDFDocument.create()
@@ -104,7 +106,9 @@ export async function makeSearchablePDF(
         output.addPage(copy)
         continue
       }
-      onStatus(`Recognizing page ${page} of ${source.numPages}…`)
+      onStatus(
+        message('pdfsOcrRecognizingPage', { page, total: source.numPages }),
+      )
       signal.throwIfAborted()
       worker ??= await createOCRWorker(signal)
       signal.throwIfAborted()

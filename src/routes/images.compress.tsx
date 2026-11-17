@@ -1,3 +1,5 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
@@ -36,7 +38,7 @@ function CompressPage() {
     'images.compress.allowResize',
     false,
   )
-  const [error, setError] = useWorkspaceState<string | null>(
+  const [error, setError] = useWorkspaceState<MessageText | null>(
     'images.compress.error',
     null,
   )
@@ -78,18 +80,25 @@ function CompressPage() {
       if (!output || (mode === 'limit' && output.blob.size > maximumBytes)) {
         setError(
           allowResize
-            ? t('imagesCompressThisImageCouldNotMeetThe')
-            : t('imagesCompressTheImageCouldNotMeetThe'),
+            ? message('imagesCompressThisImageCouldNotMeetThe')
+            : message('imagesCompressTheImageCouldNotMeetThe'),
         )
         return
       }
 
       const { blob, width, height } = output
       const filename = imageOutputFilename(`compressed_${imageFile.name}`, blob)
-      const details = width && height ? [`${width} × ${height} px`] : []
+      const details =
+        width && height
+          ? [
+              message('mediaDimensionsPixels', {
+                dimensions: imageDimensions(width, height),
+              }),
+            ]
+          : []
       if (mode === 'limit')
         details.push(
-          t('imagesCompressMeetsTheByteLimit', {
+          message('imagesCompressMeetsTheByteLimit', {
             maximumBytes: maximumBytes.toLocaleString(),
           }),
         )
@@ -102,7 +111,7 @@ function CompressPage() {
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setError(t('imagesCompressThisImageCouldNotBeCompressed'))
+      setError(message('imagesCompressThisImageCouldNotBeCompressed'))
     } finally {
       operation.finish()
     }
@@ -225,7 +234,7 @@ function CompressPage() {
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <div className="flex justify-end">

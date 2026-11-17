@@ -1,3 +1,5 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useRef, type PointerEvent } from 'react'
@@ -47,7 +49,10 @@ function CropImage() {
     flipHorizontal: false,
     flipVertical: false,
   })
-  const [error, setError] = useWorkspaceState('images.crop.error', '')
+  const [error, setError] = useWorkspaceState<MessageText>(
+    'images.crop.error',
+    '',
+  )
   const drag = useRef<{ x: number; y: number; pointerId: number } | null>(null)
   const dimensions = selectedFile?.dimensions
   const cropInput = settings.crop ?? {
@@ -150,11 +155,19 @@ function CropImage() {
       )
       if (!operation.isCurrent()) return
       const filename = imageOutputFilename(`edited_${selectedFile.name}`, blob)
-      setResult({ blob, filename, details: [`${width} × ${height} px`] })
+      setResult({
+        blob,
+        filename,
+        details: [
+          message('mediaDimensionsPixels', {
+            dimensions: imageDimensions(width, height),
+          }),
+        ],
+      })
       downloadBlob(blob, filename)
     } catch {
       if (operation.isCurrent())
-        setError(t('imagesCropTheImageCouldNotBeEdited'))
+        setError(message('imagesCropTheImageCouldNotBeEdited'))
     } finally {
       operation.finish()
     }
@@ -309,7 +322,9 @@ function CropImage() {
                 <details className="space-y-3 rounded-md border p-3">
                   <summary className="cursor-pointer text-sm font-medium">
                     {t('imagesCropPreviewEditedImage')}
-                    {outputWidth} × {outputHeight}
+                    {t('mediaDimensions', {
+                      dimensions: imageDimensions(outputWidth, outputHeight),
+                    })}
                     {' ' + t('imagesCropPx')}
                   </summary>
                   <svg
@@ -342,7 +357,7 @@ function CropImage() {
           )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <Button

@@ -124,7 +124,7 @@ test.each([
     touch('touchmove', 120)
     touch('touchend')
     await screen.findByRole('button', {
-      name: `Area 1 · ${mode.toLowerCase()}`,
+      name: `Area 1 · ${mode}`,
     })
 
     const checkPixels = (context: CanvasRenderingContext2D, factor: number) => {

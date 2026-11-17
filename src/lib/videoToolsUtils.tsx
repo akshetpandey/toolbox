@@ -1,3 +1,5 @@
+import { message, renderMessage } from '@/i18n/messages'
+import type { LocalizedMessage } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { workspaceEnglish as english } from '@/i18n/workspaceMessages'
 import type { Translator } from '@/i18n/messages'
@@ -497,14 +499,16 @@ export function useVideoSettings<T>(
 }
 
 /** Shared completion/error behavior for video actions; importing stays separate. */
-export function useVideoAction(workspaceKey: string, failureMessage: string) {
-  const t = useTranslator()
+export function useVideoAction(
+  workspaceKey: string,
+  failureMessage: LocalizedMessage,
+) {
   const context = useVideoTools()
   const { result, setResult, clearResult } = useToolResult(
     context.selectedFile?.file,
     workspaceKey,
   )
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<LocalizedMessage | null>(null)
   const [diagnostic, setDiagnostic] = useState<string | null>(null)
   const operationVersion = useRef(0)
   const activeController = useRef<AbortController | null>(null)
@@ -582,9 +586,9 @@ export function useVideoAction(workspaceKey: string, failureMessage: string) {
         controller.signal.aborted ||
         (cause instanceof Error && cause.name === 'AbortError')
       ) {
-        setError(t('videoToolsUtilsProcessingCancelledYouCanTryAgain'))
+        setError(message('videoToolsUtilsProcessingCancelledYouCanTryAgain'))
       } else if (cause instanceof MediaInputError) {
-        setError(t(cause.key, cause.values))
+        setError(message(cause.key, cause.values))
       } else {
         setError(failureMessage)
         setDiagnostic(cause instanceof Error ? cause.message : String(cause))
@@ -609,6 +613,18 @@ export function useVideoAction(workspaceKey: string, failureMessage: string) {
   }
 }
 
+export const encodingPresets = {
+  ultrafast: 'videoToolsUtilsPresetUltrafast',
+  superfast: 'videoToolsUtilsPresetSuperfast',
+  veryfast: 'videoToolsUtilsPresetVeryfast',
+  faster: 'videoToolsUtilsPresetFaster',
+  fast: 'videoToolsUtilsPresetFast',
+  medium: 'videoToolsUtilsPresetMedium',
+  slow: 'videoToolsUtilsPresetSlow',
+  slower: 'videoToolsUtilsPresetSlower',
+  veryslow: 'videoToolsUtilsPresetVeryslow',
+} as const
+
 export function VideoActionStatus({
   label,
   error,
@@ -617,7 +633,7 @@ export function VideoActionStatus({
   indeterminate = false,
 }: {
   label: string
-  error: string | null
+  error: LocalizedMessage | null
   diagnostic: string | null
   cancellable?: boolean
   indeterminate?: boolean
@@ -659,9 +675,9 @@ export function VideoActionStatus({
             </span>
             {!indeterminate && estimatedTimeRemaining && (
               <span>
-                {t('videoToolsUtilsAbout') + ' '}
-                {estimatedTimeRemaining}
-                {' ' + t('videoToolsUtilsRemaining')}
+                {t('videoToolsUtilsRemaining', {
+                  time: estimatedTimeRemaining,
+                })}
               </span>
             )}
             {cancellable && (
@@ -683,7 +699,7 @@ export function VideoActionStatus({
           role="alert"
           className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-foreground"
         >
-          <p>{error}</p>
+          <p>{renderMessage(t, error)}</p>
           {diagnostic && (
             <details className="mt-2">
               <summary className="cursor-pointer">

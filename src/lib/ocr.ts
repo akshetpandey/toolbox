@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import type { LocalizedMessage, MessageKey } from '@/i18n/messages'
 import { MessageError } from '@/i18n/MessageError'
 import type { Worker } from 'tesseract.js'
 import { canvasBlob } from './pdf-edit'
@@ -5,10 +7,10 @@ import { canvasBlob } from './pdf-edit'
 export function abortable<T>(
   promise: Promise<T>,
   signal: AbortSignal,
-  message = 'OCR was stopped.',
+  reason: MessageKey = 'ocrStopped',
 ) {
   return new Promise<T>((resolve, reject) => {
-    const abort = () => reject(new Error(message))
+    const abort = () => reject(new MessageError(reason))
     signal.addEventListener('abort', abort, { once: true })
     if (signal.aborted) abort()
     void promise
@@ -20,7 +22,7 @@ export function abortable<T>(
 /** Use the same local OCR assets for images and scanned PDFs. */
 export async function createOCRWorker(
   signal: AbortSignal,
-  onStatus?: (message: string) => void,
+  onStatus?: (message: LocalizedMessage) => void,
 ): Promise<Worker> {
   signal.throwIfAborted()
   const {
@@ -39,18 +41,14 @@ export async function createOCRWorker(
         if (!signal.aborted)
           onStatus?.(
             status === 'recognizing text'
-              ? `Recognizing text… ${Math.round(progress * 100)}%`
-              : 'Loading text recognition…',
+              ? message('ocrRecognizingText', {
+                  percent: Math.round(progress * 100),
+                })
+              : message('imagesOcrLoadingTextRecognition'),
           )
       },
       errorHandler: (cause: unknown) =>
-        reject(
-          new Error(
-            typeof cause === 'string'
-              ? cause
-              : 'Could not load the OCR engine.',
-          ),
-        ),
+        reject(new MessageError('ocrEngineCouldNotLoad', undefined, { cause })),
     }).then((worker) => {
       if (startupSignal.aborted) void worker.terminate()
       else resolve(worker)
@@ -59,7 +57,7 @@ export async function createOCRWorker(
   const worker = await abortable(
     initialization,
     startupSignal,
-    'The OCR engine took too long to load. Try again.',
+    'ocrEngineTimedOut',
   )
   try {
     await abortable(
@@ -76,7 +74,7 @@ export async function createOCRWorker(
 export async function recognizeImageText(
   preview: string,
   signal: AbortSignal,
-  onStatus: (message: string) => void,
+  onStatus: (message: LocalizedMessage) => void,
 ) {
   signal.throwIfAborted()
   const image = new Image()

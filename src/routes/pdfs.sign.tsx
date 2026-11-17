@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
@@ -32,7 +33,7 @@ function PDFSignRoute() {
       onReset={clearFiles}
       disabled={!name.trim() || !validPage}
       run={async () => {
-        if (!file) throw new Error(t('pdfsSignChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsSignChooseAPDFFirst')
         return {
           blob: await stampPDF(file, {
             type: 'signature',

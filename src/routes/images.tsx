@@ -1,3 +1,5 @@
+import { message, imageDimensions, renderMessage } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { MessageError } from '@/i18n/MessageError'
 import {
@@ -163,10 +165,9 @@ function ImageToolsLayout() {
   )
   const [isExtractingExif, setIsExtractingExif] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
-  const [selectionError, setSelectionError] = useState<string | null>(null)
-  const [batchSelectionError, setBatchSelectionError] = useState<string | null>(
-    null,
-  )
+  const [selectionError, setSelectionError] = useState<MessageText | null>(null)
+  const [batchSelectionError, setBatchSelectionError] =
+    useState<MessageText | null>(null)
   const [batchFiles, setBatchFiles] = useWorkspaceState<File[]>(
     'imageBatch.files',
     [],
@@ -238,7 +239,7 @@ function ImageToolsLayout() {
       const isCurrent = () => selection.request === request
       if (!isSupportedImage(file)) {
         setIsPreparing(false)
-        setSelectionError(t('imagesChooseAJPGPNGWebPGIF'))
+        setSelectionError(message('imagesChooseAJPGPNGWebPGIF'))
         return
       }
       setIsPreparing(true)
@@ -280,7 +281,8 @@ function ImageToolsLayout() {
         invalidateImageWork()
         setIsPreparing(false)
       } catch {
-        if (isCurrent()) setSelectionError(t('imagesThisImageCouldNotBeOpened'))
+        if (isCurrent())
+          setSelectionError(message('imagesThisImageCouldNotBeOpened'))
       } finally {
         if (!retainedPreview && preview) URL.revokeObjectURL(preview)
         if (isCurrent()) setIsPreparing(false)
@@ -333,7 +335,7 @@ function ImageToolsLayout() {
       onFileSelect={(files) => {
         const selected = Array.from(files)
         if (selected.some((file) => !isSupportedImage(file))) {
-          setBatchSelectionError(t('imagesChooseOnlyImageFilesForA'))
+          setBatchSelectionError(message('imagesChooseOnlyImageFilesForA'))
           return
         }
         setBatchSelectionError(null)
@@ -389,7 +391,12 @@ function ImageToolsLayout() {
                   <span>{formatFileSize(file.size, t)}</span>
                   {file.dimensions && (
                     <span>
-                      {file.dimensions.width} × {file.dimensions.height}
+                      {t('mediaDimensions', {
+                        dimensions: imageDimensions(
+                          file.dimensions.width,
+                          file.dimensions.height,
+                        ),
+                      })}
                     </span>
                   )}
                 </div>
@@ -432,7 +439,7 @@ function ImageToolsLayout() {
             )}
             {uploadError && (
               <p role="alert" className="text-sm text-destructive">
-                {uploadError}
+                {renderMessage(t, uploadError)}
               </p>
             )}
           </div>

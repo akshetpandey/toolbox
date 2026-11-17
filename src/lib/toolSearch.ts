@@ -3,6 +3,7 @@ import { getToolCatalog } from './toolCatalog'
 import { english } from '@/i18n/messages'
 import { toolContentEnglish } from '@/i18n/toolContentMessages'
 import type { Translator } from '@/i18n/messages'
+import type { Language } from '@/i18n/locales'
 import { toolPaths } from './toolPaths'
 import { toolSearchKeywords } from './toolSearchKeywords'
 
@@ -158,7 +159,19 @@ function isSingleTypo(query: string, word: string) {
   )
 }
 
-export function findTools(query: string, translate = english) {
+const localizedFormatPairs: Partial<Record<Language, RegExp>> = {
+  es: /(?:^| )([a-z0-9]+) (?:a|en) ([a-z0-9]+)$/u,
+  ja: /(?:^| )([a-z0-9]+) *(?:から|を) *([a-z0-9]+)(?: *[にへ](?: *変換)?)?$/u,
+  ru: /(?:^| )([a-z0-9]+) (?:в|на) ([a-z0-9]+)$/u,
+  ar: /(?:^| )([a-z0-9]+) ال[ىي] ([a-z0-9]+)$/u,
+  nl: /(?:^| )([a-z0-9]+) naar ([a-z0-9]+)$/u,
+}
+
+export function findTools(
+  query: string,
+  translate = english,
+  language: Language = 'en',
+) {
   const t = translate === english ? toolContentEnglish : translate
   const allTools = getToolCatalog(t).tools
   const toolSearch = getSearch(t)
@@ -169,7 +182,9 @@ export function findTools(query: string, translate = english) {
     .filter((word) => word && !searchStopWords.has(word))
   if (words.length === 0) return []
   // Prefer the requested direction for format pairs such as PDF to Word.
-  const pair = /\b([a-z0-9]+) (?:to|into) ([a-z0-9]+)$/u.exec(normalized)
+  const pair =
+    /\b([a-z0-9]+) (?:to|into) ([a-z0-9]+)$/u.exec(normalized) ??
+    localizedFormatPairs[language]?.exec(normalized)
   const route = pair
     ? conversionRoute(pair[1], pair[2])
     : words.length === 2 &&

@@ -1,4 +1,4 @@
-import { message } from '@/i18n/messages'
+import { message, imageDimensions } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import {
   useVideoSettings,
   useVideoAction,
   VideoActionStatus,
+  encodingPresets,
 } from '@/lib/videoToolsUtils'
 
 export const Route = createFileRoute('/videos/compress')({
@@ -56,8 +57,8 @@ function VideoCompressComponent() {
   const action = useVideoAction(
     'videos.compress',
     bySize
-      ? t('videosCompressTheVideoCouldNotBeCompressed')
-      : t('videosCompressTheVideoCouldNotBeCompressedText'),
+      ? message('videosCompressTheVideoCouldNotBeCompressed')
+      : message('videosCompressTheVideoCouldNotBeCompressedText'),
   )
   const updateSettings = (changes: Partial<typeof settings>) => {
     setSettings({ ...settings, ...changes })
@@ -203,21 +204,13 @@ function VideoCompressComponent() {
                       }
                       className="h-11 w-full rounded-md border bg-background px-3 text-base"
                     >
-                      {[
-                        'ultrafast',
-                        'superfast',
-                        'veryfast',
-                        'faster',
-                        'fast',
-                        'medium',
-                        'slow',
-                        'slower',
-                        'veryslow',
-                      ].map((preset) => (
-                        <option key={preset} value={preset}>
-                          {preset}
-                        </option>
-                      ))}
+                      {Object.entries(encodingPresets).map(
+                        ([preset, label]) => (
+                          <option key={preset} value={preset}>
+                            {t(label)}
+                          </option>
+                        ),
+                      )}
                     </select>
                     <p className="text-sm text-muted-foreground">
                       {t('videosCompressSlowerEncodingCanProduceSmallerFiles')}
@@ -257,7 +250,12 @@ function VideoCompressComponent() {
                     : []),
                   ...(!bySize && action.selectedFile?.dimensions
                     ? [
-                        `${action.selectedFile.dimensions.width} × ${action.selectedFile.dimensions.height} pixels`,
+                        message('mediaDimensionsPixels', {
+                          dimensions: imageDimensions(
+                            action.selectedFile.dimensions.width,
+                            action.selectedFile.dimensions.height,
+                          ),
+                        }),
                       ]
                     : []),
                   ...(action.selectedFile?.duration

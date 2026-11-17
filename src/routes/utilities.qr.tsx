@@ -1,5 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
@@ -31,7 +32,7 @@ const defaults: QRSettings = {
 function QRCodePage() {
   const t = useTranslator()
   const [settings, setSettings] = useWorkspaceState('qr.settings', defaults)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<MessageText>('')
   const [preview, setPreview] = useState<{ blob: Blob; url: string } | null>(
     null,
   )
@@ -70,7 +71,9 @@ function QRCodePage() {
       downloadBlob(blob, filename)
     } catch (cause) {
       if (operation.isCurrent())
-        setError(errorMessage(t, cause, t('utilitiesQrTheQRCodeCouldNotBe')))
+        setError(
+          messageFromError(cause, message('utilitiesQrTheQRCodeCouldNotBe')),
+        )
     } finally {
       operation.finish()
     }
@@ -209,7 +212,7 @@ function QRCodePage() {
             </div>
             {error && (
               <p role="alert" className="text-sm text-destructive">
-                {error}
+                {renderMessage(t, error)}
               </p>
             )}
             <Button

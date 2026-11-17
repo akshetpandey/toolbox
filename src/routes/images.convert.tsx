@@ -1,3 +1,5 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
@@ -28,7 +30,7 @@ function ConvertPage() {
     'images.convert.format',
     selectedFile && isHeifImage(selectedFile) ? 'jpg' : 'webp',
   )
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<MessageText | null>(null)
   const { result, setResult, clearResult } = useToolResult(
     selectedFile?.file,
     'images.convert',
@@ -76,7 +78,12 @@ function ConvertPage() {
         sourceSize: imageFile.size,
         details: imageFile.dimensions
           ? [
-              `${imageFile.dimensions.width} × ${imageFile.dimensions.height} px`,
+              message('mediaDimensionsPixels', {
+                dimensions: imageDimensions(
+                  imageFile.dimensions.width,
+                  imageFile.dimensions.height,
+                ),
+              }),
             ]
           : [],
       })
@@ -86,7 +93,7 @@ function ConvertPage() {
     } catch (error) {
       if (!operation.isCurrent()) return
       console.error('🖼️ ConvertTool: Error during conversion:', error)
-      setError(t('imagesConvertThisImageCouldNotBeConverted'))
+      setError(message('imagesConvertThisImageCouldNotBeConverted'))
     } finally {
       operation.finish()
     }
@@ -163,7 +170,7 @@ function ConvertPage() {
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <div className="flex justify-end">

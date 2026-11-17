@@ -38,7 +38,7 @@ function App() {
   }
   const hasQuery = Boolean(query.trim())
   const matches =
-    hasQuery && typeof search === 'function' ? search(query, t) : null
+    hasQuery && typeof search === 'function' ? search(query, t, language) : null
   const popularRoutes = [
     '/images/resize',
     '/images/compress',

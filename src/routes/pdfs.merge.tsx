@@ -1,5 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
@@ -24,8 +25,8 @@ function PDFMergeRoute() {
   const currentSource = useRef(sourceKey)
   currentSource.current = sourceKey
   const { result, setResult } = useToolResult(sourceKey, 'pdfs.merge')
-  const [error, setError] = useState('')
-  const [progress, setProgress] = useState('')
+  const [error, setError] = useState<MessageText>('')
+  const [progress, setProgress] = useState<MessageText>('')
   const operation = useRef(0)
   const busy = useRef(false)
   const pagesReady = selectedFiles.every(
@@ -57,14 +58,14 @@ function PDFMergeRoute() {
     busy.current = true
     setIsProcessing(true)
     setError('')
-    setProgress(t('pdfsMergePreparingYourPDFs'))
+    setProgress(message('pdfsMergePreparingYourPDFs'))
     try {
       const merged = await mergePDFs({
         files: selectedFiles,
         onFileProcessed: (index) => {
           if (operation.current === version)
             setProgress(
-              t('pdfsMergeMergedOfPDFs', {
+              message('pdfsMergeMergedOfPDFs', {
                 number: index + 1,
                 count: selectedFiles.length,
               }),
@@ -74,7 +75,9 @@ function PDFMergeRoute() {
       if (operation.current !== version || currentSource.current !== sourceKey)
         return
       if (!merged.success || !merged.blob)
-        throw new Error(merged.error ?? t('pdfsMergePDFMergeFailed'))
+        throw merged.error
+          ? new Error(merged.error)
+          : new MessageError('pdfsMergePDFMergeFailed')
       setResult({
         blob: merged.blob,
         filename: 'merged-document.pdf',
@@ -88,7 +91,7 @@ function PDFMergeRoute() {
       downloadBlob(merged.blob, 'merged-document.pdf')
     } catch (cause) {
       if (operation.current === version && currentSource.current === sourceKey)
-        setError(errorMessage(t, cause, t('pdfsMergeUnknownPDFError')))
+        setError(messageFromError(cause, message('pdfsMergeUnknownPDFError')))
     } finally {
       if (operation.current === version) {
         busy.current = false
@@ -142,7 +145,9 @@ function PDFMergeRoute() {
                 <summary className="cursor-pointer font-medium">
                   {t('pdfsMergeTechnicalDetails')}
                 </summary>
-                <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
+                <p className="mt-2 [overflow-wrap:anywhere]">
+                  {renderMessage(t, error)}
+                </p>
               </details>
               <Button variant="outline" onClick={clearFiles}>
                 {t('pdfsMergeChooseOtherPDFs')}
@@ -167,7 +172,7 @@ function PDFMergeRoute() {
           </Button>
           {progress && (
             <p role="status" className="text-sm text-muted-foreground">
-              {progress}
+              {renderMessage(t, progress)}
             </p>
           )}
         </CardContent>

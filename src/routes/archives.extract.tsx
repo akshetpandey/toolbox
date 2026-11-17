@@ -1,4 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
+import { messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
@@ -36,7 +38,7 @@ function ExtractPage() {
     initializeProcessor,
     setUploadedArchive,
   } = useArchiveTools()
-  const [error, setError] = useState('')
+  const [error, setError] = useState<MessageText>('')
   const [activity, setActivity] = useState('')
   const [password, setPassword] = useState('')
   const version = useRef(0)
@@ -78,7 +80,10 @@ function ExtractPage() {
     } catch (cause) {
       if (version.current === request)
         setError(
-          errorMessage(t, cause, t('archivesExtractArchiveOperationFailed')),
+          messageFromError(
+            cause,
+            message('archivesExtractArchiveOperationFailed'),
+          ),
         )
     } finally {
       if (version.current === request) {
@@ -129,7 +134,9 @@ function ExtractPage() {
                 <summary className="cursor-pointer font-medium">
                   {t('archivesExtractTechnicalDetails')}
                 </summary>
-                <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
+                <p className="mt-2 [overflow-wrap:anywhere]">
+                  {renderMessage(t, error)}
+                </p>
               </details>
             </div>
           )}

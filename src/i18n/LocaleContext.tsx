@@ -24,13 +24,11 @@ import { isToolboxPagePath } from '@/lib/toolPaths'
 interface LocaleState {
   language: Language
   preference: LanguagePreference
-  browserLanguage: Language
   selectLanguage: (preference: LanguagePreference) => Promise<void>
 }
 const LocaleContext = createContext<LocaleState>({
   language: 'en',
   preference: 'browser',
-  browserLanguage: 'en',
   selectLanguage: () => Promise.resolve(),
 })
 
@@ -56,7 +54,6 @@ export function LocaleProvider({
   )
   const { language } = splitLanguagePath(pathname)
   const [preference, setPreference] = useState<LanguagePreference>('browser')
-  const [browserLanguage, setBrowserLanguage] = useState<Language>('en')
   const request = useRef(0)
 
   async function navigate(next: Language) {
@@ -89,7 +86,6 @@ export function LocaleProvider({
     const saved = getLanguagePreference(document.cookie)
     const browser = matchBrowserLanguage(navigator.languages)
     setPreference(saved)
-    setBrowserLanguage(browser)
     const entry = splitLanguagePath(history.location.pathname)
     if (entry.language !== 'en' || !isToolboxPagePath(entry.path)) return
     const target = saved === 'browser' ? browser : saved
@@ -107,9 +103,7 @@ export function LocaleProvider({
   }, [language])
 
   return (
-    <LocaleContext
-      value={{ language, preference, browserLanguage, selectLanguage }}
-    >
+    <LocaleContext value={{ language, preference, selectLanguage }}>
       {children}
     </LocaleContext>
   )

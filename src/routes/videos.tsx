@@ -1,4 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createFileRoute,
@@ -109,7 +111,12 @@ function VideoFileUpload({
                     <span>{formatFileSize(file.size, t)}</span>
                     {file.dimensions && (
                       <span>
-                        {file.dimensions.width} × {file.dimensions.height}
+                        {t('mediaDimensions', {
+                          dimensions: imageDimensions(
+                            file.dimensions.width,
+                            file.dimensions.height,
+                          ),
+                        })}
                       </span>
                     )}
                   </div>
@@ -179,10 +186,12 @@ function SingleVideoWorkspace() {
     Record<string, VideoMetadata>
   >('videos.metadata', {})
   const [isPreparing, setIsPreparing] = useState(false)
-  const [preparationMessage, setPreparationMessage] = useState(
-    t('videosPreparingVideoTools'),
+  const [preparationMessage, setPreparationMessage] = useState<MessageText>(
+    message('videosPreparingVideoTools'),
   )
-  const [preparationError, setPreparationError] = useState<string | null>(null)
+  const [preparationError, setPreparationError] = useState<MessageText | null>(
+    null,
+  )
   const [progress, setProgress] = useState(0)
   const [progressStartTime, setProgressStartTime] = useState<number | null>(
     null,
@@ -304,7 +313,7 @@ function SingleVideoWorkspace() {
     async (videoFile: VideoFile) => {
       const selectionId = ++fileSelectionId.current
       setIsPreparing(true)
-      setPreparationMessage(t('videosPreparingVideoTools'))
+      setPreparationMessage(message('videosPreparingVideoTools'))
       setPreparationError(null)
       // FFprobe supports containers/codecs the native <video> element cannot
       // decode (including many AVI/MKV files). Preview support is optional.
@@ -312,7 +321,7 @@ function SingleVideoWorkspace() {
         const task = fileSelectionTask.current.then(async () => {
           if (selectionId !== fileSelectionId.current) return
           const processor = await getFfmpegProcessor(videoFile)
-          setPreparationMessage(t('videosReadingVideoInformation'))
+          setPreparationMessage(message('videosReadingVideoInformation'))
           if (selectionId !== fileSelectionId.current) return
           const meta = await processor.extractMetadata()
           if (selectionId !== fileSelectionId.current) return
@@ -336,7 +345,7 @@ function SingleVideoWorkspace() {
       } catch (error) {
         console.error('🎬 VideoTools: Error extracting metadata:', error)
         if (selectionId === fileSelectionId.current)
-          setPreparationError(t('videosWeCouldNotPrepareThisVideo'))
+          setPreparationError(message('videosWeCouldNotPrepareThisVideo'))
       } finally {
         if (selectionId === fileSelectionId.current) setIsPreparing(false)
       }
@@ -368,7 +377,7 @@ function SingleVideoWorkspace() {
         const animation = video ? null : await readAnimationInfo(file)
         if (request !== fileSelectionId.current) return
         if (!video && !animation)
-          throw new Error(t('videosChooseAVideoGIFOrAnimated'))
+          throw new MessageError('videosChooseAVideoGIFOrAnimated')
         console.log('🎬 VideoTools: Processing video file', {
           name: file.name,
           size: file.size,
@@ -395,7 +404,7 @@ function SingleVideoWorkspace() {
       } catch (cause) {
         if (request === fileSelectionId.current) {
           setPreparationError(
-            errorMessage(t, cause, t('videosThisFileCouldNotBeOpened')),
+            messageFromError(cause, message('videosThisFileCouldNotBeOpened')),
           )
           setIsPreparing(false)
         }
@@ -512,7 +521,7 @@ function SingleVideoWorkspace() {
                 className="flex items-center gap-2 rounded-lg border p-3 text-sm"
               >
                 <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                {preparationMessage}
+                {renderMessage(t, preparationMessage)}
               </div>
             )}
             {(preparationError ?? error) && (
@@ -520,7 +529,9 @@ function SingleVideoWorkspace() {
                 role="alert"
                 className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
               >
-                {preparationError ?? t('videosVideoToolsCouldNotLoadCheck')}
+                {preparationError
+                  ? renderMessage(t, preparationError)
+                  : t('videosVideoToolsCouldNotLoadCheck')}
               </div>
             )}
             {!isPreparing &&

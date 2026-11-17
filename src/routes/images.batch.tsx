@@ -1,4 +1,5 @@
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -49,8 +50,8 @@ function BatchImages() {
     height: '1600',
     failed: [] as string[],
   })
-  const [progress, setProgress] = useState('')
-  const [error, setError] = useState('')
+  const [progress, setProgress] = useState<MessageText>('')
+  const [error, setError] = useState<MessageText>('')
   const width = Number(options.width)
   const height = Number(options.height)
   const valid =
@@ -76,11 +77,11 @@ function BatchImages() {
     const usedNames = new Set<string>()
     const failed: string[] = []
     try {
-      setProgress(t('imagesBatchLoadingImageTools'))
+      setProgress(message('imagesBatchLoadingImageTools'))
       for (const [index, file] of batchFiles.entries()) {
         if (!operation.isCurrent()) return
         setProgress(
-          t('imagesBatchProcessingImageOf', {
+          message('imagesBatchProcessingImageOf', {
             number: index + 1,
             count: batchFiles.length,
           }),
@@ -120,10 +121,10 @@ function BatchImages() {
       if (!operation.isCurrent()) return
       setOptions({ ...options, failed })
       if (!results.size) {
-        setError(t('imagesBatchNoneOfTheSelectedImagesCould'))
+        setError(message('imagesBatchNoneOfTheSelectedImagesCould'))
         return
       }
-      setProgress(t('imagesBatchPreparingTheZIPDownload'))
+      setProgress(message('imagesBatchPreparingTheZIPDownload'))
       const { zipSync } = await import('fflate')
       if (!operation.isCurrent()) return
       const bytes = zipSync(Object.fromEntries(results), { level: 0 })
@@ -147,7 +148,7 @@ function BatchImages() {
       downloadBlob(blob, filename)
     } catch {
       if (operation.isCurrent())
-        setError(t('imagesBatchTheZIPCouldNotBeCreated'))
+        setError(message('imagesBatchTheZIPCouldNotBeCreated'))
     } finally {
       if (operation.isCurrent()) setProgress('')
       operation.finish()
@@ -238,12 +239,12 @@ function BatchImages() {
           </fieldset>
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {progress && (
             <p role="status" className="text-sm text-muted-foreground">
-              {progress}
+              {renderMessage(t, progress)}
             </p>
           )}
           {options.failed.length > 0 && (

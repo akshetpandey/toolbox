@@ -1,3 +1,5 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react'
@@ -35,7 +37,7 @@ export const Route = createFileRoute('/office-documents')({
 
 function OfficeDocumentsLayout() {
   const t = useTranslator()
-  const [selectionError, setSelectionError] = useState('')
+  const [selectionError, setSelectionError] = useState<MessageText>('')
   const [selectedFile, updateSelectedFile] =
     useWorkspaceState<OfficeFile | null>('office.file', null)
   const selectedFileRef = useRef<OfficeFile | null>(selectedFile)
@@ -96,7 +98,7 @@ function OfficeDocumentsLayout() {
         const officeFile = createOfficeFile(file)
         setSelectedFile(officeFile)
       } else {
-        setSelectionError(t('officeDocumentsChooseADOCXPPTXOrXLSX'))
+        setSelectionError(message('officeDocumentsChooseADOCXPPTXOrXLSX'))
       }
     },
     [setSelectedFile],
@@ -176,7 +178,7 @@ function OfficeDocumentsLayout() {
       </FileUpload>
       {selectionError && (
         <p role="alert" className="mt-3 text-sm text-destructive">
-          {selectionError}
+          {renderMessage(t, selectionError)}
         </p>
       )}
     </div>

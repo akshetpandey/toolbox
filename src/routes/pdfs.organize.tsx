@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
@@ -43,7 +44,7 @@ function PDFOrganizeRoute() {
       onReset={clearFiles}
       disabled={!edits || !pages.length}
       run={async () => {
-        if (!file) throw new Error(t('pdfsOrganizeChooseAPDFFirst'))
+        if (!file) throw new MessageError('pdfsOrganizeChooseAPDFFirst')
         return {
           blob: await organizePDF(file, pages),
           filename: `${pdfBaseName(file.name)}-organized.pdf`,

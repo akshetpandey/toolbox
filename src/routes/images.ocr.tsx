@@ -1,5 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
-import { message } from '@/i18n/messages'
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -24,9 +25,9 @@ function ImageOCRPage() {
     'images.ocr.text',
     null,
   )
-  const [error, setError] = useState('')
-  const [status, setStatus] = useState('')
-  const [copyStatus, setCopyStatus] = useState('')
+  const [error, setError] = useState<MessageText>('')
+  const [status, setStatus] = useState<MessageText>('')
+  const [copyStatus, setCopyStatus] = useState<MessageText>('')
   const controller = useRef<AbortController | null>(null)
   const sourceKey = useMemo(
     () => ({ file: selectedFile?.file, text }),
@@ -49,7 +50,7 @@ function ImageOCRPage() {
     setError('')
     setCopyStatus('')
     setText(null)
-    setStatus(t('imagesOcrLoadingTextRecognition'))
+    setStatus(message('imagesOcrLoadingTextRecognition'))
     try {
       const { recognizeImageText } = await import('@/lib/ocr')
       const recognized = await recognizeImageText(
@@ -60,15 +61,14 @@ function ImageOCRPage() {
         },
       )
       if (!operation.isCurrent() || abort.signal.aborted) return
-      if (!recognized) throw new Error(t('imagesOcrNoTextWasFoundTryA'))
+      if (!recognized) throw new MessageError('imagesOcrNoTextWasFoundTryA')
       setText(recognized)
     } catch (cause) {
       if (operation.isCurrent() && !abort.signal.aborted)
         setError(
-          errorMessage(
-            t,
+          messageFromError(
             cause,
-            t('imagesOcrTextRecognitionFailedTryAnotherImage'),
+            message('imagesOcrTextRecognitionFailedTryAnotherImage'),
           ),
         )
     } finally {
@@ -119,7 +119,7 @@ function ImageOCRPage() {
                 variant="outline"
                 onClick={() => {
                   controller.current?.abort()
-                  setStatus(t('imagesOcrCancelling'))
+                  setStatus(message('imagesOcrCancelling'))
                 }}
               >
                 {t('imagesOcrCancel')}
@@ -128,12 +128,12 @@ function ImageOCRPage() {
           </div>
           {status && (
             <p role="status" className="text-sm text-muted-foreground">
-              {status}
+              {renderMessage(t, status)}
             </p>
           )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {text !== null && (
@@ -166,9 +166,11 @@ function ImageOCRPage() {
                         ? navigator.clipboard.writeText(text)
                         : Promise.reject(new Error('Clipboard unavailable'))
                     ).then(
-                      () => setCopyStatus(t('imagesOcrTextCopied')),
+                      () => setCopyStatus(message('imagesOcrTextCopied')),
                       () =>
-                        setCopyStatus(t('imagesOcrCopyFailedSelectTheTextAnd')),
+                        setCopyStatus(
+                          message('imagesOcrCopyFailedSelectTheTextAnd'),
+                        ),
                     )
                   }}
                 >
@@ -177,7 +179,7 @@ function ImageOCRPage() {
               </div>
               {copyStatus && (
                 <p role="status" className="text-sm text-muted-foreground">
-                  {copyStatus}
+                  {renderMessage(t, copyStatus)}
                 </p>
               )}
             </div>

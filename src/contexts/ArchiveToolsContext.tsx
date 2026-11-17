@@ -1,5 +1,6 @@
-import { errorMessage } from '@/i18n/MessageError'
-import { message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { messageFromError } from '@/i18n/MessageError'
+import { message, renderMessage } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createContext,
@@ -87,7 +88,8 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
   const t = useTranslator()
   const [isInitialized, setIsInitialized] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
-  const [initializationError, setInitializationError] = useState('')
+  const [initializationError, setInitializationError] =
+    useState<MessageText>('')
   const [selectedFiles, updateSelectedFiles] = useWorkspaceState<ArchiveFile[]>(
     'archives.files',
     [],
@@ -138,10 +140,9 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
         initialization.current = null
         if (mounted.current)
           setInitializationError(
-            errorMessage(
-              t,
+            messageFromError(
               error,
-              t('archiveToolsContextArchiveToolsCouldNotBeLoaded'),
+              message('archiveToolsContextArchiveToolsCouldNotBeLoaded'),
             ),
           )
       })
@@ -311,7 +312,7 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
     archiveProcessor,
     isInitialized,
     isInitializing,
-    initializationError,
+    initializationError: renderMessage(t, initializationError),
     compressionResult,
     initializeProcessor,
     selectedFiles,
