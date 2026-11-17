@@ -1,3 +1,4 @@
+import { workspaceEnglish as english } from '@/i18n/workspaceMessages'
 import type { PDFDocument } from 'pdf-lib'
 
 let _PDFDocument: typeof PDFDocument | null = null
@@ -46,7 +47,7 @@ export async function mergePDFs(
   if (files.length < 2) {
     return {
       success: false,
-      error: 'At least 2 PDF files are required for merging',
+      error: english('pdfAtLeast2PDFFilesAre'),
     }
   }
 

@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { Worker } from 'tesseract.js'
 import { canvasBlob } from './pdf-edit'
 
@@ -93,7 +94,7 @@ export async function recognizeImageText(
   let worker: Worker | undefined
   try {
     const context = canvas.getContext('2d')
-    if (!context) throw new Error('Image rendering is unavailable.')
+    if (!context) throw new MessageError('ocrImageRenderingIsUnavailable')
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.drawImage(image, 0, 0, canvas.width, canvas.height)

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { chromium, webkit } from 'playwright'
@@ -43,6 +43,77 @@ const selected = allTools.filter(
 )
 assert(selected.length > 0, 'No tool paths matched --only')
 
+async function checkLanguageSettings(browser, origin) {
+  const context = await browser.newContext({
+    locale: 'es-MX',
+    viewport: { width: 1440, height: 900 },
+  })
+  try {
+    const page = await context.newPage()
+    const ready = page.locator('#workspace-controls:not([disabled])')
+    const settings = page.locator(
+      'aside [data-slot="language-settings"] select',
+    )
+    const errors = []
+    page.on('pageerror', (error) => errors.push(error.message))
+
+    await page.goto(origin + '/images/resize')
+    await page.waitForURL('**/es/images/resize')
+    await ready.waitFor({ state: 'attached' })
+    await page.waitForFunction(() => document.documentElement.lang === 'es')
+    await page.locator('main input[type=file]').setInputFiles({
+      name: 'selected.jpg',
+      mimeType: 'image/jpeg',
+      buffer: await readFile(
+        new URL(
+          '../src/lib/__tests__/fixtures/sample-real.jpg',
+          import.meta.url,
+        ),
+      ),
+    })
+    const uploaded = page
+      .locator('main')
+      .getByText('selected.jpg', { exact: true })
+    await uploaded.waitFor()
+
+    await settings.selectOption('ar')
+    await page.waitForURL('**/ar/images/resize')
+    await page.waitForFunction(() => document.documentElement.dir === 'rtl')
+    await uploaded.waitFor()
+    await page.locator('aside a[href="/ar"]').waitFor()
+    const preferences = await context.cookies()
+    assert.equal(
+      preferences.find(({ name }) => name === 'toolbox-language')?.value,
+      'ar',
+    )
+
+    await page.goto(origin + '/pdfs/merge')
+    await page.waitForURL('**/ar/pdfs/merge')
+    await page.waitForFunction(() => document.documentElement.lang === 'ar')
+    const explicit = await context.newPage()
+    explicit.on('pageerror', (error) => errors.push(error.message))
+    await explicit.goto(origin + '/ja/pdfs/merge')
+    await explicit.locator('#workspace-controls:not([disabled])').waitFor({
+      state: 'attached',
+    })
+    await explicit.waitForFunction(() => document.documentElement.lang === 'ja')
+    assert.equal(new URL(explicit.url()).pathname, '/ja/pdfs/merge')
+
+    const explicitSettings = explicit.locator(
+      'aside [data-slot="language-settings"] select',
+    )
+    await explicitSettings.selectOption('en')
+    await explicit.waitForURL((url) => url.pathname === '/pdfs/merge')
+    await explicit.waitForFunction(() => document.documentElement.lang === 'en')
+    assert.deepEqual(errors, [])
+    console.log(
+      'PASS language settings, cookie, localized links and retained file',
+    )
+  } finally {
+    await context.close()
+  }
+}
+
 const server = spawn(
   'pnpm',
   [values.preview ? 'serve' : 'dev', '--host', '127.0.0.1', '--port', '0'],
@@ -82,6 +153,7 @@ try {
   })
   browser = await browserType.launch()
   if (values.preview) await checkToolBundles(browser, origin)
+  if (!values.only) await checkLanguageSettings(browser, origin)
   const fixturePage = await browser.newPage()
   const fixtures = await workflowFixtures(fixturePage)
   await fixturePage.close()

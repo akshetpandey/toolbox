@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createFileRoute,
   Outlet,
@@ -24,11 +25,6 @@ import {
   X,
 } from 'lucide-react'
 
-const archiveTabs = [
-  { value: 'compress', label: 'Create archive', icon: Package },
-  { value: 'extract', label: 'Extract archive', icon: FileArchive },
-]
-
 export const Route = createFileRoute('/archives')({
   component: ArchiveToolsLayout,
 })
@@ -42,6 +38,15 @@ function ArchiveToolsLayout() {
 }
 
 function ArchiveToolsContent() {
+  const t = useTranslator()
+  const archiveTabs = [
+    { value: 'compress', label: t('archivesCreateArchive'), icon: Package },
+    {
+      value: 'extract',
+      label: t('archivesExtractArchive'),
+      icon: FileArchive,
+    },
+  ]
   const { isProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
@@ -149,13 +154,13 @@ function ArchiveToolsContent() {
       onFileSelect={(files) => void handleFileSelect(files)}
       onClearFiles={clearSelectedFiles}
       acceptedTypes="*/*"
-      title="Drop files to compress"
-      description="Select multiple files to create an archive"
-      supportedFormats={['All Files']}
+      title={t('archivesDropFilesToCompress')}
+      description={t('archivesSelectMultipleFilesToCreateAn')}
+      supportedFormats={[t('archivesAllFiles')]}
       emptyStateIcon={Upload}
       selectedFileIcon={FileIcon}
       multiple
-      selectedActionLabel="Add files"
+      selectedActionLabel={t('archivesAddFiles')}
       disabled={isProcessing}
     >
       {selectedFiles.length > 0 && (
@@ -171,7 +176,7 @@ function ArchiveToolsContent() {
                   {file.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatFileSize(file.size)}
+                  {formatFileSize(file.size, t)}
                 </p>
               </div>
               <button
@@ -180,7 +185,7 @@ function ArchiveToolsContent() {
                   event.stopPropagation()
                   removeFile(index)
                 }}
-                aria-label={`Remove ${file.name}`}
+                aria-label={t('archivesRemove', { filename: file.name })}
                 disabled={isProcessing}
                 className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"
               >
@@ -210,8 +215,8 @@ function ArchiveToolsContent() {
       onFileSelect={(files) => void handleArchiveUpload(files)}
       onClearFiles={clearUploadedArchive}
       acceptedTypes=".7z,.zip,.tar,.gz,.tar.gz,.rar"
-      title="Drop archive to extract"
-      description="Supports 7Z, ZIP, TAR, GZIP formats"
+      title={t('archivesDropArchiveToExtract')}
+      description={t('archivesSupports7ZZIPTARGZIPFormats')}
       supportedFormats={['7Z', 'ZIP', 'TAR', 'GZIP', 'RAR']}
       emptyStateIcon={Upload}
       selectedFileIcon={FileArchive}
@@ -226,7 +231,7 @@ function ArchiveToolsContent() {
                 {uploadedArchive.name}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatFileSize(uploadedArchive.size)}
+                {formatFileSize(uploadedArchive.size, t)}
               </p>
             </div>
           </div>
@@ -246,7 +251,11 @@ function ArchiveToolsContent() {
 
   return (
     <ToolLayout
-      title={currentTab === 'compress' ? 'Create archive' : 'Extract archive'}
+      title={
+        currentTab === 'compress'
+          ? t('archivesCreateArchive')
+          : t('archivesExtractArchive')
+      }
       icon={Archive}
       iconColor="text-primary"
       iconBgColor="bg-primary/10"

@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { PDFDocument } from 'pdf-lib'
 
 export function pdfBaseName(filename: string) {
@@ -8,11 +9,11 @@ export function parsePageRanges(value: string, pageCount: number): number[][] {
   if (!value.trim()) return [Array.from({ length: pageCount }, (_, i) => i)]
   return value.split(',').map((part) => {
     const match = /^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/.exec(part)
-    if (!match) throw new Error('Enter page numbers or ranges, such as 1-3, 5.')
+    if (!match) throw new MessageError('pdfEditEnterPageNumbersOrRangesSuch')
     const first = Number(match[1])
     const last = Number(match[2] ?? first)
     if (first < 1 || last < first || last > pageCount)
-      throw new Error(`Each page range must be between 1 and ${pageCount}.`)
+      throw new MessageError('pdfEditEachPageRangeMustBeBetween', { pageCount })
     return Array.from({ length: last - first + 1 }, (_, i) => first + i - 1)
   })
 }
@@ -56,7 +57,7 @@ export async function extractPDFPages(
   const source = await loadEditablePDF(file)
   const groups = parsePageRanges(ranges, source.getPageCount())
   const pages = groups.flat()
-  if (pages.length === 0) throw new Error('This PDF has no pages.')
+  if (pages.length === 0) throw new MessageError('pdfEditThisPDFHasNoPages')
   if (!separate) {
     const output = await PDFDocument.create()
     const copied = await output.copyPages(source, pages)
@@ -94,7 +95,7 @@ export async function organizePDF(file: Blob, edits: PDFPageEdit[]) {
   const { degrees, PDFDocument } = await import('pdf-lib')
   const source = await loadEditablePDF(file)
   const count = source.getPageCount()
-  if (edits.length === 0) throw new Error('Keep at least one page.')
+  if (edits.length === 0) throw new MessageError('pdfEditKeepAtLeastOnePage')
   if (
     new Set(edits.map((edit) => edit.index)).size !== edits.length ||
     edits.some(
@@ -105,7 +106,7 @@ export async function organizePDF(file: Blob, edits: PDFPageEdit[]) {
         rotation % 90 !== 0,
     )
   )
-    throw new Error('The page selection is invalid.')
+    throw new MessageError('pdfEditThePageSelectionIsInvalid')
   const output = await PDFDocument.create()
   const copied = await output.copyPages(
     source,
@@ -130,7 +131,7 @@ export function canvasBlob(
       (blob) =>
         blob?.type === type
           ? resolve(blob)
-          : reject(new Error('Image export failed.')),
+          : reject(new MessageError('pdfEditImageExportFailed')),
       type,
       quality,
     )
@@ -147,7 +148,9 @@ export async function imagesToPDF(
   for (const file of images) {
     signal.throwIfAborted()
     const bitmap = await createImageBitmap(file).catch(() => {
-      throw new Error(`Could not open ${file.name} as a JPG or PNG image.`)
+      throw new MessageError('pdfEditCouldNotOpenAsAJPG', {
+        filename: file.name,
+      })
     })
     const canvas = window.document.createElement('canvas')
     try {
@@ -159,7 +162,7 @@ export async function imagesToPDF(
       canvas.width = Math.max(1, Math.round(bitmap.width * scale))
       canvas.height = Math.max(1, Math.round(bitmap.height * scale))
       const context = canvas.getContext('2d')
-      if (!context) throw new Error('Image rendering is unavailable.')
+      if (!context) throw new MessageError('pdfEditImageRenderingIsUnavailable')
       context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
       const jpeg = file.type === 'image/jpeg' || /\.jpe?g$/i.test(file.name)
       const encoded = await canvasBlob(

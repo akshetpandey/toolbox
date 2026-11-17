@@ -1,3 +1,6 @@
+import { errorMessage } from '@/i18n/MessageError'
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createContext,
   useContext,
@@ -81,6 +84,7 @@ export function useArchiveTools() {
 }
 
 export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
+  const t = useTranslator()
   const [isInitialized, setIsInitialized] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
   const [initializationError, setInitializationError] = useState('')
@@ -134,9 +138,11 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
         initialization.current = null
         if (mounted.current)
           setInitializationError(
-            error instanceof Error
-              ? error.message
-              : 'Archive tools could not be loaded',
+            errorMessage(
+              t,
+              error,
+              t('archiveToolsContextArchiveToolsCouldNotBeLoaded'),
+            ),
           )
       })
       .finally(() => {
@@ -224,7 +230,11 @@ export function ArchiveToolsProvider({ children }: { children: ReactNode }) {
       filename,
       sourceSize: selectedFiles.reduce((sum, file) => sum + file.size, 0),
       details: [
-        `${selectedFiles.length} ${selectedFiles.length === 1 ? 'file' : 'files'} in ${extension.toUpperCase()} format`,
+        message(
+          'archiveToolsContextInFormat',
+          { count: selectedFiles.length, extension: extension.toUpperCase() },
+          selectedFiles.length,
+        ),
       ],
     })
     downloadBlob(blob, filename)

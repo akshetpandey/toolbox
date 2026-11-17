@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, PDFPageRanges, usePDFSource } from '@/components/PDFAction'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
@@ -9,6 +10,7 @@ export const Route = createFileRoute('/pdfs/split')({
 })
 
 function PDFSplitRoute() {
+  const t = useTranslator()
   const { file, count, clearFiles } = usePDFSource()
   const [ranges, setRanges] = useWorkspaceState('pdfs.edit.split.ranges', '')
   const [separate, setSeparate] = useWorkspaceState(
@@ -20,26 +22,32 @@ function PDFSplitRoute() {
       file={file}
       sourceKey={JSON.stringify([file?.name, ranges, separate])}
       name="pdfs.edit.split"
-      label={separate ? 'Split and download ZIP' : 'Extract and download PDF'}
+      label={
+        separate
+          ? t('pdfsSplitSplitAndDownloadZIP')
+          : t('pdfsSplitExtractAndDownloadPDF')
+      }
       onReset={clearFiles}
       run={async (signal) => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new Error(t('pdfsSplitChooseAPDFFirst'))
         const result = await extractPDFPages(file, ranges, separate, signal)
         return {
           blob: result.blob,
           filename: `${pdfBaseName(file.name)}-${separate ? 'parts' : 'pages'}.${result.extension}`,
           details: [
-            `${result.count} ${separate ? 'PDFs in the ZIP' : 'pages selected'}`,
+            `${result.count} ${separate ? t('pdfsSplitPDFsInTheZIP') : t('pdfsSplitPagesSelected')}`,
           ],
         }
       }}
     >
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Choose which pages to keep</h2>
+        <h2 className="text-lg font-semibold">
+          {t('pdfsSplitChooseWhichPagesToKeep')}
+        </h2>
         <p className="text-sm text-muted-foreground">
           {typeof count === 'number'
-            ? `Your document has ${count} ${count === 1 ? 'page' : 'pages'}.`
-            : 'Choose one PDF to get started.'}
+            ? t('pdfsSplitYourDocumentHas', { count }, count)
+            : t('pdfsSplitChooseOnePDFToGetStarted')}
         </p>
       </div>
       <PDFPageRanges
@@ -47,8 +55,8 @@ function PDFSplitRoute() {
         setValue={setRanges}
         hint={
           separate
-            ? 'For example, 1-3, 5 creates two PDFs. Leave blank for one PDF per page.'
-            : 'For example, 1-3, 5 saves pages 1 through 3 and page 5 in one PDF.'
+            ? t('pdfsSplitForExample135CreatesTwo')
+            : t('pdfsSplitForExample135SavesPages')
         }
       />
       <Label
@@ -61,7 +69,7 @@ function PDFSplitRoute() {
           checked={separate}
           onChange={(event) => setSeparate(event.target.checked)}
         />
-        Save each range as a separate PDF
+        {t('pdfsSplitSaveEachRangeAsASeparate')}
       </Label>
     </PDFAction>
   )

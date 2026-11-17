@@ -1,17 +1,19 @@
+import { useTranslator } from '@/i18n/LocaleContext'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export function ThemeToggle() {
+  const t = useTranslator()
   const { theme, setTheme } = useTheme()
   const options = [
-    { value: 'light', icon: Sun, label: 'Light mode' },
-    { value: 'dark', icon: Moon, label: 'Dark mode' },
-    { value: 'system', icon: Monitor, label: 'System mode' },
+    { value: 'light', icon: Sun, label: t('themeToggleLightMode') },
+    { value: 'dark', icon: Moon, label: t('themeToggleDarkMode') },
+    { value: 'system', icon: Monitor, label: t('themeToggleSystemMode') },
   ] as const
   return (
     <div
       role="group"
-      aria-label="Appearance"
+      aria-label={t('themeToggleAppearance')}
       className="inline-flex rounded-lg border border-border bg-muted p-1"
     >
       {options.map((option) => (

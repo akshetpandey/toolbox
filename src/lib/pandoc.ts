@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 export interface ConversionOptions {
   from: string
   to: string
@@ -78,9 +79,7 @@ export async function convertOfficeToPDF(
   try {
     const inputFormat = getOfficePdfInputFormat(file.name)
     if (!inputFormat) {
-      throw new Error(
-        'Unsupported file format. Choose a DOCX, PPTX, or XLSX file.',
-      )
+      throw new MessageError('pandocUnsupportedFileFormatChooseADOCX')
     }
 
     const source = inputFormat === 'xlsx' ? await normalizeWorkbook(file) : file
@@ -201,7 +200,7 @@ export async function convertOfficeDocument(
         output: result.stdout,
       }
     } else {
-      throw new Error('Conversion failed - no output received')
+      throw new MessageError('pandocConversionFailedNoOutputReceived')
     }
   } catch (error) {
     console.error('Office document conversion error:', error)

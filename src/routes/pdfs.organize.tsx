@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { arrayMove } from '@dnd-kit/sortable'
@@ -16,6 +18,7 @@ export const Route = createFileRoute('/pdfs/organize')({
 })
 
 function PDFOrganizeRoute() {
+  const t = useTranslator()
   const { file, count, clearFiles } = usePDFSource()
   const watchThumbnail = usePDFThumbnails(count ? file : undefined)
   const [edits, setEdits] = useWorkspaceState<PDFPageEdit[] | null>(
@@ -36,37 +39,44 @@ function PDFOrganizeRoute() {
       file={file}
       sourceKey={JSON.stringify([file?.name, edits])}
       name="pdfs.edit.organize"
-      label="Save organized PDF"
+      label={t('pdfsOrganizeSaveOrganizedPDF')}
       onReset={clearFiles}
       disabled={!edits || !pages.length}
       run={async () => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new Error(t('pdfsOrganizeChooseAPDFFirst'))
         return {
           blob: await organizePDF(file, pages),
           filename: `${pdfBaseName(file.name)}-organized.pdf`,
-          details: [`${pages.length} of ${count ?? 0} pages kept`],
+          details: [
+            message('pdfsOrganizeOfPagesKept', {
+              count: pages.length,
+              second: count ?? 0,
+            }),
+          ],
         }
       }}
     >
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Arrange your pages</h2>
+        <h2 className="text-lg font-semibold">
+          {t('pdfsOrganizeArrangeYourPages')}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Move, rotate, or remove pages. Page labels refer to the original PDF.
+          {t('pdfsOrganizeMoveRotateOrRemovePagesPage')}
         </p>
       </div>
       {file && count === null && (
         <p role="alert" className="text-sm text-destructive">
-          Choose a readable, unlocked PDF.
+          {t('pdfsOrganizeChooseAReadableUnlockedPDF')}
         </p>
       )}
       {file && count === undefined && (
         <p role="status" className="text-sm">
-          Reading pages…
+          {t('pdfsOrganizeReadingPages')}
         </p>
       )}
       {pages.length > 0 && (
         <ol
-          aria-label="Output page order"
+          aria-label={t('pdfsOrganizeOutputPageOrder')}
           className="max-h-[min(26rem,48dvh)] space-y-2 overflow-y-auto sm:max-h-[min(30rem,55dvh)]"
         >
           {pages.map(({ index, rotation }, position) => (
@@ -81,7 +91,8 @@ function PDFOrganizeRoute() {
               />
               <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2">
                 <span className="text-sm font-medium">
-                  Page {index + 1}
+                  {t('pdfsOrganizePage') + ' '}
+                  {index + 1}
                   {rotation ? ` · +${rotation}°` : ''}
                 </span>
                 <div className="flex max-w-full flex-wrap">
@@ -89,7 +100,9 @@ function PDFOrganizeRoute() {
                     variant="ghost"
                     size="icon"
                     className="size-11"
-                    aria-label={`Move page ${index + 1} up`}
+                    aria-label={t('pdfsOrganizeMovePageUp', {
+                      number: index + 1,
+                    })}
                     disabled={position === 0}
                     onClick={() =>
                       setEdits(arrayMove(pages, position, position - 1))
@@ -101,7 +114,9 @@ function PDFOrganizeRoute() {
                     variant="ghost"
                     size="icon"
                     className="size-11"
-                    aria-label={`Move page ${index + 1} down`}
+                    aria-label={t('pdfsOrganizeMovePageDown', {
+                      number: index + 1,
+                    })}
                     disabled={position === pages.length - 1}
                     onClick={() =>
                       setEdits(arrayMove(pages, position, position + 1))
@@ -113,7 +128,9 @@ function PDFOrganizeRoute() {
                     variant="ghost"
                     size="icon"
                     className="size-11"
-                    aria-label={`Rotate page ${index + 1} clockwise`}
+                    aria-label={t('pdfsOrganizeRotatePageClockwise', {
+                      number: index + 1,
+                    })}
                     onClick={() =>
                       setEdits(
                         pages.map((page) =>
@@ -130,7 +147,9 @@ function PDFOrganizeRoute() {
                     variant="ghost"
                     size="icon"
                     className="size-11 text-destructive"
-                    aria-label={`Remove page ${index + 1}`}
+                    aria-label={t('pdfsOrganizeRemovePage', {
+                      number: index + 1,
+                    })}
                     disabled={pages.length === 1}
                     onClick={() =>
                       setEdits(pages.filter((page) => page.index !== index))
@@ -146,7 +165,7 @@ function PDFOrganizeRoute() {
       )}
       {edits && (
         <Button variant="outline" onClick={() => setEdits(null)}>
-          Reset page changes
+          {t('pdfsOrganizeResetPageChanges')}
         </Button>
       )}
     </PDFAction>

@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -13,9 +14,10 @@ export const Route = createFileRoute('/videos/trim')({
 })
 
 function VideoTrimComponent() {
+  const t = useTranslator()
   const action = useVideoAction(
     'videos.trim',
-    'The clip could not be created. Try another time range or replace the file.',
+    t('videosTrimTheClipCouldNotBeCreated'),
   )
   const source = action.selectedFile?.file
   const duration = Number.isFinite(action.selectedFile?.duration)
@@ -67,19 +69,32 @@ function VideoTrimComponent() {
     <div className="flex min-w-0 flex-col gap-5">
       <Card>
         <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold">Clip settings</h2>
+          <h2 className="text-lg font-semibold">
+            {t('videosTrimClipSettings')}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Choose the section to keep. Your original video stays unchanged.
+            {t('videosTrimChooseTheSectionToKeepYour')}
           </p>
           {duration > 0 && (
             <div className="space-y-4">
               <div className="flex flex-wrap justify-between gap-2 text-sm">
-                <span>Original: {duration.toFixed(2)} s</span>
-                <span>Selected: {Math.max(0, end - start).toFixed(2)} s</span>
+                <span>
+                  {t('videosTrimOriginal') + ' '}
+                  {duration.toFixed(2)} s
+                </span>
+                <span>
+                  {t('videosTrimSelected') + ' '}
+                  {Math.max(0, end - start).toFixed(2)} s
+                </span>
               </div>
-              <div className="space-y-3" aria-label="Clip timeline">
+              <div
+                className="space-y-3"
+                aria-label={t('videosTrimClipTimeline')}
+              >
                 <div className="space-y-1">
-                  <Label htmlFor="trim-start-slider">Clip start</Label>
+                  <Label htmlFor="trim-start-slider">
+                    {t('videosTrimClipStart')}
+                  </Label>
                   <input
                     id="trim-start-slider"
                     type="range"
@@ -95,7 +110,9 @@ function VideoTrimComponent() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="trim-end-slider">Clip end</Label>
+                  <Label htmlFor="trim-end-slider">
+                    {t('videosTrimClipEnd')}
+                  </Label>
                   <input
                     id="trim-end-slider"
                     type="range"
@@ -114,39 +131,41 @@ function VideoTrimComponent() {
             </div>
           )}
           <div className="space-y-2">
-            <span className="text-sm font-medium">Quick selections</span>
+            <span className="text-sm font-medium">
+              {t('videosTrimQuickSelections')}
+            </span>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Button
                 variant="outline"
                 disabled={action.busy || duration <= 0}
                 onClick={() => quickRange(0, 30)}
               >
-                First 30 s
+                {t('videosTrimFirst30S')}
               </Button>
               <Button
                 variant="outline"
                 disabled={action.busy || duration <= 0}
                 onClick={() => quickRange(0, 60)}
               >
-                First minute
+                {t('videosTrimFirstMinute')}
               </Button>
               <Button
                 variant="outline"
                 disabled={action.busy || duration <= 0}
                 onClick={() => quickRange(Math.max(0, duration - 30), 30)}
               >
-                Last 30 s
+                {t('videosTrimLast30S')}
               </Button>
               <Button
                 variant="outline"
                 disabled={action.busy || duration <= 0}
                 onClick={() => quickRange(0, duration)}
               >
-                Entire video
+                {t('videosTrimEntireVideo')}
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Presets stop at the end of your video.
+              {t('videosTrimPresetsStopAtTheEndOf')}
             </p>
           </div>
           <fieldset
@@ -154,7 +173,7 @@ function VideoTrimComponent() {
             className="grid gap-4 sm:grid-cols-2"
           >
             <div className="space-y-2">
-              <Label htmlFor="trim-start">Start (seconds)</Label>
+              <Label htmlFor="trim-start">{t('videosTrimStartSeconds')}</Label>
               <Input
                 id="trim-start"
                 type="number"
@@ -172,7 +191,7 @@ function VideoTrimComponent() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="trim-end">End (seconds)</Label>
+              <Label htmlFor="trim-end">{t('videosTrimEndSeconds')}</Label>
               <Input
                 id="trim-end"
                 type="number"
@@ -196,16 +215,15 @@ function VideoTrimComponent() {
               role="alert"
               className="text-sm text-destructive"
             >
-              Choose a start at or after 0 and an end after the start, up to{' '}
-              {duration.toFixed(3)} seconds.
+              {t('videosTrimChooseAStartAtOrAfter')} {duration.toFixed(3)}
+              {' ' + t('videosTrimSeconds')}
             </p>
           )}
           <p className="text-sm text-muted-foreground">
-            The clip keeps its original format. Use Convert video for GIF, APNG,
-            or another output format.
+            {t('videosTrimTheClipKeepsItsOriginalFormat')}
           </p>
           <VideoActionStatus
-            label="Trimming video"
+            label={t('videosTrimTrimmingVideo')}
             error={action.error}
             diagnostic={action.diagnostic}
           />
@@ -227,7 +245,9 @@ function VideoTrimComponent() {
               }))
             }
           >
-            {action.isProcessing ? 'Trimming…' : 'Create clip'}
+            {action.isProcessing
+              ? t('videosTrimTrimming')
+              : t('videosTrimCreateClip')}
           </Button>
         </CardContent>
       </Card>

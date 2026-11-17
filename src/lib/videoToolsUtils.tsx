@@ -1,3 +1,6 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
+import { workspaceEnglish as english } from '@/i18n/workspaceMessages'
+import type { Translator } from '@/i18n/messages'
 import {
   Play,
   Globe,
@@ -16,53 +19,113 @@ import type { Dispatch, SetStateAction } from 'react'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import { useVideoTools } from '@/contexts/VideoToolsContext'
 import { useToolResult } from '@/components/ResultCard'
+import type { ToolResult } from '@/components/ResultCard'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { downloadBlob } from '@/lib/shared'
 import { MediaInputError } from '@/lib/media'
 import type { FFmpegProcessor } from '@/lib/ffmpeg'
 
-export const videoTabs = [
-  { value: 'metadata', label: 'Metadata', icon: Info },
-  { value: 'convert', label: 'Convert', icon: Settings },
-  { value: 'compress', label: 'Compress', icon: Zap },
-  { value: 'trim', label: 'Trim', icon: Scissors },
-  { value: 'extract', label: 'Extract', icon: Volume2 },
-  { value: 'join', label: 'Join', icon: Merge },
+export const getVideoTabs = (t: Translator) => [
+  { value: 'metadata', label: t('videoToolsUtilsMetadata'), icon: Info },
+  {
+    value: 'convert',
+    label: t('videoToolsUtilsConvert'),
+    icon: Settings,
+  },
+  { value: 'compress', label: t('videoToolsUtilsCompress'), icon: Zap },
+  { value: 'trim', label: t('videoToolsUtilsTrim'), icon: Scissors },
+  { value: 'extract', label: t('videoToolsUtilsExtract'), icon: Volume2 },
+  { value: 'join', label: t('videoToolsUtilsJoin'), icon: Merge },
 ]
 
 // Format and codec compatibility definitions
-export const formatOptions = [
-  {
-    value: 'mp4',
-    icon: Play,
-    label: 'MP4',
-    description: 'Universal compatibility',
-  },
-  { value: 'webm', icon: Globe, label: 'WebM', description: 'Web optimized' },
-  {
-    value: 'mkv',
-    icon: Archive,
-    label: 'MKV',
-    description: 'Flexible container',
-  },
-  { value: 'avi', icon: Monitor, label: 'AVI', description: 'Legacy format' },
-  { value: 'gif', label: 'GIF', description: 'Animated image — no audio' },
-  { value: 'apng', label: 'APNG', description: 'Animated PNG — no audio' },
-  { value: 'webp', label: 'WebP', description: 'Animated image — no audio' },
-] as const
+export const getFormatOptions = (t: Translator) =>
+  [
+    {
+      value: 'mp4',
+      icon: Play,
+      label: 'MP4',
+      description: t('videoToolsUtilsUniversalCompatibility'),
+    },
+    {
+      value: 'webm',
+      icon: Globe,
+      label: 'WebM',
+      description: t('videoToolsUtilsWebOptimized'),
+    },
+    {
+      value: 'mkv',
+      icon: Archive,
+      label: 'MKV',
+      description: t('videoToolsUtilsFlexibleContainer'),
+    },
+    {
+      value: 'avi',
+      icon: Monitor,
+      label: 'AVI',
+      description: t('videoToolsUtilsLegacyFormat'),
+    },
+    {
+      value: 'gif',
+      label: 'GIF',
+      description: t('videoToolsUtilsAnimatedImageNoAudio'),
+    },
+    {
+      value: 'apng',
+      label: 'APNG',
+      description: t('videoToolsUtilsAnimatedPNGNoAudio'),
+    },
+    {
+      value: 'webp',
+      label: 'WebP',
+      description: t('videoToolsUtilsAnimatedImageNoAudio'),
+    },
+  ] as const
 
-export const videoCodecOptions = [
-  { value: 'libx264', label: 'H.264', description: 'Best compatibility' },
-  { value: 'libx265', label: 'H.265', description: 'Higher compression' },
-  { value: 'libvpx', label: 'VP8', description: 'Web standard' },
-] as const
+export const formatOptions = getFormatOptions(english)
 
-export const audioCodecOptions = [
-  { value: 'aac', label: 'AAC', description: 'High quality' },
-  { value: 'mp3', label: 'MP3', description: 'Universal' },
-  { value: 'libopus', label: 'Opus', description: 'Low latency' },
-] as const
+export const getVideoCodecOptions = (t: Translator) =>
+  [
+    {
+      value: 'libx264',
+      label: 'H.264',
+      description: t('videoToolsUtilsBestCompatibility'),
+    },
+    {
+      value: 'libx265',
+      label: 'H.265',
+      description: t('videoToolsUtilsHigherCompression'),
+    },
+    {
+      value: 'libvpx',
+      label: 'VP8',
+      description: t('videoToolsUtilsWebStandard'),
+    },
+  ] as const
+
+export const videoCodecOptions = getVideoCodecOptions(english)
+
+export const getAudioCodecOptions = (t: Translator) =>
+  [
+    {
+      value: 'aac',
+      label: 'AAC',
+      description: t('videoToolsUtilsHighQuality'),
+    },
+    {
+      value: 'mp3',
+      label: 'MP3',
+      description: t('videoToolsUtilsUniversal'),
+    },
+    {
+      value: 'libopus',
+      label: 'Opus',
+      description: t('videoToolsUtilsLowLatency'),
+    },
+  ] as const
+
+export const audioCodecOptions = getAudioCodecOptions(english)
 
 // Compatibility matrix
 export const compatibilityMatrix: Record<
@@ -109,68 +172,120 @@ export const isCodecCompatible = (
 }
 
 // Common resolution presets for both orientations
-export const getCommonResolutions = () => {
+export const getCommonResolutions = (t = english) => {
   return [
     // Widescreen (16:9) - Horizontal
-    { value: '3840x2160', label: '4K (3840×2160)', description: 'Ultra HD' },
+    {
+      value: '3840x2160',
+      label: '4K (3840×2160)',
+      description: t('videoToolsUtilsUltraHD'),
+    },
     { value: '2560x1440', label: '1440p (2560×1440)', description: 'QHD' },
-    { value: '1920x1080', label: '1080p (1920×1080)', description: 'Full HD' },
+    {
+      value: '1920x1080',
+      label: '1080p (1920×1080)',
+      description: t('videoToolsUtilsFullHD'),
+    },
     { value: '1280x720', label: '720p (1280×720)', description: 'HD' },
     { value: '854x480', label: '480p (854×480)', description: 'SD' },
-    { value: '640x360', label: '360p (640×360)', description: 'Low' },
+    {
+      value: '640x360',
+      label: '360p (640×360)',
+      description: t('videoToolsUtilsLow'),
+    },
 
     // Widescreen (16:9) - Vertical
     {
       value: '2160x3840',
-      label: '4K Vertical (2160×3840)',
-      description: 'Ultra HD Portrait',
+      label: t('videoToolsUtils4KVertical21603840'),
+      description: t('videoToolsUtilsUltraHDPortrait'),
     },
     {
       value: '1440x2560',
-      label: '1440p Vertical (1440×2560)',
-      description: 'QHD Portrait',
+      label: t('videoToolsUtils1440pVertical14402560'),
+      description: t('videoToolsUtilsQHDPortrait'),
     },
     {
       value: '1080x1920',
-      label: '1080p Vertical (1080×1920)',
-      description: 'Full HD Portrait',
+      label: t('videoToolsUtils1080pVertical10801920'),
+      description: t('videoToolsUtilsFullHDPortrait'),
     },
     {
       value: '720x1280',
-      label: '720p Vertical (720×1280)',
-      description: 'HD Portrait',
+      label: t('videoToolsUtils720pVertical7201280'),
+      description: t('videoToolsUtilsHDPortrait'),
     },
     {
       value: '480x854',
-      label: '480p Vertical (480×854)',
-      description: 'SD Portrait',
+      label: t('videoToolsUtils480pVertical480854'),
+      description: t('videoToolsUtilsSDPortrait'),
     },
     {
       value: '360x640',
-      label: '360p Vertical (360×640)',
-      description: 'Low Portrait',
+      label: t('videoToolsUtils360pVertical360640'),
+      description: t('videoToolsUtilsLowPortrait'),
     },
 
     // Standard (4:3) - Horizontal
-    { value: '1440x1080', label: '1440×1080', description: '4:3 HD' },
-    { value: '1024x768', label: '1024×768', description: '4:3 Standard' },
-    { value: '800x600', label: '800×600', description: '4:3 Low' },
-    { value: '640x480', label: '640×480', description: '4:3 Basic' },
+    {
+      value: '1440x1080',
+      label: '1440×1080',
+      description: t('videoToolsUtils43HD'),
+    },
+    {
+      value: '1024x768',
+      label: '1024×768',
+      description: t('videoToolsUtils43Standard'),
+    },
+    {
+      value: '800x600',
+      label: '800×600',
+      description: t('videoToolsUtils43Low'),
+    },
+    {
+      value: '640x480',
+      label: '640×480',
+      description: t('videoToolsUtils43Basic'),
+    },
 
     // Standard (4:3) - Vertical
-    { value: '1080x1440', label: '1080×1440', description: '4:3 HD Portrait' },
+    {
+      value: '1080x1440',
+      label: '1080×1440',
+      description: t('videoToolsUtils43HDPortrait'),
+    },
     {
       value: '768x1024',
       label: '768×1024',
-      description: '4:3 Standard Portrait',
+      description: t('videoToolsUtils43StandardPortrait'),
     },
-    { value: '600x800', label: '600×800', description: '4:3 Low Portrait' },
-    { value: '480x640', label: '480×640', description: '4:3 Basic Portrait' },
+    {
+      value: '600x800',
+      label: '600×800',
+      description: t('videoToolsUtils43LowPortrait'),
+    },
+    {
+      value: '480x640',
+      label: '480×640',
+      description: t('videoToolsUtils43BasicPortrait'),
+    },
 
     // Square
-    { value: '1080x1080', label: '1080×1080', description: 'Square HD' },
-    { value: '720x720', label: '720×720', description: 'Square Standard' },
-    { value: '480x480', label: '480×480', description: 'Square Low' },
+    {
+      value: '1080x1080',
+      label: '1080×1080',
+      description: t('videoToolsUtilsSquareHD'),
+    },
+    {
+      value: '720x720',
+      label: '720×720',
+      description: t('videoToolsUtilsSquareStandard'),
+    },
+    {
+      value: '480x480',
+      label: '480×480',
+      description: t('videoToolsUtilsSquareLow'),
+    },
   ]
 }
 
@@ -189,9 +304,10 @@ export const isAspectRatioCompatible = (
 export const getCompatibleResolutions = (
   videoWidth: number,
   videoHeight: number,
+  t = english,
 ) => {
   const videoAspectRatio = calculateAspectRatio(videoWidth, videoHeight)
-  const allResolutions = getCommonResolutions()
+  const allResolutions = getCommonResolutions(t)
 
   return allResolutions.filter((resolution) => {
     const [width, height] = resolution.value.split('x').map(Number)
@@ -296,6 +412,7 @@ export function CodecRadioGroup<T extends string>({
   disabled = false,
   disabledOptions = [],
 }: RadioGroupProps<T>) {
+  const t = useTranslator()
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-1 gap-2">
@@ -329,7 +446,9 @@ export function CodecRadioGroup<T extends string>({
                   >
                     {option.label}
                     {isDisabled && (
-                      <span className="ml-2 text-xs">(Not supported)</span>
+                      <span className="ml-2 text-xs">
+                        {t('videoToolsUtilsNotSupported')}
+                      </span>
                     )}
                   </div>
                   <div
@@ -379,6 +498,7 @@ export function useVideoSettings<T>(
 
 /** Shared completion/error behavior for video actions; importing stays separate. */
 export function useVideoAction(workspaceKey: string, failureMessage: string) {
+  const t = useTranslator()
   const context = useVideoTools()
   const { result, setResult, clearResult } = useToolResult(
     context.selectedFile?.file,
@@ -419,7 +539,7 @@ export function useVideoAction(workspaceKey: string, failureMessage: string) {
     operation: (
       processor: FFmpegProcessor,
       signal: AbortSignal,
-    ) => Promise<{ blob: Blob; filename: string; details?: string[] }>,
+    ) => Promise<ToolResult>,
   ) => {
     if (
       !context.selectedFile ||
@@ -462,9 +582,9 @@ export function useVideoAction(workspaceKey: string, failureMessage: string) {
         controller.signal.aborted ||
         (cause instanceof Error && cause.name === 'AbortError')
       ) {
-        setError('Processing cancelled. You can try again.')
+        setError(t('videoToolsUtilsProcessingCancelledYouCanTryAgain'))
       } else if (cause instanceof MediaInputError) {
-        setError(cause.message)
+        setError(t(cause.key, cause.values))
       } else {
         setError(failureMessage)
         setDiagnostic(cause instanceof Error ? cause.message : String(cause))
@@ -502,6 +622,7 @@ export function VideoActionStatus({
   cancellable?: boolean
   indeterminate?: boolean
 }) {
+  const t = useTranslator()
   const {
     isProcessing,
     progress,
@@ -533,23 +654,26 @@ export function VideoActionStatus({
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>
               {elapsedTime
-                ? `Elapsed: ${elapsedTime}`
-                : 'Processing locally in your browser.'}
+                ? t('videoToolsUtilsElapsed', { elapsedTime })
+                : t('videoToolsUtilsProcessingLocallyInYourBrowser')}
             </span>
             {!indeterminate && estimatedTimeRemaining && (
-              <span>About {estimatedTimeRemaining} remaining</span>
+              <span>
+                {t('videoToolsUtilsAbout') + ' '}
+                {estimatedTimeRemaining}
+                {' ' + t('videoToolsUtilsRemaining')}
+              </span>
             )}
             {cancellable && (
               <Button variant="outline" size="sm" onClick={cancelProcessing}>
                 <Square aria-hidden="true" />
-                Cancel processing
+                {t('videoToolsUtilsCancelProcessing')}
               </Button>
             )}
           </div>
           {showSlowProcessingWarning && (
             <p className="text-sm text-muted-foreground">
-              Large videos can take a while in a browser. Keep this page open
-              while processing.
+              {t('videoToolsUtilsLargeVideosCanTakeAWhile')}
             </p>
           )}
         </section>
@@ -562,7 +686,9 @@ export function VideoActionStatus({
           <p>{error}</p>
           {diagnostic && (
             <details className="mt-2">
-              <summary className="cursor-pointer">Technical details</summary>
+              <summary className="cursor-pointer">
+                {t('videoToolsUtilsTechnicalDetails')}
+              </summary>
               <p className="mt-2 break-words text-muted-foreground">
                 {diagnostic}
               </p>

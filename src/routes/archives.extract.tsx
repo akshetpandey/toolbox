@@ -1,3 +1,5 @@
+import { errorMessage } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,6 +22,7 @@ export const Route = createFileRoute('/archives/extract')({
 })
 
 function ExtractPage() {
+  const t = useTranslator()
   const { isProcessing, setIsProcessing } = useProcessing()
   const {
     uploadedArchive,
@@ -75,7 +78,7 @@ function ExtractPage() {
     } catch (cause) {
       if (version.current === request)
         setError(
-          cause instanceof Error ? cause.message : 'Archive operation failed',
+          errorMessage(t, cause, t('archivesExtractArchiveOperationFailed')),
         )
     } finally {
       if (version.current === request) {
@@ -92,23 +95,21 @@ function ExtractPage() {
       <Card className="shadow-none">
         <CardContent className="space-y-4 p-4 sm:p-6">
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold">Open an archive</h2>
+            <h2 className="text-lg font-semibold">
+              {t('archivesExtractOpenAnArchive')}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Choose a ZIP, 7Z, TAR, GZIP, or RAR file. Then download the files
-              you need.
+              {t('archivesExtractChooseAZIP7ZTARGZIP')}
             </p>
           </div>
           {initializationError && (
             <div role="alert" className="space-y-2 text-sm">
-              <p>
-                Archive tools could not be loaded. Check your connection and try
-                again.
-              </p>
+              <p>{t('archivesExtractArchiveToolsCouldNotBeLoaded')}</p>
               <Button
                 variant="outline"
                 onClick={() => void initializeProcessor()}
               >
-                Try loading again
+                {t('archivesExtractTryLoadingAgain')}
               </Button>
             </div>
           )}
@@ -117,19 +118,16 @@ function ExtractPage() {
               role="alert"
               className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
             >
-              <p>
-                This archive could not be opened or downloaded. Check the
-                password if it is protected, or try a fresh copy.
-              </p>
+              <p>{t('archivesExtractThisArchiveCouldNotBeOpened')}</p>
               <Button
                 variant="outline"
                 onClick={() => setUploadedArchive(null)}
               >
-                Choose another archive
+                {t('archivesExtractChooseAnotherArchive')}
               </Button>
               <details>
                 <summary className="cursor-pointer font-medium">
-                  Technical details
+                  {t('archivesExtractTechnicalDetails')}
                 </summary>
                 <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
               </details>
@@ -138,10 +136,12 @@ function ExtractPage() {
           {uploadedArchive && (
             <details className="text-sm">
               <summary className="min-h-11 cursor-pointer py-3 font-medium">
-                Password-protected archive
+                {t('archivesExtractPasswordProtectedArchive')}
               </summary>
               <div className="space-y-2 pb-2">
-                <Label htmlFor="archive-password">Archive password</Label>
+                <Label htmlFor="archive-password">
+                  {t('archivesExtractArchivePassword')}
+                </Label>
                 <Input
                   id="archive-password"
                   type="password"
@@ -163,7 +163,9 @@ function ExtractPage() {
               ) : (
                 <FileArchive aria-hidden="true" className="size-4" />
               )}
-              {activity === 'extract' ? 'Extracting files…' : 'Extract files'}
+              {activity === 'extract'
+                ? t('archivesExtractExtractingFiles')
+                : t('archivesExtractExtractFiles')}
             </Button>
             {fileCount > 0 && (
               <Button
@@ -177,18 +179,18 @@ function ExtractPage() {
                   <Download aria-hidden="true" className="size-4" />
                 )}
                 {activity === 'download'
-                  ? 'Preparing ZIP…'
-                  : 'Download all as ZIP'}
+                  ? t('archivesExtractPreparingZIP')
+                  : t('archivesExtractDownloadAllAsZIP')}
               </Button>
             )}
           </div>
           {(isInitializing || activity) && (
             <p role="status" className="text-sm text-muted-foreground">
               {isInitializing
-                ? 'Preparing archive tools…'
+                ? t('archivesExtractPreparingArchiveTools')
                 : activity === 'extract'
-                  ? 'Reading files from the archive…'
-                  : 'Preparing your download…'}
+                  ? t('archivesExtractReadingFilesFromTheArchive')
+                  : t('archivesExtractPreparingYourDownload')}
             </p>
           )}
         </CardContent>
@@ -197,19 +199,22 @@ function ExtractPage() {
         <Card className="shadow-none">
           <CardContent className="space-y-4 p-4 sm:p-6">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">Extracted files</h2>
+              <h2 className="text-lg font-semibold">
+                {t('archivesExtractExtractedFiles')}
+              </h2>
               <p role="status" className="text-sm text-muted-foreground">
-                {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                {t('archiveFileCount', {}, fileCount)}
                 {folderCount > 0 &&
-                  ` · ${folderCount} ${folderCount === 1 ? 'folder' : 'folders'}`}{' '}
+                  ' · ' + t('archiveFolderCount', {}, folderCount)}{' '}
                 ·{' '}
                 {formatFileSize(
                   extractedFiles.reduce((sum, file) => sum + file.size, 0),
+                  t,
                 )}
               </p>
             </div>
             <ul
-              aria-label="Extracted files"
+              aria-label={t('archivesExtractExtractedFiles')}
               className="max-h-[36rem] space-y-2 overflow-y-auto"
             >
               {extractedFiles.map((file, index) => (
@@ -235,14 +240,18 @@ function ExtractPage() {
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3 pl-6">
                     <p className="text-sm text-muted-foreground">
-                      {file.isDirectory ? 'Folder' : formatFileSize(file.size)}
+                      {file.isDirectory
+                        ? t('archivesExtractFolder')
+                        : formatFileSize(file.size, t)}
                     </p>
                     {!file.isDirectory && (
                       <Button
                         variant="ghost"
                         size="icon"
                         className="size-11 shrink-0"
-                        aria-label={`Download ${file.name}`}
+                        aria-label={t('archivesExtractDownload', {
+                          filename: file.name,
+                        })}
                         disabled={isProcessing}
                         onClick={() => downloadExtractedFile(file)}
                       >

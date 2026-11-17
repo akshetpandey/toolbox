@@ -1,3 +1,5 @@
+import { MessageError } from '@/i18n/MessageError'
+import { workspaceEnglish as english } from '@/i18n/workspaceMessages'
 import type { parseMetadata, writeMetadata } from '@uswriting/exiftool'
 import type { WASMagic } from 'wasmagic'
 import type { md5 } from 'hash-wasm'
@@ -172,11 +174,11 @@ export const extractFileMetadata = async (
       detectedMimeType: mimeType,
       detectedDescription: description,
       fallbackMimeType: mimeType ?? 'application/octet-stream',
-      fallbackDescription: description ?? 'Unknown file type',
+      fallbackDescription: description ?? english('metadataUnknownFileType'),
     })
 
     const finalMimeType = mimeType ?? 'application/octet-stream'
-    const finalDescription = description ?? 'Unknown file type'
+    const finalDescription = description ?? english('metadataUnknownFileType')
 
     console.log('📋 Metadata: File metadata extraction successful', {
       mimeType: finalMimeType,
@@ -195,7 +197,7 @@ export const extractFileMetadata = async (
     console.error('📋 Metadata: Error extracting file metadata:', error)
     return {
       mimeType: 'application/octet-stream',
-      description: 'Unknown file type',
+      description: english('metadataUnknownFileType'),
       size: file.size,
       name: file.name,
     }
@@ -234,7 +236,7 @@ export const stripFileMetadata = async (file: File): Promise<Blob> => {
       throw new Error(result.error || 'Failed to strip metadata')
     }
     if (!result.data?.byteLength) {
-      throw new Error('Metadata stripping returned no file data')
+      throw new MessageError('metadataMetadataStrippingReturnedNoFileData')
     }
 
     console.log('📋 Metadata: Metadata stripping successful')
@@ -288,10 +290,4 @@ export const calculateFileHashes = async (
 }
 
 // Format file size helper
-export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+export { formatFileSize } from '@/lib/shared'

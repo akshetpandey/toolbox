@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { canvasBlob, loadEditablePDF, savePDF } from './pdf-edit'
 
 export type PDFStampOptions =
@@ -8,11 +9,11 @@ export async function stampPDF(file: Blob, stamp: PDFStampOptions) {
   const { degrees } = await import('pdf-lib')
   const document = await loadEditablePDF(file)
   const text = stamp.text.trim()
-  if (!text) throw new Error('Enter the text to place on your PDF.')
+  if (!text) throw new MessageError('pdfStampEnterTheTextToPlaceOn')
   const signature = stamp.type === 'signature'
   const canvas = window.document.createElement('canvas')
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('Text rendering is unavailable.')
+  if (!context) throw new MessageError('pdfStampTextRenderingIsUnavailable')
   const font = signature ? 'italic 112px cursive' : 'bold 100px sans-serif'
   context.font = font
   const measured = context.measureText(text)
@@ -28,7 +29,8 @@ export async function stampPDF(file: Blob, stamp: PDFStampOptions) {
   canvas.width = 0
   const pages = document.getPages()
   const target = stamp.type === 'signature' ? pages[stamp.page - 1] : undefined
-  if (signature && !target) throw new Error('Choose a page in this PDF.')
+  if (signature && !target)
+    throw new MessageError('pdfStampChooseAPageInThisPDF')
 
   for (const page of target ? [target] : pages) {
     const crop = page.getCropBox()

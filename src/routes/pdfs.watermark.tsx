@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, usePDFSource } from '@/components/PDFAction'
 import { Input, Label } from '@/components/ui'
@@ -10,6 +12,7 @@ export const Route = createFileRoute('/pdfs/watermark')({
 })
 
 function PDFWatermarkRoute() {
+  const t = useTranslator()
   const { file, clearFiles } = usePDFSource()
   const [text, setText] = useWorkspaceState('pdfs.edit.watermark.text', '')
   return (
@@ -17,27 +20,31 @@ function PDFWatermarkRoute() {
       file={file}
       sourceKey={JSON.stringify([file?.name, text])}
       name="pdfs.edit.watermark"
-      label="Add watermark and download"
+      label={t('pdfsWatermarkAddWatermarkAndDownload')}
       onReset={clearFiles}
       disabled={!text.trim()}
       run={async () => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new Error(t('pdfsWatermarkChooseAPDFFirst'))
         return {
           blob: await stampPDF(file, { type: 'watermark', text }),
           filename: `${pdfBaseName(file.name)}-watermarked.pdf`,
-          details: ['Watermark applied to all pages'],
+          details: [message('pdfsWatermarkWatermarkAppliedToAllPages')],
         }
       }}
     >
-      <h2 className="text-lg font-semibold">Mark every page</h2>
+      <h2 className="text-lg font-semibold">
+        {t('pdfsWatermarkMarkEveryPage')}
+      </h2>
       <p className="text-sm text-muted-foreground">
-        Your text appears diagonally across every page in translucent gray.
+        {t('pdfsWatermarkYourTextAppearsDiagonallyAcrossEvery')}
       </p>
       <div className="space-y-2">
-        <Label htmlFor="pdf-watermark-text">Watermark text</Label>
+        <Label htmlFor="pdf-watermark-text">
+          {t('pdfsWatermarkWatermarkText')}
+        </Label>
         <Input
           id="pdf-watermark-text"
-          placeholder="Draft"
+          placeholder={t('pdfsWatermarkDraft')}
           value={text}
           maxLength={80}
           onChange={(event) => setText(event.target.value)}

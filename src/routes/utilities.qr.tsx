@@ -1,3 +1,6 @@
+import { errorMessage } from '@/i18n/MessageError'
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { ResultCard, useToolResult } from '@/components/ResultCard'
@@ -26,6 +29,7 @@ const defaults: QRSettings = {
 }
 
 function QRCodePage() {
+  const t = useTranslator()
   const [settings, setSettings] = useWorkspaceState('qr.settings', defaults)
   const [error, setError] = useState('')
   const [preview, setPreview] = useState<{ blob: Blob; url: string } | null>(
@@ -61,16 +65,12 @@ function QRCodePage() {
       setResult({
         blob,
         filename,
-        details: ['Static QR code · scan to read the encoded content'],
+        details: [message('utilitiesQrStaticQRCodeScanTo')],
       })
       downloadBlob(blob, filename)
     } catch (cause) {
       if (operation.isCurrent())
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : 'The QR code could not be created.',
-        )
+        setError(errorMessage(t, cause, t('utilitiesQrTheQRCodeCouldNotBe')))
     } finally {
       operation.finish()
     }
@@ -82,10 +82,10 @@ function QRCodePage() {
         <CardContent className="grid gap-6 p-4 sm:p-6 md:grid-cols-2">
           <fieldset disabled={isProcessing} className="min-w-0 space-y-4">
             <legend className="mb-4 text-lg font-semibold">
-              Create a QR code
+              {t('utilitiesQrCreateAQRCode')}
             </legend>
             <div className="space-y-2">
-              <Label htmlFor="qr-type">Code type</Label>
+              <Label htmlFor="qr-type">{t('utilitiesQrCodeType')}</Label>
               <select
                 id="qr-type"
                 className="min-h-11 w-full rounded-md border bg-background px-3"
@@ -94,15 +94,17 @@ function QRCodePage() {
                   change({ type: event.target.value as QRSettings['type'] })
                 }
               >
-                <option value="url">Website address</option>
-                <option value="text">Text</option>
-                <option value="wifi">Wi-Fi network</option>
+                <option value="url">{t('utilitiesQrWebsiteAddress')}</option>
+                <option value="text">{t('utilitiesQrText')}</option>
+                <option value="wifi">{t('utilitiesQrWiFiNetwork')}</option>
               </select>
             </div>
             {settings.type === 'wifi' ? (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="qr-ssid">Network name (SSID)</Label>
+                  <Label htmlFor="qr-ssid">
+                    {t('utilitiesQrNetworkNameSSID')}
+                  </Label>
                   <Input
                     id="qr-ssid"
                     autoComplete="off"
@@ -112,7 +114,9 @@ function QRCodePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="qr-security">Wi-Fi security</Label>
+                  <Label htmlFor="qr-security">
+                    {t('utilitiesQrWiFiSecurity')}
+                  </Label>
                   <select
                     id="qr-security"
                     className="min-h-11 w-full rounded-md border bg-background px-3"
@@ -123,14 +127,18 @@ function QRCodePage() {
                       })
                     }
                   >
-                    <option value="WPA">WPA / WPA2 / WPA3 personal</option>
+                    <option value="WPA">
+                      {t('utilitiesQrWPAWPA2WPA3Personal')}
+                    </option>
                     <option value="WEP">WEP</option>
-                    <option value="nopass">No password</option>
+                    <option value="nopass">{t('utilitiesQrNoPassword')}</option>
                   </select>
                 </div>
                 {settings.security !== 'nopass' && (
                   <div className="space-y-2">
-                    <Label htmlFor="qr-password">Network password</Label>
+                    <Label htmlFor="qr-password">
+                      {t('utilitiesQrNetworkPassword')}
+                    </Label>
                     <Input
                       id="qr-password"
                       type="password"
@@ -151,18 +159,18 @@ function QRCodePage() {
                       change({ hidden: event.target.checked })
                     }
                   />
-                  Hidden network
+                  {t('utilitiesQrHiddenNetwork')}
                 </label>
                 <p className="text-sm text-muted-foreground">
-                  Anyone who scans this code can read the network credentials.
+                  {t('utilitiesQrAnyoneWhoScansThisCodeCan')}
                 </p>
               </>
             ) : (
               <div className="space-y-2">
                 <Label htmlFor="qr-content">
                   {settings.type === 'url'
-                    ? 'Website address'
-                    : 'Text to encode'}
+                    ? t('utilitiesQrWebsiteAddress')
+                    : t('utilitiesQrTextToEncode')}
                 </Label>
                 <textarea
                   id="qr-content"
@@ -173,7 +181,7 @@ function QRCodePage() {
                   placeholder={
                     settings.type === 'url'
                       ? 'https://example.com'
-                      : 'Enter your text'
+                      : t('utilitiesQrEnterYourText')
                   }
                   className="w-full rounded-md border bg-background p-3 text-base"
                   value={settings.content}
@@ -182,7 +190,9 @@ function QRCodePage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="qr-format">Download format</Label>
+              <Label htmlFor="qr-format">
+                {t('utilitiesQrDownloadFormat')}
+              </Label>
               <select
                 id="qr-format"
                 className="min-h-11 w-full rounded-md border bg-background px-3"
@@ -191,8 +201,10 @@ function QRCodePage() {
                   change({ format: event.target.value as QRSettings['format'] })
                 }
               >
-                <option value="png">PNG — 1024 × 1024</option>
-                <option value="svg">SVG — scalable for printing</option>
+                <option value="png">{t('utilitiesQrPNG10241024')}</option>
+                <option value="svg">
+                  {t('utilitiesQrSVGScalableForPrinting')}
+                </option>
               </select>
             </div>
             {error && (
@@ -205,20 +217,19 @@ function QRCodePage() {
               disabled={isProcessing}
               onClick={() => void generate()}
             >
-              Generate and download QR code
+              {t('utilitiesQrGenerateAndDownloadQRCode')}
             </Button>
           </fieldset>
           <div className="flex min-h-56 min-w-0 items-center justify-center rounded-lg border bg-muted/30 p-4">
             {result && preview?.blob === result.blob ? (
               <img
                 src={preview.url}
-                alt="Generated QR code"
+                alt={t('utilitiesQrGeneratedQRCode')}
                 className="aspect-square w-full max-w-80 bg-white"
               />
             ) : (
               <p className="max-w-xs text-center text-sm text-muted-foreground">
-                Your QR code preview will appear here. Scan the downloaded code
-                to check it before printing.
+                {t('utilitiesQrYourQRCodePreviewWillAppear')}
               </p>
             )}
           </div>

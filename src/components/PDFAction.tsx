@@ -1,3 +1,5 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
+import { errorMessage } from '@/i18n/MessageError'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useFileOperation } from '@/contexts/FileOperation'
@@ -31,7 +33,7 @@ export function PDFAction({
   sourceKey,
   name,
   label,
-  status = 'Working on your file…',
+  status,
   disabled = false,
   onReset,
   run,
@@ -47,6 +49,7 @@ export function PDFAction({
   run: PDFActionTask
   children?: ReactNode
 }) {
+  const t = useTranslator()
   const { isProcessing } = useProcessing()
   const start = useFileOperation(file)
   const controller = useRef<AbortController | null>(null)
@@ -66,7 +69,7 @@ export function PDFAction({
     controller.current = abort
     const operation = start()
     setResult(null)
-    setMessage(status)
+    setMessage(status ?? t('pDFActionWorkingOnYourFile'))
     setError('')
     try {
       const output = await run(abort.signal, (next) => {
@@ -78,9 +81,7 @@ export function PDFAction({
     } catch (cause) {
       if (operation.isCurrent() && !abort.signal.aborted)
         setError(
-          cause instanceof Error
-            ? cause.message
-            : 'Your file could not be processed.',
+          errorMessage(t, cause, t('pDFActionYourFileCouldNotBeProcessed')),
         )
     } finally {
       if (controller.current === abort) controller.current = null
@@ -117,10 +118,10 @@ export function PDFAction({
                 variant="outline"
                 onClick={() => {
                   controller.current?.abort()
-                  setMessage('Cancelling…')
+                  setMessage(t('pDFActionCancelling'))
                 }}
               >
-                Cancel
+                {t('pDFActionCancel')}
               </Button>
             )}
           </div>
@@ -145,12 +146,13 @@ export function PDFPageRanges({
   setValue: (value: string) => void
   hint: string
 }) {
+  const t = useTranslator()
   return (
     <div className="space-y-2">
-      <Label htmlFor="pdf-page-ranges">Pages</Label>
+      <Label htmlFor="pdf-page-ranges">{t('pDFActionPages')}</Label>
       <Input
         id="pdf-page-ranges"
-        placeholder="All pages"
+        placeholder={t('pDFActionAllPages')}
         aria-describedby="pdf-page-ranges-hint"
         value={value}
         onChange={(event) => setValue(event.target.value)}

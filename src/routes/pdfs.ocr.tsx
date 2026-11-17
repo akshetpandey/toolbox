@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, usePDFSource } from '@/components/PDFAction'
 import { pdfBaseName } from '@/lib/pdf-edit'
@@ -7,17 +9,18 @@ export const Route = createFileRoute('/pdfs/ocr')({
 })
 
 function PDFOCRRoute() {
+  const t = useTranslator()
   const { file, clearFiles } = usePDFSource()
   return (
     <PDFAction
       file={file}
       sourceKey={file?.name ?? ''}
       name="pdfs.edit.ocr"
-      label="Make searchable and download"
-      status="Opening your PDF…"
+      label={t('pdfsOcrMakeSearchableAndDownload')}
+      status={t('pdfsOcrOpeningYourPDF')}
       onReset={clearFiles}
       run={async (signal, setStatus) => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new Error(t('pdfsOcrChooseAPDFFirst'))
         const { makeSearchablePDF } = await import('@/lib/pdf-privacy')
         const { blob, recognized } = await makeSearchablePDF(
           file,
@@ -31,20 +34,22 @@ function PDFOCRRoute() {
             : file.name,
           details: [
             recognized
-              ? `Added searchable text to ${recognized} ${recognized === 1 ? 'page' : 'pages'}.`
-              : 'No new text was recognized. This is the original PDF.',
+              ? message(
+                  'pdfsOcrAddedSearchableTextTo',
+                  { recognized },
+                  recognized,
+                )
+              : message('pdfsOcrNoNewTextWasRecognizedThis'),
           ],
         }
       }}
     >
-      <h2 className="text-lg font-semibold">Find text in scans</h2>
+      <h2 className="text-lg font-semibold">{t('pdfsOcrFindTextInScans')}</h2>
       <p className="text-sm text-muted-foreground">
-        Recognizes English text on scanned pages and adds a selectable text
-        layer. Pages with selectable text are kept as they are.
+        {t('pdfsOcrRecognizesEnglishTextOnScannedPages')}
       </p>
       <p className="text-sm text-muted-foreground">
-        Check the recognized text against your original. Blurry scans and
-        handwriting can be harder to read.
+        {t('pdfsOcrCheckTheRecognizedTextAgainstYour')}
       </p>
     </PDFAction>
   )

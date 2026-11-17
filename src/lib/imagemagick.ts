@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { MagickFormat } from '@imagemagick/magick-wasm'
 import { LibImageQuantProcessor } from './libimagequant'
 import type { ImageFile } from './shared'
@@ -223,7 +224,7 @@ export class ImageMagickProcessor {
             x + width > image.width ||
             y + height > image.height
           )
-            throw new Error('The crop must stay inside the image.')
+            throw new MessageError('imagemagickTheCropMustStayInsideThe')
           image.crop(new MagickGeometry(x, y, width, height))
           image.resetPage()
         }
@@ -262,7 +263,7 @@ export class ImageMagickProcessor {
 
   async compressToSize(file: File, maximumBytes: number, allowResize: boolean) {
     if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1) {
-      throw new Error('Enter a valid file size limit.')
+      throw new MessageError('imagemagickEnterAValidFileSizeLimit')
     }
     const { ImageMagick, AlphaAction, MagickColors } = await this.load()
     const bytes = new Uint8Array(await file.arrayBuffer())

@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { openBrowserPDF } from './pdf-render'
 
 export async function convertPDFToWord(
@@ -48,9 +49,7 @@ export async function convertPDFToWord(
 
     signal.throwIfAborted()
     if (!paragraphs.length) {
-      throw new Error(
-        'This PDF has no selectable text. Try Make PDF searchable first.',
-      )
+      throw new MessageError('pdfToWordThisPDFHasNoSelectableText')
     }
     onProgress('Building the Word document…')
     const blob = await Packer.toBlob(

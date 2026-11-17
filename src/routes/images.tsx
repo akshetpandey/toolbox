@@ -1,3 +1,5 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
+import { MessageError } from '@/i18n/MessageError'
 import {
   createFileRoute,
   Outlet,
@@ -45,43 +47,6 @@ import {
   ScanText,
 } from 'lucide-react'
 
-const imageTabs = [
-  {
-    value: 'ocr',
-    label: 'Image to text',
-    title: 'Image to text (OCR)',
-    icon: ScanText,
-  },
-  { value: 'metadata', label: 'Metadata', title: 'Image metadata', icon: Info },
-  { value: 'resize', label: 'Resize', title: 'Resize image', icon: Maximize },
-  {
-    value: 'convert',
-    label: 'Convert',
-    title: 'Convert image',
-    icon: Settings,
-  },
-  { value: 'compress', label: 'Compress', title: 'Compress image', icon: Zap },
-  {
-    value: 'crop',
-    label: 'Crop & rotate',
-    title: 'Crop, rotate and flip image',
-    icon: Crop,
-  },
-  {
-    value: 'batch',
-    label: 'Batch',
-    title: 'Batch resize or convert images',
-    icon: Images,
-  },
-  { value: 'redact', label: 'Redact', title: 'Redact image', icon: Eye },
-  {
-    value: 'background',
-    label: 'Remove background',
-    title: 'Remove image background',
-    icon: Eraser,
-  },
-]
-
 function invalidateImageWork() {
   invalidateWorkspaceState(['images.', 'result.images.'], {
     // These provider-owned values are reset explicitly with each selection.
@@ -104,7 +69,7 @@ function readImageDimensions(preview: string) {
     const image = new Image()
     image.onload = () => resolve({ width: image.width, height: image.height })
     image.onerror = () =>
-      reject(new Error('The browser could not open this image.'))
+      reject(new MessageError('imagesTheBrowserCouldNotOpenThis'))
     image.src = preview
   })
 }
@@ -125,6 +90,63 @@ function imageDetails(image: ImageFile, processor: ImageMagickProcessor) {
 }
 
 function ImageToolsLayout() {
+  const t = useTranslator()
+  const imageTabs = [
+    {
+      value: 'ocr',
+      label: t('imagesImageToText'),
+      title: t('imagesImageToTextOCR'),
+      icon: ScanText,
+    },
+    {
+      value: 'metadata',
+      label: t('imagesMetadata'),
+      title: t('imagesImageMetadata'),
+      icon: Info,
+    },
+    {
+      value: 'resize',
+      label: t('imagesResize'),
+      title: t('imagesResizeImage'),
+      icon: Maximize,
+    },
+    {
+      value: 'convert',
+      label: t('imagesConvert'),
+      title: t('imagesConvertImage'),
+      icon: Settings,
+    },
+    {
+      value: 'compress',
+      label: t('imagesCompress'),
+      title: t('imagesCompressImage'),
+      icon: Zap,
+    },
+    {
+      value: 'crop',
+      label: t('imagesCropRotate'),
+      title: t('imagesCropRotateAndFlipImage'),
+      icon: Crop,
+    },
+    {
+      value: 'batch',
+      label: t('imagesBatch'),
+      title: t('imagesBatchResizeOrConvertImages'),
+      icon: Images,
+    },
+    {
+      value: 'redact',
+      label: t('imagesRedact'),
+      title: t('imagesRedactImage'),
+      icon: Eye,
+    },
+    {
+      value: 'background',
+      label: t('imagesRemoveBackground'),
+      title: t('imagesRemoveImageBackground'),
+      icon: Eraser,
+    },
+  ]
   const { isProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
@@ -216,7 +238,7 @@ function ImageToolsLayout() {
       const isCurrent = () => selection.request === request
       if (!isSupportedImage(file)) {
         setIsPreparing(false)
-        setSelectionError('Choose a JPG, PNG, WebP, GIF, HEIC, or HEIF image.')
+        setSelectionError(t('imagesChooseAJPGPNGWebPGIF'))
         return
       }
       setIsPreparing(true)
@@ -258,8 +280,7 @@ function ImageToolsLayout() {
         invalidateImageWork()
         setIsPreparing(false)
       } catch {
-        if (isCurrent())
-          setSelectionError('This image could not be opened. Try another file.')
+        if (isCurrent()) setSelectionError(t('imagesThisImageCouldNotBeOpened'))
       } finally {
         if (!retainedPreview && preview) URL.revokeObjectURL(preview)
         if (isCurrent()) setIsPreparing(false)
@@ -312,7 +333,7 @@ function ImageToolsLayout() {
       onFileSelect={(files) => {
         const selected = Array.from(files)
         if (selected.some((file) => !isSupportedImage(file))) {
-          setBatchSelectionError('Choose only image files for a batch.')
+          setBatchSelectionError(t('imagesChooseOnlyImageFilesForA'))
           return
         }
         setBatchSelectionError(null)
@@ -324,10 +345,10 @@ function ImageToolsLayout() {
       }}
       disabled={isProcessing}
       acceptedTypes={acceptedImageTypes}
-      title="Drop images here"
-      description="Apply the same changes to every selected image."
+      title={t('imagesDropImagesHere')}
+      description={t('imagesApplyTheSameChangesToEvery')}
       supportedFormats={supportedImageFormats}
-      selectedActionLabel="Change files"
+      selectedActionLabel={t('imagesChangeFiles')}
       multiple
     />
   ) : (
@@ -343,8 +364,8 @@ function ImageToolsLayout() {
       onClearFiles={clearSelectedFile}
       disabled={isProcessing || isPreparing}
       acceptedTypes={acceptedImageTypes}
-      title="Drop an image here"
-      description="Choose an image from this device."
+      title={t('imagesDropAnImageHere')}
+      description={t('imagesChooseAnImageFromThisDevice')}
       supportedFormats={supportedImageFormats}
       selectedFileIcon={FileImage}
     >
@@ -365,7 +386,7 @@ function ImageToolsLayout() {
                   {file.name}
                 </p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                  <span>{formatFileSize(file.size)}</span>
+                  <span>{formatFileSize(file.size, t)}</span>
                   {file.dimensions && (
                     <span>
                       {file.dimensions.width} × {file.dimensions.height}
@@ -406,7 +427,7 @@ function ImageToolsLayout() {
                 className="flex items-center gap-2 text-sm text-muted-foreground"
               >
                 <Loader2 aria-hidden="true" className="size-4 animate-spin" />{' '}
-                Preparing image tools…
+                {t('imagesPreparingImageTools')}
               </p>
             )}
             {uploadError && (

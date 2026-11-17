@@ -49,7 +49,7 @@ vi.mock('@/lib/metadata', () => ({
   stripFileMetadata: () =>
     Promise.resolve(new Blob(['clean'], { type: 'image/png' })),
 }))
-vi.mock('emoji-picker-react', () => ({ default: () => null }))
+vi.mock('@/components/RedactionEmojiPicker', () => ({ default: () => null }))
 
 import { Route as RedactRoute } from '@/routes/images.redact'
 import { Route as MetadataRoute } from '@/routes/images.metadata'

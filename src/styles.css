@@ -197,7 +197,7 @@ input[type='range'] {
 .skip-link {
   position: fixed;
   top: -100px;
-  left: 16px;
+  inset-inline-start: 16px;
   z-index: 100;
   padding: 12px 16px;
   border-radius: 8px;

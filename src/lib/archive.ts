@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { SevenZipModule } from '7z-wasm'
 
 // Promise singleton to prevent duplicate WASM init from concurrent calls
@@ -52,7 +53,7 @@ function runSevenZip(sevenZip: SevenZipModule, args: string[]) {
     status = error
   }
   if (status !== undefined && status !== 0) {
-    throw new Error('7-Zip could not process this archive', {
+    throw new MessageError('archive7ZipCouldNotProcessThisArchive', undefined, {
       cause: status,
     })
   }
@@ -107,7 +108,7 @@ export class ArchiveProcessor {
       for (const [index, file] of files.entries()) {
         const parts = file.name.replaceAll('\\', '/').split('/')
         if (parts.some((part) => !part || part === '.' || part === '..')) {
-          throw new Error('Choose files with valid archive paths.')
+          throw new MessageError('archiveChooseFilesWithValidArchivePaths')
         }
         let folder = source
         for (const part of parts.slice(0, -1)) {
@@ -182,7 +183,7 @@ export class ArchiveProcessor {
     const output = `${directory}/output`
     const basename = archiveName.split(/[\\/]/u).pop()
     if (!basename || basename === '.' || basename === '..') {
-      throw new Error('Choose an archive with a valid file name')
+      throw new MessageError('archiveChooseAnArchiveWithAValid')
     }
     const passwordArgs = password ? [`-p${password}`] : []
     let input = `${source}/${basename}`
@@ -200,8 +201,7 @@ export class ArchiveProcessor {
         const tar = FS.readdir(tarDirectory).find((name) =>
           name.toLowerCase().endsWith('.tar'),
         )
-        if (!tar)
-          throw new Error('This GZIP archive does not contain a TAR file')
+        if (!tar) throw new MessageError('archiveThisGZIPArchiveDoesNotContain')
         input = `${tarDirectory}/${tar}`
       }
 
@@ -366,13 +366,7 @@ export async function extractZipEntries(
 }
 
 // Utility functions
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+export { formatFileSize } from '@/lib/shared'
 
 export function downloadFile(
   data: Uint8Array,

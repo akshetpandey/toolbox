@@ -1,3 +1,5 @@
+import { errorMessage } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useState, useCallback } from 'react'
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 
@@ -63,6 +65,7 @@ export async function loadFFmpeg(ffmpeg: FFmpeg, signal?: AbortSignal) {
 }
 
 export function useInitFFmpeg(): UseInitFFmpegReturn {
+  const t = useTranslator()
   const setProgressCallback = useCallback(
     (callback: (progress: number) => void) => {
       progressCallback = callback
@@ -111,10 +114,11 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
           ...prev,
           isInitialized: false,
           isInitializing: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to initialize FFmpeg',
+          error: errorMessage(
+            t,
+            error,
+            t('useInitFFmpegFailedToInitializeFFmpeg'),
+          ),
           setProgressCallback,
         }))
       }
@@ -166,10 +170,11 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
         ...prev,
         isInitialized: false,
         isInitializing: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to initialize FFmpeg',
+        error: errorMessage(
+          t,
+          error,
+          t('useInitFFmpegFailedToInitializeFFmpeg'),
+        ),
         setProgressCallback,
       }))
     }

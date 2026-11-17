@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { isAnimationFormat } from '@/lib/animation'
@@ -10,9 +12,9 @@ import {
   useVideoSettings,
   useVideoAction,
   VideoActionStatus,
-  formatOptions,
-  videoCodecOptions,
-  audioCodecOptions,
+  getFormatOptions,
+  getVideoCodecOptions,
+  getAudioCodecOptions,
   getCompatibleCodecs,
   getCompatibleResolutions,
 } from '@/lib/videoToolsUtils'
@@ -22,9 +24,10 @@ export const Route = createFileRoute('/videos/convert')({
 })
 
 function VideoConvertComponent() {
+  const t = useTranslator()
   const action = useVideoAction(
     'videos.convert',
-    'The video could not be converted. Try another format or change the advanced settings.',
+    t('videosConvertTheVideoCouldNotBeConverted'),
   )
   const [settings, updateSettings] = useVideoSettings(
     'videos.convert.settings',
@@ -50,6 +53,7 @@ function VideoConvertComponent() {
     ? getCompatibleResolutions(
         action.selectedFile.dimensions.width,
         action.selectedFile.dimensions.height,
+        t,
       )
     : []
   useEffect(() => {
@@ -74,13 +78,17 @@ function VideoConvertComponent() {
     <div className="flex min-w-0 flex-col gap-5">
       <Card>
         <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold">Conversion settings</h2>
+          <h2 className="text-lg font-semibold">
+            {t('videosConvertConversionSettings')}
+          </h2>
           <fieldset
             disabled={action.busy}
             className="grid gap-5 sm:grid-cols-2"
           >
             <div className="space-y-2">
-              <Label htmlFor="video-output-format">Output format</Label>
+              <Label htmlFor="video-output-format">
+                {t('videosConvertOutputFormat')}
+              </Label>
               <select
                 id="video-output-format"
                 className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -99,7 +107,7 @@ function VideoConvertComponent() {
                   })
                 }}
               >
-                {formatOptions.map((option) => (
+                {getFormatOptions(t).map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label} — {option.description}
                   </option>
@@ -107,12 +115,14 @@ function VideoConvertComponent() {
               </select>
               <p className="text-sm text-muted-foreground">
                 {animationOutput
-                  ? 'Animated images have no audio. Smaller dimensions and fewer frames per second usually make smaller files.'
-                  : 'MP4 is a good choice for sharing and playback.'}
+                  ? t('videosConvertAnimatedImagesHaveNoAudioSmaller')
+                  : t('videosConvertMP4IsAGoodChoiceFor')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="video-output-size">Video size</Label>
+              <Label htmlFor="video-output-size">
+                {t('videosConvertVideoSize')}
+              </Label>
               <select
                 id="video-output-size"
                 className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -121,16 +131,20 @@ function VideoConvertComponent() {
                   setSettings({ ...settings, resolution: event.target.value })
                 }
               >
-                <option value="original">Keep original dimensions</option>
+                <option value="original">
+                  {t('videosConvertKeepOriginalDimensions')}
+                </option>
                 {resolutions.map((resolution) => (
                   <option key={resolution.value} value={resolution.value}>
                     {resolution.label}
                   </option>
                 ))}
-                <option value="custom">Custom dimensions</option>
+                <option value="custom">
+                  {t('videosConvertCustomDimensions')}
+                </option>
               </select>
               <p className="text-sm text-muted-foreground">
-                A smaller picture usually makes a smaller file.
+                {t('videosConvertASmallerPictureUsuallyMakesA')}
               </p>
             </div>
           </fieldset>
@@ -140,7 +154,9 @@ function VideoConvertComponent() {
               className="grid gap-4 sm:grid-cols-2"
             >
               <div className="space-y-2">
-                <Label htmlFor="video-width">Width (pixels)</Label>
+                <Label htmlFor="video-width">
+                  {t('videosConvertWidthPixels')}
+                </Label>
                 <Input
                   id="video-width"
                   type="number"
@@ -155,7 +171,9 @@ function VideoConvertComponent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="video-height">Height (pixels)</Label>
+                <Label htmlFor="video-height">
+                  {t('videosConvertHeightPixels')}
+                </Label>
                 <Input
                   id="video-height"
                   type="number"
@@ -174,8 +192,8 @@ function VideoConvertComponent() {
                 className="text-sm text-muted-foreground sm:col-span-2"
               >
                 {animationOutput
-                  ? 'Enter positive dimensions in pixels.'
-                  : 'Enter even dimensions of at least 2 pixels for video compatibility.'}
+                  ? t('videosConvertEnterPositiveDimensionsInPixels')
+                  : t('videosConvertEnterEvenDimensionsOfAtLeast')}
               </p>
             </fieldset>
           )}
@@ -189,7 +207,7 @@ function VideoConvertComponent() {
                     setSettings({ ...settings, aspect: event.target.checked })
                   }
                 />
-                Keep original aspect ratio
+                {t('videosConvertKeepOriginalAspectRatio')}
               </label>
             </fieldset>
           )}
@@ -199,7 +217,9 @@ function VideoConvertComponent() {
               className="grid gap-4 sm:grid-cols-2"
             >
               <div className="space-y-2">
-                <Label htmlFor="animation-fps">Frame rate (fps)</Label>
+                <Label htmlFor="animation-fps">
+                  {t('videosConvertFrameRateFps')}
+                </Label>
                 <select
                   id="animation-fps"
                   className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -223,21 +243,23 @@ function VideoConvertComponent() {
                     setSettings({ ...settings, loop: event.target.checked })
                   }
                 />
-                Loop animation continuously
+                {t('videosConvertLoopAnimationContinuously')}
               </label>
             </fieldset>
           )}
           {!animationOutput && (
             <details className="rounded-lg border p-4">
               <summary className="cursor-pointer text-sm font-medium">
-                Advanced settings
+                {t('videosConvertAdvancedSettings')}
               </summary>
               <fieldset
                 disabled={action.busy}
                 className="mt-4 grid gap-4 sm:grid-cols-2"
               >
                 <div className="space-y-2">
-                  <Label htmlFor="video-codec">Video codec</Label>
+                  <Label htmlFor="video-codec">
+                    {t('videosConvertVideoCodec')}
+                  </Label>
                   <select
                     id="video-codec"
                     className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -249,7 +271,7 @@ function VideoConvertComponent() {
                       })
                     }
                   >
-                    {videoCodecOptions
+                    {getVideoCodecOptions(t)
                       .filter((codec) =>
                         getCompatibleCodecs(settings.format, 'video').includes(
                           codec.value,
@@ -263,7 +285,9 @@ function VideoConvertComponent() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="video-audio-codec">Audio codec</Label>
+                  <Label htmlFor="video-audio-codec">
+                    {t('videosConvertAudioCodec')}
+                  </Label>
                   <select
                     id="video-audio-codec"
                     className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -275,7 +299,7 @@ function VideoConvertComponent() {
                       })
                     }
                   >
-                    {audioCodecOptions
+                    {getAudioCodecOptions(t)
                       .filter((codec) =>
                         getCompatibleCodecs(settings.format, 'audio').includes(
                           codec.value,
@@ -289,7 +313,9 @@ function VideoConvertComponent() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="convert-speed">Encoding speed</Label>
+                  <Label htmlFor="convert-speed">
+                    {t('videosConvertEncodingSpeed')}
+                  </Label>
                   <select
                     id="convert-speed"
                     className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -312,11 +338,15 @@ function VideoConvertComponent() {
           )}
           {action.selectedFile?.animation && (
             <p className="text-sm text-muted-foreground">
-              Converts one complete animation cycle.
+              {t('videosConvertConvertsOneCompleteAnimationCycle')}
             </p>
           )}
           <VideoActionStatus
-            label={animationOutput ? 'Creating animation' : 'Converting video'}
+            label={
+              animationOutput
+                ? t('videosConvertCreatingAnimation')
+                : t('videosConvertConvertingVideo')
+            }
             indeterminate={animationOutput}
             error={action.error}
             diagnostic={action.diagnostic}
@@ -357,24 +387,41 @@ function VideoConvertComponent() {
                 }),
                 filename: `${action.selectedFile!.name.replace(/\.[^/.]+$/, '')}.${settings.format}`,
                 details: [
-                  `${settings.format.toUpperCase()} ${animationOutput ? 'animation · No audio' : 'video'}`,
+                  message(
+                    animationOutput
+                      ? 'videosConvertAnimationNoAudio'
+                      : 'videosConvertVideoFormat',
+                    { format: settings.format.toUpperCase() },
+                  ),
                   ...(animationOutput
                     ? [
-                        `${settings.fps} fps · ${settings.loop ? 'Continuous loop' : 'Plays once'}`,
+                        message(
+                          settings.loop
+                            ? 'videosConvertFpsLoop'
+                            : 'videosConvertFpsOnce',
+                          {
+                            fps: settings.fps,
+                          },
+                        ),
                       ]
                     : []),
                   settings.resolution === 'original'
-                    ? 'Original dimensions'
+                    ? message('videosConvertOriginalDimensions')
                     : settings.resolution === 'custom'
-                      ? `${settings.width} × ${settings.height} pixel bounding box`
+                      ? message('videosConvertPixelBoundingBox', {
+                          width: settings.width,
+                          height: settings.height,
+                        })
                       : settings.resolution.replace('x', ' × '),
                 ],
               }))
             }
           >
             {action.isProcessing
-              ? 'Converting…'
-              : `Convert to ${settings.format.toUpperCase()}`}
+              ? t('videosConvertConverting')
+              : t('videosConvertConvertTo', {
+                  format: settings.format.toUpperCase(),
+                })}
           </Button>
         </CardContent>
       </Card>

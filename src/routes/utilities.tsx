@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createFileRoute,
   Outlet,
@@ -111,17 +112,17 @@ function readExif(file: UploadedFile, analysis: UtilityAnalysis) {
   return analysis.readingExif
 }
 
-const utilityTabs = [
-  { value: 'qr', label: 'QR code', icon: QrCode },
-  { value: 'hash', label: 'Hash', icon: Hash },
-  { value: 'metadata', label: 'Metadata', icon: Info },
-]
-
 export const Route = createFileRoute('/utilities')({
   component: UtilitiesLayout,
 })
 
 function UtilitiesLayout() {
+  const t = useTranslator()
+  const utilityTabs = [
+    { value: 'qr', label: t('utilitiesQRCode'), icon: QrCode },
+    { value: 'hash', label: t('utilitiesHash'), icon: Hash },
+    { value: 'metadata', label: t('utilitiesMetadata'), icon: Info },
+  ]
   const { isProcessing, setIsProcessing } = useProcessing()
   const navigate = useNavigate()
   const location = useLocation()
@@ -378,9 +379,14 @@ function UtilitiesLayout() {
       onFileSelect={(files) => void handleFileSelect(files)}
       onClearFiles={clearFile}
       acceptedTypes="*/*"
-      title="Drop a file here"
-      description="Any file type supported"
-      supportedFormats={['All Files', 'Images', 'Documents', 'Videos']}
+      title={t('utilitiesDropAFileHere')}
+      description={t('utilitiesAnyFileTypeSupported')}
+      supportedFormats={[
+        t('utilitiesAllFiles'),
+        t('toolsImagesCategory'),
+        t('toolsDocumentsCategory'),
+        t('toolsVideosCategory'),
+      ]}
       emptyStateIcon={Upload}
       selectedFileIcon={FileText}
     >
@@ -391,8 +397,8 @@ function UtilitiesLayout() {
               {selectedFile.name}
             </p>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{formatFileSize(selectedFile.size)}</span>
-              <span>{selectedFile.type || 'Unknown type'}</span>
+              <span>{formatFileSize(selectedFile.size, t)}</span>
+              <span>{selectedFile.type || t('utilitiesUnknownType')}</span>
             </div>
           </div>
         </div>
@@ -412,7 +418,11 @@ function UtilitiesLayout() {
   return (
     <UtilitiesContext.Provider value={contextValue}>
       <ToolLayout
-        title={currentTab === 'hash' ? 'File checksums' : 'File metadata'}
+        title={
+          currentTab === 'hash'
+            ? t('utilitiesFileChecksums')
+            : t('utilitiesFileMetadata')
+        }
         icon={Settings}
         iconColor="text-orange-500"
         iconBgColor="bg-gradient-to-br from-orange-500/10 to-orange-500/5"
@@ -421,15 +431,12 @@ function UtilitiesLayout() {
       >
         {analysisError && (
           <div role="alert" className="space-y-3 text-sm">
-            <p>
-              File analysis could not be completed. Try again or choose another
-              file.
-            </p>
+            <p>{t('utilitiesFileAnalysisCouldNotBeCompleted')}</p>
             <Button
               variant="outline"
               onClick={() => setAnalysisAttempt((attempt) => attempt + 1)}
             >
-              Try analysis again
+              {t('utilitiesTryAnalysisAgain')}
             </Button>
           </div>
         )}

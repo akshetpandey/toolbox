@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import {
@@ -31,7 +33,7 @@ import { applyBlurRedaction } from '@/lib/redaction'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import { useImageTools } from '@/contexts/ImageToolsContext'
 
-const EmojiPicker = lazy(() => import('emoji-picker-react'))
+const EmojiPicker = lazy(() => import('@/components/RedactionEmojiPicker'))
 
 interface RedactionArea {
   x: number
@@ -168,6 +170,7 @@ export const Route = createFileRoute('/images/redact')({
 })
 
 function RedactPage() {
+  const t = useTranslator()
   const { selectedFile, clearSelectedFile } = useImageTools()
   const { isProcessing } = useProcessing()
   const beginOperation = useFileOperation(selectedFile?.file)
@@ -845,7 +848,7 @@ function RedactPage() {
   // Common function to create redacted image blob
   const createRedactedImageBlob = async (): Promise<Blob> => {
     if (!selectedFile || !originalImageRef.current) {
-      throw new Error('No file selected or original image not available')
+      throw new Error(t('imagesRedactNoFileSelectedOrOriginalImage'))
     }
 
     const originalWidth =
@@ -982,7 +985,7 @@ function RedactPage() {
       if (!operation.isCurrent()) return
       if (latestAreas.current !== redactionAreas) {
         setDownloadError(
-          'Your redactions changed while preparing the download. Download again to include your latest edits.',
+          t('imagesRedactYourRedactionsChangedWhilePreparingThe'),
         )
         return
       }
@@ -993,16 +996,16 @@ function RedactPage() {
         sourceSize: selectedFile.size,
         details: [
           `${selectedFile.dimensions?.width} × ${selectedFile.dimensions?.height} px`,
-          `${redactionAreas.length} redaction areas`,
+          message('imagesRedactRedactionAreas', {
+            count: redactionAreas.length,
+          }),
         ],
       })
       downloadBlob(blob, filename)
     } catch (error) {
       if (!operation.isCurrent()) return
       console.error('RedactionTool: Error during download:', error)
-      setDownloadError(
-        'Failed to redact the image. No file was downloaded. Please try again.',
-      )
+      setDownloadError(t('imagesRedactFailedToRedactTheImageNo'))
     } finally {
       if (operation.isCurrent()) setIsExporting(false)
       operation.finish()
@@ -1031,7 +1034,7 @@ function RedactPage() {
       if (!operation.isCurrent()) return
       if (latestAreas.current !== redactionAreas) {
         setDownloadError(
-          'Your redactions changed while preparing the download. Download again to include your latest edits.',
+          t('imagesRedactYourRedactionsChangedWhilePreparingThe'),
         )
         return
       }
@@ -1042,7 +1045,7 @@ function RedactPage() {
         sourceSize: selectedFile.size,
         details: [
           `${selectedFile.dimensions?.width} × ${selectedFile.dimensions?.height} px`,
-          'Redacted image with embedded metadata removed; color profile retained.',
+          message('imagesRedactRedactedImageWithEmbeddedMetadataRemoved'),
         ],
       })
       downloadBlob(strippedBlob, filename)
@@ -1052,9 +1055,7 @@ function RedactPage() {
         'RedactionTool: Error during download with metadata stripping:',
         error,
       )
-      setDownloadError(
-        'Failed to strip metadata from the redacted image. No file was downloaded. Please try again.',
-      )
+      setDownloadError(t('imagesRedactFailedToStripMetadataFromThe'))
     } finally {
       if (operation.isCurrent()) setIsExporting(false)
       operation.finish()
@@ -1089,9 +1090,11 @@ function RedactPage() {
       <Card>
         <CardContent className="p-4 sm:p-6 flex min-w-0 flex-col gap-4">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold">Redaction settings</h2>
+            <h2 className="text-lg font-semibold">
+              {t('imagesRedactRedactionSettings')}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Choose how to cover private details, then mark areas on the image.
+              {t('imagesRedactChooseHowToCoverPrivateDetails')}
             </p>
           </div>
           <fieldset
@@ -1099,10 +1102,12 @@ function RedactPage() {
             className="flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
           >
             <div className="flex min-w-0 flex-col gap-2">
-              <Label className="text-sm font-medium">Redaction mode</Label>
+              <Label className="text-sm font-medium">
+                {t('imagesRedactRedactionMode')}
+              </Label>
               <div
                 role="group"
-                aria-label="Redaction mode"
+                aria-label={t('imagesRedactRedactionMode')}
                 className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
               >
                 <button
@@ -1117,7 +1122,7 @@ function RedactPage() {
                   }`}
                 >
                   <Square className="w-3 h-3" />
-                  Box
+                  {t('imagesRedactBox')}
                 </button>
                 <button
                   type="button"
@@ -1131,7 +1136,7 @@ function RedactPage() {
                   }`}
                 >
                   <Focus className="w-3 h-3" />
-                  Blur
+                  {t('imagesRedactBlur')}
                 </button>
                 <button
                   type="button"
@@ -1145,7 +1150,7 @@ function RedactPage() {
                   }`}
                 >
                   <Grid3x3 className="w-3 h-3" />
-                  Pixelate
+                  {t('imagesRedactPixelate')}
                 </button>
                 <button
                   type="button"
@@ -1159,7 +1164,7 @@ function RedactPage() {
                   }`}
                 >
                   <Smile className="w-3 h-3" />
-                  Emoji
+                  {t('imagesRedactEmoji')}
                 </button>
               </div>
             </div>
@@ -1170,7 +1175,7 @@ function RedactPage() {
                   htmlFor="redaction-color"
                   className="text-sm font-medium"
                 >
-                  Color:
+                  {t('imagesRedactColor')}
                 </Label>
                 <div className="flex items-center gap-2">
                   <input
@@ -1190,7 +1195,7 @@ function RedactPage() {
             {redactionMode === 'blur' && (
               <div className="flex items-center gap-4">
                 <Label htmlFor="blur-radius" className="text-sm font-medium">
-                  Blur:
+                  {t('imagesRedactBlurText')}
                 </Label>
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <input
@@ -1212,7 +1217,7 @@ function RedactPage() {
             {redactionMode === 'pixelate' && (
               <div className="flex items-center gap-4">
                 <Label htmlFor="pixel-size" className="text-sm font-medium">
-                  Pixel Size:
+                  {t('imagesRedactPixelSize')}
                 </Label>
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <input
@@ -1233,27 +1238,30 @@ function RedactPage() {
 
             {redactionMode === 'emoji' && (
               <div className="relative flex flex-wrap items-center gap-3">
-                <Label className="text-sm font-medium">Emoji:</Label>
+                <Label className="text-sm font-medium">
+                  {t('imagesRedactEmojiText')}
+                </Label>
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker((v) => !v)}
-                  aria-label="Choose redaction emoji"
+                  aria-label={t('imagesRedactChooseRedactionEmoji')}
                   aria-expanded={showEmojiPicker}
                   className="w-11 h-11 text-2xl rounded-lg border-2 border-border/50 hover:border-border transition-colors flex items-center justify-center bg-background"
                 >
                   {selectedEmoji}
                 </button>
                 {showEmojiPicker && (
-                  <div className="fixed inset-x-4 top-1/4 z-50 sm:absolute sm:inset-x-auto sm:top-full sm:left-0 sm:mt-2 sm:w-80">
-                    <Suspense fallback={<p role="status">Loading emojis…</p>}>
+                  <div className="fixed inset-x-4 top-1/4 z-50 sm:absolute sm:inset-x-auto sm:top-full sm:start-0 sm:mt-2 sm:w-80">
+                    <Suspense
+                      fallback={
+                        <p role="status">{t('imagesRedactLoadingEmojis')}</p>
+                      }
+                    >
                       <EmojiPicker
-                        emojiStyle="native"
                         onEmojiClick={(emojiData) => {
                           setSelectedEmoji(emojiData.emoji)
                           setShowEmojiPicker(false)
                         }}
-                        width="100%"
-                        height={400}
                       />
                     </Suspense>
                   </div>
@@ -1284,17 +1292,17 @@ function RedactPage() {
                 setRedactionAreas((previous) => [...previous, area])
               }}
             >
-              Add area
+              {t('imagesRedactAddArea')}
             </Button>
             <p className="text-sm text-muted-foreground">
-              Draw over the image, or add an area and adjust its bounds below.
+              {t('imagesRedactDrawOverTheImageOrAdd')}
             </p>
           </div>
           {selectedFile ? (
             <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-2 sm:p-4 flex justify-center">
               <canvas
                 ref={canvasRef}
-                aria-label="Image redaction canvas"
+                aria-label={t('imagesRedactImageRedactionCanvas')}
                 className="max-w-full max-h-125 border border-border/50 rounded touch-none"
                 style={{ touchAction: 'none', cursor: canvasCursor }}
                 onMouseDown={handleCanvasMouseDown}
@@ -1308,7 +1316,7 @@ function RedactPage() {
             </div>
           ) : (
             <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-              Select an image to start redacting
+              {t('imagesRedactSelectAnImageToStartRedacting')}
             </div>
           )}
 
@@ -1316,7 +1324,7 @@ function RedactPage() {
             <div
               className="flex flex-wrap gap-2"
               role="group"
-              aria-label="Redaction areas"
+              aria-label={t('imagesRedactRedactionAreasText')}
             >
               {redactionAreas.map((area, index) => (
                 <Button
@@ -1325,7 +1333,8 @@ function RedactPage() {
                   aria-pressed={selectedIndex === index}
                   onClick={() => setSelectedIndex(index)}
                 >
-                  Area {index + 1} · {area.mode}
+                  {t('imagesRedactArea') + ' '}
+                  {index + 1} · {area.mode}
                 </Button>
               ))}
             </div>
@@ -1333,18 +1342,18 @@ function RedactPage() {
           {selectedIndex !== null && redactionAreas[selectedIndex] && (
             <fieldset className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <legend className="mb-2 text-sm font-medium">
-                Selected area bounds (preview pixels)
+                {t('imagesRedactSelectedAreaBoundsPreviewPixels')}
               </legend>
               {(['x', 'y', 'width', 'height'] as const).map((field) => (
                 <div key={field} className="space-y-2">
                   <Label htmlFor={`area-${field}`}>
                     {field === 'x'
-                      ? 'Left'
+                      ? t('imagesRedactLeft')
                       : field === 'y'
-                        ? 'Top'
+                        ? t('imagesRedactTop')
                         : field === 'width'
-                          ? 'Width'
-                          : 'Height'}
+                          ? t('imagesRedactWidth')
+                          : t('imagesRedactHeight')}
                   </Label>
                   <input
                     id={`area-${field}`}
@@ -1378,8 +1387,7 @@ function RedactPage() {
           )}
           {selectedIndex !== null && (
             <p className="text-xs text-muted-foreground text-center">
-              Drag to move. Drag handles to resize. Delete to remove. Escape to
-              deselect.
+              {t('imagesRedactDragToMoveDragHandlesTo')}
             </p>
           )}
 
@@ -1397,14 +1405,14 @@ function RedactPage() {
                 disabled={redactionAreas.length === 0}
               >
                 <Undo2 className="h-4 w-4 mr-2" />
-                Undo
+                {t('imagesRedactUndo')}
               </Button>
               <Button
                 variant="outline"
                 onClick={clearAllRedactions}
                 disabled={redactionAreas.length === 0}
               >
-                Clear All
+                {t('imagesRedactClearAll')}
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1418,7 +1426,7 @@ function RedactPage() {
                 {isProcessing ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : null}
-                Download
+                {t('imagesRedactDownload')}
               </Button>
               <Button
                 onClick={() => void downloadRedactedImageWithMetadataStripped()}
@@ -1435,8 +1443,8 @@ function RedactPage() {
                 )}
                 <Download className="h-4 w-4" />
                 {isStrippingMetadata
-                  ? 'Stripping...'
-                  : 'Download Without Metadata'}
+                  ? t('imagesRedactStripping')
+                  : t('imagesRedactDownloadWithoutMetadata')}
               </Button>
             </div>
           </div>

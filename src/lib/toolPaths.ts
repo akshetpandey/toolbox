@@ -37,6 +37,12 @@ export const toolPaths = {
   fileMetadata: '/utilities/metadata',
 } as const
 
+const toolPagePaths = new Set<string>(['/', ...Object.values(toolPaths)])
+
+export function isToolboxPagePath(path: string) {
+  return toolPagePaths.has(path.replace(/\/$/, '') || '/')
+}
+
 export const categoryRedirects = {
   '/images': toolPaths.imageMetadata,
   '/videos': toolPaths.videoMetadata,

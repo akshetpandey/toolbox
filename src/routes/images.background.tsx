@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { ResultCard, useToolResult } from '@/components/ResultCard'
@@ -16,6 +18,7 @@ export const Route = createFileRoute('/images/background')({
 })
 
 function RemoveImageBackground() {
+  const t = useTranslator()
   const { selectedFile, clearSelectedFile, imageMagickProcessor } =
     useImageTools()
   const { isProcessing } = useProcessing()
@@ -97,9 +100,7 @@ function RemoveImageBackground() {
         `#${[red, green, blue].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`,
       )
     } catch {
-      setError(
-        'The preview color could not be read. Choose the color manually below.',
-      )
+      setError(t('imagesBackgroundThePreviewColorCouldNotBe'))
     }
   }
 
@@ -123,15 +124,19 @@ function RemoveImageBackground() {
       }
       if (!operation.isCurrent()) return
       const filename = `${selectedFile.name.replace(/\.[^.]+$/, '')}-transparent.png`
-      setResult({ blob, filename, details: ['Transparent PNG'] })
+      setResult({
+        blob,
+        filename,
+        details: [message('imagesBackgroundTransparentPNG')],
+      })
       downloadBlob(blob, filename)
     } catch (failure) {
       if (operation.isCurrent()) {
         console.error('Image background removal failed', failure)
         setError(
           mode === 'auto'
-            ? 'The background could not be removed. Try a smaller image or use Solid color for a plain background.'
-            : 'The color could not be removed. Try a different image.',
+            ? t('imagesBackgroundTheBackgroundCouldNotBeRemoved')
+            : t('imagesBackgroundTheColorCouldNotBeRemoved'),
         )
       }
     } finally {
@@ -144,7 +149,9 @@ function RemoveImageBackground() {
       <Card>
         <CardContent className="space-y-5 p-4 sm:p-6">
           <div className="space-y-2">
-            <Label htmlFor="background-mode">Removal method</Label>
+            <Label htmlFor="background-mode">
+              {t('imagesBackgroundRemovalMethod')}
+            </Label>
             <select
               id="background-mode"
               className="h-11 w-full rounded-md border border-input bg-background px-3 text-base"
@@ -156,24 +163,24 @@ function RemoveImageBackground() {
                 setError('')
               }}
             >
-              <option value="auto">Detect subject</option>
-              <option value="color">Solid color</option>
+              <option value="auto">{t('imagesBackgroundDetectSubject')}</option>
+              <option value="color">{t('imagesBackgroundSolidColor')}</option>
             </select>
             <p className="text-sm text-muted-foreground">
               {mode === 'auto'
-                ? 'Keep the main subject in a photo. The first run loads a model that runs on your device.'
-                : 'Make every pixel that matches the chosen color transparent.'}{' '}
-              Animated images export their first frame.
+                ? t('imagesBackgroundKeepTheMainSubjectInA')
+                : t('imagesBackgroundMakeEveryPixelThatMatchesThe')}{' '}
+              {t('imagesBackgroundAnimatedImagesExportTheirFirstFrame')}
             </p>
           </div>
           {mode === 'color' && selectedFile && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Select a spot in the image to sample its color.
+                {t('imagesBackgroundSelectASpotInTheImage')}
               </p>
               <button
                 type="button"
-                aria-label="Sample a color from the image"
+                aria-label={t('imagesBackgroundSampleAColorFromTheImage')}
                 disabled={isProcessing}
                 className="grid min-h-11 min-w-11 max-w-full cursor-crosshair place-items-center rounded-md bg-muted/30"
                 onClick={sampleColor}
@@ -181,7 +188,7 @@ function RemoveImageBackground() {
                 <img
                   ref={preview}
                   src={selectedFile.preview}
-                  alt="Background color preview"
+                  alt={t('imagesBackgroundBackgroundColorPreview')}
                   className="block max-h-[45vh] max-w-full rounded-md"
                 />
               </button>
@@ -190,7 +197,9 @@ function RemoveImageBackground() {
           {mode === 'color' && (
             <fieldset className="space-y-4" disabled={isProcessing}>
               <div className="flex min-h-11 items-center gap-3">
-                <Label htmlFor="background-color">Color to remove</Label>
+                <Label htmlFor="background-color">
+                  {t('imagesBackgroundColorToRemove')}
+                </Label>
                 <input
                   id="background-color"
                   type="color"
@@ -201,7 +210,8 @@ function RemoveImageBackground() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="background-tolerance">
-                  Color tolerance ({tolerance}%)
+                  {t('imagesBackgroundColorTolerance')}
+                  {tolerance}%)
                 </Label>
                 <Input
                   id="background-tolerance"
@@ -216,8 +226,7 @@ function RemoveImageBackground() {
                   }}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Increase tolerance to include more shades of the selected
-                  color.
+                  {t('imagesBackgroundIncreaseToleranceToIncludeMoreShades')}
                 </p>
               </div>
             </fieldset>
@@ -233,19 +242,19 @@ function RemoveImageBackground() {
             onClick={() => void removeBackground()}
           >
             {isProcessing
-              ? 'Removing background…'
-              : 'Remove background & download PNG'}
+              ? t('imagesBackgroundRemovingBackground')
+              : t('imagesBackgroundRemoveBackgroundDownloadPNG')}
           </Button>
         </CardContent>
       </Card>
       {result && outputPreview?.blob === result.blob && (
         <section
-          aria-label="Background removal preview"
+          aria-label={t('imagesBackgroundBackgroundRemovalPreview')}
           className="rounded-xl border bg-card p-4"
         >
           <img
             src={outputPreview.url}
-            alt="Image with the background removed"
+            alt={t('imagesBackgroundImageWithTheBackgroundRemoved')}
             className="block max-h-80 max-w-full rounded-md bg-muted/60"
           />
         </section>

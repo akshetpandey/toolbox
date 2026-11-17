@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useId } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -22,12 +23,13 @@ export function ResponsiveTabs({
   isProcessing = false,
   className = '',
 }: ResponsiveTabsProps) {
+  const t = useTranslator()
   const id = useId()
   if (tabs.length < 2) return null
   return (
     <div className={`xl:hidden ${className}`}>
       <label htmlFor={id} className="mb-2 block text-sm font-medium">
-        Tool
+        {t('responsiveTabsTool')}
       </label>
       <select
         id={id}
@@ -39,7 +41,7 @@ export function ResponsiveTabs({
         {tabs.map((tab) => (
           <option key={tab.value} value={tab.value} disabled={tab.disabled}>
             {tab.label}
-            {tab.disabled ? ' · Coming soon' : ''}
+            {tab.disabled ? ' · ' + t('responsiveTabsComingSoon') : ''}
           </option>
         ))}
       </select>

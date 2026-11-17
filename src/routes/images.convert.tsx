@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -18,6 +19,7 @@ export const Route = createFileRoute('/images/convert')({
 })
 
 function ConvertPage() {
+  const t = useTranslator()
   const { selectedFile, imageMagickProcessor, clearSelectedFile } =
     useImageTools()
   const { isProcessing } = useProcessing()
@@ -84,9 +86,7 @@ function ConvertPage() {
     } catch (error) {
       if (!operation.isCurrent()) return
       console.error('🖼️ ConvertTool: Error during conversion:', error)
-      setError(
-        'This image could not be converted. Try another format or choose another image.',
-      )
+      setError(t('imagesConvertThisImageCouldNotBeConverted'))
     } finally {
       operation.finish()
     }
@@ -97,7 +97,9 @@ function ConvertPage() {
       <Card>
         <CardContent className="p-4 sm:p-6 flex flex-col gap-5">
           <div className="flex flex-col gap-3">
-            <Label className="text-sm font-medium">Target Format</Label>
+            <Label className="text-sm font-medium">
+              {t('imagesConvertTargetFormat')}
+            </Label>
             <div className="flex flex-col gap-2">
               <div className="flex min-h-11 items-center space-x-2">
                 <input
@@ -114,7 +116,7 @@ function ConvertPage() {
                   htmlFor="webp"
                   className="text-sm font-normal cursor-pointer"
                 >
-                  WebP (Recommended)
+                  {t('imagesConvertWebPRecommended')}
                 </Label>
               </div>
               <div className="flex min-h-11 items-center space-x-2">
@@ -132,7 +134,7 @@ function ConvertPage() {
                   htmlFor="png"
                   className="text-sm font-normal cursor-pointer"
                 >
-                  PNG (Lossless)
+                  {t('imagesConvertPNGLossless')}
                 </Label>
               </div>
               <div className="flex min-h-11 items-center space-x-2">
@@ -150,13 +152,13 @@ function ConvertPage() {
                   htmlFor="jpg"
                   className="text-sm font-normal cursor-pointer"
                 >
-                  JPG (Compressed)
+                  {t('imagesConvertJPGCompressed')}
                 </Label>
               </div>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Converts the first frame of animated images and HEIF sequences.
+            {t('imagesConvertConvertsTheFirstFrameOfAnimated')}
           </p>
 
           {error && (
@@ -173,7 +175,7 @@ function ConvertPage() {
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              Convert & download
+              {t('imagesConvertConvertDownload')}
             </Button>
           </div>
         </CardContent>

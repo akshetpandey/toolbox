@@ -4,7 +4,12 @@ import { RouterProvider } from '@tanstack/react-router'
 import { RouterClient } from '@tanstack/react-router/ssr/client'
 import { AppProviders, createAppRouter } from './app'
 
+import { loadTranslator } from '@/i18n/catalogs'
+import { splitLanguagePath } from '@/i18n/locales'
+
 import './styles.css'
+
+await loadTranslator(splitLanguagePath(window.location.pathname).language)
 
 const router = createAppRouter()
 
@@ -30,12 +35,12 @@ const router = createAppRouter()
 
 const root = document.getElementById('root')!
 if (
-  root.dataset.prerenderPath === router.state.location.pathname &&
+  root.dataset.prerenderPath === window.location.pathname &&
   window.$_TSR?.router
 ) {
   hydrateRoot(
     root,
-    <AppProviders>
+    <AppProviders router={router}>
       <RouterClient router={router} />
     </AppProviders>,
   )
@@ -45,7 +50,7 @@ if (
     .querySelectorAll('[data-toolbox-head]')
     .forEach((tag) => tag.remove())
   createRoot(root).render(
-    <AppProviders>
+    <AppProviders router={router}>
       <RouterProvider router={router} />
     </AppProviders>,
   )

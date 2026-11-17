@@ -1,3 +1,5 @@
+import { english, message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,6 +17,7 @@ export const Route = createFileRoute('/utilities/metadata')({
 })
 
 function MetadataExtractionPage() {
+  const t = useTranslator()
   const {
     selectedFile,
     fileMetadata,
@@ -56,15 +59,13 @@ function MetadataExtractionPage() {
         filename,
         sourceSize: selectedFile.size,
         details: [
-          'Embedded image metadata removed; color profile retained. Source file unchanged.',
+          message('utilitiesMetadataEmbeddedImageMetadataRemovedColorProfile'),
         ],
       })
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setStripError(
-        'Metadata could not be removed. No file was downloaded. Try another image or try again.',
-      )
+      setStripError(t('utilitiesMetadataMetadataCouldNotBeRemovedNo'))
     } finally {
       if (operation.isCurrent()) setIsStrippingMetadata(false)
       operation.finish()
@@ -77,15 +78,24 @@ function MetadataExtractionPage() {
         <CardContent className="flex flex-col gap-4 p-4 sm:p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <FileText className="size-5 text-primary" />
-            File information
+            {t('utilitiesMetadataFileInformation')}
           </h2>
           {selectedFile ? (
             fileMetadata ? (
               <dl className="grid min-w-0 grid-cols-1 gap-4 text-sm">
                 {[
-                  ['MIME type', fileMetadata.mimeType],
-                  ['Description', fileMetadata.description],
-                  ['Size', formatFileSize(fileMetadata.size)],
+                  [t('utilitiesMetadataMIMEType'), fileMetadata.mimeType],
+                  [
+                    t('utilitiesMetadataDescription'),
+                    fileMetadata.description ===
+                    english('metadataUnknownFileType')
+                      ? t('metadataUnknownFileType')
+                      : fileMetadata.description,
+                  ],
+                  [
+                    t('utilitiesMetadataSize'),
+                    formatFileSize(fileMetadata.size, t),
+                  ],
                 ].map(([label, value]) => (
                   <div key={label}>
                     <dt className="text-muted-foreground">{label}</dt>
@@ -96,19 +106,18 @@ function MetadataExtractionPage() {
             ) : (
               <p role="status" className="text-sm text-muted-foreground">
                 {isProcessing
-                  ? 'Extracting metadata...'
-                  : 'File information is not available. Choose another file to try again.'}
+                  ? t('utilitiesMetadataExtractingMetadata')
+                  : t('utilitiesMetadataFileInformationIsNotAvailableChoose')}
               </p>
             )
           ) : (
             <p className="text-sm text-muted-foreground">
-              Select a file to extract metadata automatically
+              {t('utilitiesMetadataSelectAFileToExtractMetadata')}
             </p>
           )}
           {selectedFile && !isImage && (
             <p className="border-t pt-4 text-sm text-muted-foreground">
-              This file type has no image EXIF metadata. Metadata removal here
-              is available for JPEG, PNG, WebP, and TIFF images.
+              {t('utilitiesMetadataThisFileTypeHasNoImage')}
             </p>
           )}
         </CardContent>
@@ -118,7 +127,7 @@ function MetadataExtractionPage() {
           <CardContent className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <Info className="size-5 text-primary" />
-              Image EXIF metadata
+              {t('utilitiesMetadataImageEXIFMetadata')}
             </h2>
             {isExtractingExif ? (
               <p
@@ -126,7 +135,7 @@ function MetadataExtractionPage() {
                 className="flex items-center gap-2 text-sm text-muted-foreground"
               >
                 <Loader2 className="size-4 animate-spin" />
-                Extracting EXIF metadata...
+                {t('utilitiesMetadataExtractingEXIFMetadata')}
               </p>
             ) : Object.keys(exifMetadata).length > 0 ? (
               <dl className="max-h-96 min-w-0 divide-y divide-border overflow-y-auto text-sm">
@@ -148,14 +157,12 @@ function MetadataExtractionPage() {
               </dl>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No EXIF metadata found
+                {t('utilitiesMetadataNoEXIFMetadataFound')}
               </p>
             )}
             <div className="space-y-3 border-t pt-4">
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Create a copy with embedded EXIF, GPS, XMP, and other supported
-                metadata removed. Color profiles are retained; visible file
-                content is unchanged. Available for JPEG, PNG, WebP, and TIFF.
+                {t('utilitiesMetadataCreateACopyWithEmbeddedEXIF')}
               </p>
               {supportsRemoval && (
                 <Button
@@ -169,8 +176,8 @@ function MetadataExtractionPage() {
                     <ShieldOff className="size-4" />
                   )}
                   {isStrippingMetadata
-                    ? 'Removing metadata…'
-                    : 'Download Without Metadata'}
+                    ? t('utilitiesMetadataRemovingMetadata')
+                    : t('utilitiesMetadataDownloadWithoutMetadata')}
                 </Button>
               )}
             </div>

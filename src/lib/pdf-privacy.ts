@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import { canvasBlob, loadEditablePDF, savePDF } from './pdf-edit'
 import { abortable, createOCRWorker } from './ocr'
 import {
@@ -20,7 +21,8 @@ export async function redactPDF(
   signal: AbortSignal,
   onPage: (page: number, count: number) => void,
 ) {
-  if (areas.length === 0) throw new Error('Mark at least one area to redact.')
+  if (areas.length === 0)
+    throw new MessageError('pdfPrivacyMarkAtLeastOneAreaTo')
   const { PDFDocument } = await import('pdf-lib')
   const output = await PDFDocument.create()
   const source = await openBrowserPDF(file)
@@ -40,7 +42,7 @@ export async function redactPDF(
           y + height > 1.000001,
       )
     )
-      throw new Error('One or more redaction areas are invalid.')
+      throw new MessageError('pdfPrivacyOneOrMoreRedactionAreasAre')
 
     for (let page = 1; page <= source.numPages; page++) {
       signal.throwIfAborted()
@@ -52,7 +54,8 @@ export async function redactPDF(
       )
       try {
         const context = canvas.getContext('2d')
-        if (!context) throw new Error('PDF rendering is unavailable.')
+        if (!context)
+          throw new MessageError('pdfPrivacyPDFRenderingIsUnavailable')
         context.fillStyle = '#000'
         for (const area of areas) {
           if (area.page !== page) continue

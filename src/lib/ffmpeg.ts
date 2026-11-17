@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { isAnimationFormat, type AnimationInfo } from './animation'
 import { loadFFmpeg } from '@/hooks/useInitFFmpeg'
@@ -533,7 +534,7 @@ export class FFmpegProcessor {
         (value) => Number.isInteger(value) && (value === -1 || value >= 1),
       )
     )
-      throw new MediaInputError('Choose valid output dimensions.')
+      throw new MediaInputError('ffmpegChooseValidOutputDimensions')
     const aspect = downscale.maintainAspectRatio
       ? `:force_original_aspect_ratio=decrease${isAnimationFormat(options.targetFormat) ? '' : ':force_divisible_by=2'}`
       : ''
@@ -544,7 +545,7 @@ export class FFmpegProcessor {
     const format = options.targetFormat
     const fps = options.animation?.fps ?? 15
     if (!Number.isInteger(fps) || fps < 1 || fps > 60)
-      throw new MediaInputError('Choose a frame rate from 1 to 60.')
+      throw new MediaInputError('ffmpegChooseAFrameRateFrom1')
     const loop = options.animation?.loop ?? true
     const job = crypto.randomUUID()
     const output = `${job}.${format}`
@@ -831,7 +832,7 @@ export class FFmpegProcessor {
   }
 
   async compressToSize(maxBytes: number, signal: AbortSignal) {
-    if (!this.inputFileName) throw new Error('Choose a video first.')
+    if (!this.inputFileName) throw new MessageError('ffmpegChooseAVideoFirst')
     signal.throwIfAborted()
     const stop = () => {
       if (this.getInputMount().owner === this) this.ffmpeg.terminate()
@@ -972,7 +973,9 @@ export class FFmpegProcessor {
         outputFileName,
       ]
     } else {
-      throw new Error(`Unsupported audio format: ${options.audioFormat}`)
+      throw new MessageError('ffmpegUnsupportedAudioFormat', {
+        audioFormat: options.audioFormat,
+      })
     }
 
     console.log('🎬 FFmpeg: Executing audio extraction command', { command })

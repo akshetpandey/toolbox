@@ -1,3 +1,6 @@
+import { renderMessage } from '@/i18n/messages'
+import type { LocalizedMessage } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useCallback, useEffect, useRef } from 'react'
 import { CheckCircle2, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,7 +11,7 @@ export interface ToolResult {
   blob: Blob
   filename: string
   sourceSize?: number
-  details?: string[]
+  details?: (string | LocalizedMessage)[]
 }
 
 export function useToolResult(sourceKey: unknown, workspaceKey = 'current') {
@@ -51,6 +54,7 @@ export function ResultCard({
   onReset?: () => void
   disabled?: boolean
 }) {
+  const t = useTranslator()
   if (!result) return null
   const { blob, filename, sourceSize, details } = result
   const difference =
@@ -59,41 +63,48 @@ export function ResultCard({
       : null
   return (
     <section
-      aria-label="Result"
+      aria-label={t('resultCardResult')}
       className="result-card rounded-xl border border-border bg-card p-4 sm:p-5"
     >
       <div role="status" aria-live="polite" className="space-y-2">
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <CheckCircle2 aria-hidden="true" className="size-5 text-primary" />
-          Your file is ready
+          {t('resultCardYourFileIsReady')}
         </h2>
         <p className="font-medium break-all">{filename}</p>
         <p className="text-sm text-muted-foreground">
-          {formatFileSize(blob.size)}
+          {formatFileSize(blob.size, t)}
           {' · '}
           {filename.split('.').pop()?.toUpperCase() ?? blob.type}
           {sourceSize !== undefined && (
-            <> · Original: {formatFileSize(sourceSize)}</>
+            <>
+              {' ' + t('resultCardOriginal') + ' '}
+              {formatFileSize(sourceSize, t)}
+            </>
           )}
           {difference !== null && (
             <>
               {' '}
               ·{' '}
               {difference === 0
-                ? 'Same size as original'
-                : `${Math.abs(difference).toFixed(1)}% ${difference > 0 ? 'larger' : 'smaller'}`}
+                ? t('resultCardSameSizeAsOriginal')
+                : t(
+                    difference > 0
+                      ? 'resultCardPercentLarger'
+                      : 'resultCardPercentSmaller',
+                    { percent: Math.abs(difference).toFixed(1) },
+                  )}
             </>
           )}
         </p>
         {difference !== null && difference > 0 && (
           <p className="text-sm text-muted-foreground">
-            The output is larger than the original. Try different settings if
-            you need a smaller file.
+            {t('resultCardTheOutputIsLargerThanThe')}
           </p>
         )}
-        {details?.map((detail) => (
-          <p key={detail} className="text-sm text-muted-foreground break-words">
-            {detail}
+        {details?.map((detail, index) => (
+          <p key={index} className="text-sm text-muted-foreground break-words">
+            {renderMessage(t, detail)}
           </p>
         ))}
       </div>
@@ -103,11 +114,11 @@ export function ResultCard({
           onClick={() => downloadBlob(blob, filename)}
         >
           <Download aria-hidden="true" />
-          Download again
+          {t('resultCardDownloadAgain')}
         </Button>
         {onReset && (
           <Button variant="outline" disabled={disabled} onClick={onReset}>
-            Start another file
+            {t('resultCardStartAnotherFile')}
           </Button>
         )}
       </div>

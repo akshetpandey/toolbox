@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, PDFPageRanges, usePDFSource } from '@/components/PDFAction'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
@@ -10,6 +12,7 @@ export const Route = createFileRoute('/pdfs/to-images')({
 })
 
 function PDFToImagesRoute() {
+  const t = useTranslator()
   const { file, count, clearFiles } = usePDFSource()
   const [ranges, setRanges] = useWorkspaceState(
     'pdfs.edit.to-images.ranges',
@@ -25,11 +28,12 @@ function PDFToImagesRoute() {
       file={file}
       sourceKey={JSON.stringify([file?.name, ranges, format, scale])}
       name="pdfs.edit.to-images"
-      label="Export pages"
+      label={t('pdfsToImagesExportPages')}
       onReset={clearFiles}
       disabled={!count}
       run={async (signal, setStatus) => {
-        if (!file || !count) throw new Error('Choose a readable PDF first.')
+        if (!file || !count)
+          throw new Error(t('pdfsToImagesChooseAReadablePDFFirst'))
         const pages = parsePageRanges(ranges, count).flat()
         const blob = await exportPDFImages(
           file,
@@ -38,54 +42,66 @@ function PDFToImagesRoute() {
           scale,
           signal,
           (index) => {
-            setStatus(`Rendered ${index} of ${pages.length} pages…`)
+            setStatus(
+              t('pdfsToImagesRenderedOfPages', { index, count: pages.length }),
+            )
           },
         )
         return {
           blob,
           filename: `${pdfBaseName(file.name)}-${pages.length === 1 ? `page-${pages[0] + 1}.${format}` : 'images.zip'}`,
           details: [
-            `${pages.length} ${pages.length === 1 ? 'page' : 'pages'} exported`,
+            message(
+              'pdfsToImagesExported',
+              { count: pages.length },
+              pages.length,
+            ),
           ],
         }
       }}
     >
-      <h2 className="text-lg font-semibold">Save PDF pages as images</h2>
+      <h2 className="text-lg font-semibold">
+        {t('pdfsToImagesSavePDFPagesAsImages')}
+      </h2>
       <PDFPageRanges
         value={ranges}
         setValue={setRanges}
-        hint="Enter pages such as 1-3, 5, or leave blank to export all pages. Multiple images download in a ZIP."
+        hint={t('pdfsToImagesPageRangeHint')}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="pdf-image-format">Image format</Label>
+          <Label htmlFor="pdf-image-format">
+            {t('pdfsToImagesImageFormat')}
+          </Label>
           <select
             id="pdf-image-format"
             className="min-h-11 w-full rounded-md border bg-background px-3"
             value={format}
             onChange={(event) => setFormat(event.target.value as 'jpg' | 'png')}
           >
-            <option value="jpg">JPG · smaller files</option>
-            <option value="png">PNG · lossless quality</option>
+            <option value="jpg">{t('pdfsToImagesJPGSmallerFiles')}</option>
+            <option value="png">{t('pdfsToImagesPNGLosslessQuality')}</option>
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="pdf-image-resolution">Resolution</Label>
+          <Label htmlFor="pdf-image-resolution">
+            {t('pdfsToImagesResolution')}
+          </Label>
           <select
             id="pdf-image-resolution"
             className="min-h-11 w-full rounded-md border bg-background px-3"
             value={scale}
             onChange={(event) => setScale(Number(event.target.value))}
           >
-            <option value={1}>Standard</option>
-            <option value={2}>High</option>
-            <option value={3}>Very high</option>
+            <option value={1}>{t('pdfsToImagesStandard')}</option>
+            <option value={2}>{t('pdfsToImagesHigh')}</option>
+            <option value={3}>{t('pdfsToImagesVeryHigh')}</option>
           </select>
         </div>
       </div>
       {count === null && (
         <p role="alert" className="text-sm text-destructive">
-          Choose a readable, unlocked PDF.
+          {t('pdfsToImagesChooseAReadableUnlockedPDF')}
         </p>
       )}
     </PDFAction>
