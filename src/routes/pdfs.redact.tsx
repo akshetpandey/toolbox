@@ -353,10 +353,10 @@ function PDFRedactRoute() {
           </details>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm text-muted-foreground" aria-live="polite">
-              {currentAreas.length}
-              {' ' + t('pdfsRedactOnThisPage') + ' '}
-              {areas.length}
-              {' ' + t('pdfsRedactTotal')}
+              {t('pdfsRedactAreaCounts', {
+                pageCount: currentAreas.length,
+                total: areas.length,
+              })}
             </p>
             {currentAreas.length > 0 && (
               <Button

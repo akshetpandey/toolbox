@@ -1449,12 +1449,14 @@ function RedactPage() {
                 disabled={
                   isProcessing || isExporting || redactionAreas.length === 0
                 }
-                className="min-w-0 flex-1 sm:flex-none"
+                className="min-w-0 grow sm:grow-0"
               >
                 {isProcessing ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : null}
-                {t('imagesRedactDownload')}
+                <span className="min-w-0 wrap-break-word">
+                  {t('imagesRedactDownload')}
+                </span>
               </Button>
               <Button
                 onClick={() => void downloadRedactedImageWithMetadataStripped()}
@@ -1462,7 +1464,7 @@ function RedactPage() {
                   isProcessing || isExporting || redactionAreas.length === 0
                 }
                 variant="outline"
-                className="min-w-0 h-auto min-h-11 whitespace-normal flex-1 sm:flex-none"
+                className="min-w-0 grow sm:grow-0"
               >
                 {isStrippingMetadata ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1470,9 +1472,11 @@ function RedactPage() {
                   <ShieldOff className="h-4 w-4" />
                 )}
                 <Download className="h-4 w-4" />
-                {isStrippingMetadata
-                  ? t('imagesRedactStripping')
-                  : t('imagesRedactDownloadWithoutMetadata')}
+                <span className="min-w-0 wrap-break-word">
+                  {isStrippingMetadata
+                    ? t('imagesRedactStripping')
+                    : t('imagesRedactDownloadWithoutMetadata')}
+                </span>
               </Button>
             </div>
           </div>

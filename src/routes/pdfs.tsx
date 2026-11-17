@@ -6,7 +6,7 @@ import {
   Outlet,
   useChildMatches,
 } from '@tanstack/react-router'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   invalidateWorkspaceState,
   useWorkspaceState,
@@ -167,6 +167,7 @@ function PDFToolsLayout() {
   const selectedFiles = merging ? mergeFiles : singleFile
   const setSelectedFiles = merging ? setMergeFiles : setSingleFile
   const [activeId, setActiveId] = useState<string | null>(null)
+  const lastAnnouncedPosition = useRef<UniqueIdentifier | null>(null)
   const [pageCounts, setPageCounts] = useState<Record<string, number | null>>(
     {},
   )
@@ -298,15 +299,18 @@ function PDFToolsLayout() {
       accessibility={{
         screenReaderInstructions: { draggable: t('pdfsDragInstructions') },
         announcements: {
-          onDragStart: ({ active }) =>
-            t('pdfsDragPickedUp', { filename: draggedFile(active.id) }),
-          onDragOver: ({ active, over }) =>
-            over
-              ? t('pdfsDragMoved', {
-                  filename: draggedFile(active.id),
-                  position: filePosition(over.id),
-                })
-              : undefined,
+          onDragStart: ({ active }) => {
+            lastAnnouncedPosition.current = active.id
+            return t('pdfsDragPickedUp', { filename: draggedFile(active.id) })
+          },
+          onDragOver: ({ active, over }) => {
+            if (!over || over.id === lastAnnouncedPosition.current) return
+            lastAnnouncedPosition.current = over.id
+            return t('pdfsDragMoved', {
+              filename: draggedFile(active.id),
+              position: filePosition(over.id),
+            })
+          },
           onDragEnd: ({ active, over }) =>
             over
               ? t('pdfsDragDropped', {
