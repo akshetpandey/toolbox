@@ -1,3 +1,7 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
+import { message, renderMessage } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { messageFromError } from '@/i18n/MessageError'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useFileOperation } from '@/contexts/FileOperation'
@@ -15,7 +19,7 @@ import { downloadBlob } from '@/lib/shared'
 
 export type PDFActionTask = (
   signal: AbortSignal,
-  setStatus: (message: string) => void,
+  setStatus: (message: MessageText) => void,
 ) => Promise<ToolResult>
 
 export function usePDFSource() {
@@ -31,7 +35,7 @@ export function PDFAction({
   sourceKey,
   name,
   label,
-  status = 'Working on your file…',
+  status,
   disabled = false,
   onReset,
   run,
@@ -41,22 +45,23 @@ export function PDFAction({
   sourceKey: string
   name: string
   label: string
-  status?: string
+  status?: MessageText
   disabled?: boolean
   onReset: () => void
   run: PDFActionTask
   children?: ReactNode
 }) {
+  const t = useTranslator()
   const { isProcessing } = useProcessing()
   const start = useFileOperation(file)
   const controller = useRef<AbortController | null>(null)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [progress, setProgress] = useState<MessageText>('')
+  const [error, setError] = useState<MessageText>('')
   const { result, setResult } = useToolResult(sourceKey, name)
 
   useEffect(() => {
     setError('')
-    setMessage('')
+    setProgress('')
     return () => controller.current?.abort()
   }, [file, sourceKey])
 
@@ -66,11 +71,11 @@ export function PDFAction({
     controller.current = abort
     const operation = start()
     setResult(null)
-    setMessage(status)
+    setProgress(status ?? message('pDFActionWorkingOnYourFile'))
     setError('')
     try {
       const output = await run(abort.signal, (next) => {
-        if (operation.isCurrent() && !abort.signal.aborted) setMessage(next)
+        if (operation.isCurrent() && !abort.signal.aborted) setProgress(next)
       })
       if (!operation.isCurrent() || abort.signal.aborted) return
       setResult(output)
@@ -78,13 +83,14 @@ export function PDFAction({
     } catch (cause) {
       if (operation.isCurrent() && !abort.signal.aborted)
         setError(
-          cause instanceof Error
-            ? cause.message
-            : 'Your file could not be processed.',
+          messageFromError(
+            cause,
+            message('pDFActionYourFileCouldNotBeProcessed'),
+          ),
         )
     } finally {
       if (controller.current === abort) controller.current = null
-      if (operation.isCurrent()) setMessage('')
+      if (operation.isCurrent()) setProgress('')
       operation.finish()
     }
   }
@@ -98,7 +104,7 @@ export function PDFAction({
           </fieldset>
           {error && (
             <p role="alert" className="break-words text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <div className="flex flex-wrap gap-2">
@@ -107,26 +113,26 @@ export function PDFAction({
               disabled={!file || disabled || isProcessing}
               onClick={() => void process()}
             >
-              {message && (
+              {progress && (
                 <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               )}
               {label}
             </Button>
-            {message && (
+            {progress && (
               <Button
                 variant="outline"
                 onClick={() => {
                   controller.current?.abort()
-                  setMessage('Cancelling…')
+                  setProgress(message('pDFActionCancelling'))
                 }}
               >
-                Cancel
+                {t('pDFActionCancel')}
               </Button>
             )}
           </div>
-          {message && (
+          {progress && (
             <p role="status" className="text-sm text-muted-foreground">
-              {message}
+              {renderMessage(t, progress)}
             </p>
           )}
         </CardContent>
@@ -145,12 +151,13 @@ export function PDFPageRanges({
   setValue: (value: string) => void
   hint: string
 }) {
+  const t = useTranslator()
   return (
     <div className="space-y-2">
-      <Label htmlFor="pdf-page-ranges">Pages</Label>
+      <Label htmlFor="pdf-page-ranges">{t('pDFActionPages')}</Label>
       <Input
         id="pdf-page-ranges"
-        placeholder="All pages"
+        placeholder={t('pDFActionAllPages')}
         aria-describedby="pdf-page-ranges-hint"
         value={value}
         onChange={(event) => setValue(event.target.value)}

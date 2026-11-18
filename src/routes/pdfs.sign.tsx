@@ -1,3 +1,6 @@
+import { MessageError } from '@/i18n/MessageError'
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, usePDFSource } from '@/components/PDFAction'
 import { Input, Label } from '@/components/ui'
@@ -10,6 +13,7 @@ export const Route = createFileRoute('/pdfs/sign')({
 })
 
 function PDFSignRoute() {
+  const t = useTranslator()
   const { file, count, clearFiles } = usePDFSource()
   const [name, setName] = useWorkspaceState('pdfs.edit.sign.name', '')
   const [page, setPage] = useWorkspaceState('pdfs.edit.sign.page', '')
@@ -25,11 +29,11 @@ function PDFSignRoute() {
       file={file}
       sourceKey={JSON.stringify([file?.name, name, page, side])}
       name="pdfs.edit.sign"
-      label="Add signature and download"
+      label={t('pdfsSignAddSignatureAndDownload')}
       onReset={clearFiles}
       disabled={!name.trim() || !validPage}
       run={async () => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new MessageError('pdfsSignChooseAPDFFirst')
         return {
           blob: await stampPDF(file, {
             type: 'signature',
@@ -38,16 +42,18 @@ function PDFSignRoute() {
             side,
           }),
           filename: `${pdfBaseName(file.name)}-signed.pdf`,
-          details: [`Typed signature on page ${selected}`],
+          details: [message('pdfsSignTypedSignatureOnPage', { selected })],
         }
       }}
     >
-      <h2 className="text-lg font-semibold">Add a visible typed signature</h2>
+      <h2 className="text-lg font-semibold">
+        {t('pdfsSignAddAVisibleTypedSignature')}
+      </h2>
       <p className="text-sm text-muted-foreground">
-        Place your name at the bottom of a page as a visual signature.
+        {t('pdfsSignPlaceYourNameAtTheBottom')}
       </p>
       <div className="space-y-2">
-        <Label htmlFor="pdf-signature-name">Signature name</Label>
+        <Label htmlFor="pdf-signature-name">{t('pdfsSignSignatureName')}</Label>
         <Input
           id="pdf-signature-name"
           maxLength={80}
@@ -59,19 +65,23 @@ function PDFSignRoute() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="pdf-signature-page">Page</Label>
+          <Label htmlFor="pdf-signature-page">{t('pdfsSignPage')}</Label>
           <Input
             id="pdf-signature-page"
             type="number"
             min={1}
             max={count ?? undefined}
-            placeholder={count ? `Last page (${count})` : 'Last page'}
+            placeholder={
+              count
+                ? t('pdfsSignLastPage', { count })
+                : t('pdfsSignLastPageText')
+            }
             value={page}
             onChange={(event) => setPage(event.target.value)}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="pdf-signature-side">Position</Label>
+          <Label htmlFor="pdf-signature-side">{t('pdfsSignPosition')}</Label>
           <select
             id="pdf-signature-side"
             className="min-h-11 w-full rounded-md border bg-background px-3"
@@ -80,14 +90,14 @@ function PDFSignRoute() {
               setSide(event.target.value as 'left' | 'right')
             }
           >
-            <option value="right">Bottom right</option>
-            <option value="left">Bottom left</option>
+            <option value="right">{t('pdfsSignBottomRight')}</option>
+            <option value="left">{t('pdfsSignBottomLeft')}</option>
           </select>
         </div>
       </div>
       {count === null && (
         <p role="alert" className="text-sm text-destructive">
-          Choose a readable, unlocked PDF.
+          {t('pdfsSignChooseAReadableUnlockedPDF')}
         </p>
       )}
     </PDFAction>

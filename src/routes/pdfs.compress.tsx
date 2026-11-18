@@ -1,3 +1,6 @@
+import { MessageError } from '@/i18n/MessageError'
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, usePDFSource } from '@/components/PDFAction'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
@@ -10,6 +13,7 @@ export const Route = createFileRoute('/pdfs/compress')({
 })
 
 function PDFCompressRoute() {
+  const t = useTranslator()
   const { file, clearFiles } = usePDFSource()
   const [mode, setMode] = useWorkspaceState<PDFCompressionMode>(
     'pdfs.edit.compress.mode',
@@ -20,10 +24,10 @@ function PDFCompressRoute() {
       file={file}
       sourceKey={JSON.stringify([file?.name, mode])}
       name="pdfs.edit.compress"
-      label="Compress and download"
+      label={t('pdfsCompressCompressAndDownload')}
       onReset={clearFiles}
       run={async (signal) => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new MessageError('pdfsCompressChooseAPDFFirst')
         const blob = await compressPDF(file, mode, signal)
         return {
           blob,
@@ -34,18 +38,19 @@ function PDFCompressRoute() {
               : `${pdfBaseName(file.name)}-compressed.pdf`,
           details:
             blob === file
-              ? ['This PDF is already as small as this setting can make it.']
-              : ['Text remains selectable.'],
+              ? [message('pdfsCompressThisPDFIsAlreadyAsSmall')]
+              : [message('pdfsCompressTextRemainsSelectable')],
         }
       }}
     >
-      <h2 className="text-lg font-semibold">Choose compression</h2>
+      <h2 className="text-lg font-semibold">
+        {t('pdfsCompressChooseCompression')}
+      </h2>
       <p className="text-sm text-muted-foreground">
-        Every setting preserves text and page layout. Stronger settings reduce
-        the quality of supported embedded photos.
+        {t('pdfsCompressEverySettingPreservesTextAndPage')}
       </p>
       <div className="space-y-2">
-        <Label htmlFor="pdf-compression-mode">Quality</Label>
+        <Label htmlFor="pdf-compression-mode">{t('pdfsCompressQuality')}</Label>
         <select
           id="pdf-compression-mode"
           className="min-h-11 w-full rounded-md border bg-background px-3"
@@ -55,10 +60,14 @@ function PDFCompressRoute() {
           }
         >
           <option value="lossless">
-            Lossless · keep original image quality
+            {t('pdfsCompressLosslessKeepOriginalImageQuality')}
           </option>
-          <option value="balanced">Balanced · compress photos</option>
-          <option value="small">Smaller file · lower photo quality</option>
+          <option value="balanced">
+            {t('pdfsCompressBalancedCompressPhotos')}
+          </option>
+          <option value="small">
+            {t('pdfsCompressSmallerFileLowerPhotoQuality')}
+          </option>
         </select>
       </div>
     </PDFAction>

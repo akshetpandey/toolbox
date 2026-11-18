@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 export type AnimationFormat = 'gif' | 'apng' | 'webp'
 
 export function isAnimationFormat(format: string): format is AnimationFormat {
@@ -47,7 +48,7 @@ export async function readAnimationInfo(
     const length = new DataView(chunk.buffer).getUint32(0)
     const type = name(chunk.slice(4, 8))
     if (length > file.size - offset - 12)
-      throw new Error('The animated PNG is incomplete. Choose another file.')
+      throw new MessageError('animationTheAnimatedPNGIsIncompleteChoose')
     if (type === 'acTL' && length === 8) {
       const data = new DataView(
         await file.slice(offset + 8, offset + 16).arrayBuffer(),
@@ -71,7 +72,7 @@ export async function readAnimationInfo(
   }
   if (!animated) return null
   if (!complete || !frames || frames !== expectedFrames)
-    throw new Error('The animated PNG is missing frames. Choose another file.')
+    throw new MessageError('animationTheAnimatedPNGIsMissingFrames')
   return {
     format: 'apng',
     width: dimensions.getUint32(16),

@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useRef, useState } from 'react'
 import { useHydrated } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
@@ -38,9 +39,10 @@ export function FileUpload({
   selectedFileIcon: SelectedIcon = FileImage,
   children,
   multiple = false,
-  selectedActionLabel = 'Change file',
+  selectedActionLabel,
   disabled: disabledByTool = false,
 }: FileUploadProps) {
+  const t = useTranslator()
   const hydrated = useHydrated()
   const disabled = !hydrated || disabledByTool
   const input = useRef<HTMLInputElement>(null)
@@ -51,7 +53,9 @@ export function FileUpload({
   }
   return (
     <section
-      aria-label={selected ? 'Selected files' : 'Choose files'}
+      aria-label={
+        selected ? t('fileUploadSelectedFiles') : t('fileUploadChooseFiles')
+      }
       className={`file-upload min-w-0 rounded-xl border bg-card ${dragging ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
       onDragOver={(event) => {
         event.preventDefault()
@@ -74,7 +78,9 @@ export function FileUpload({
                   aria-hidden="true"
                   className="size-4 text-muted-foreground"
                 />
-                {selectedFiles.length} selected files
+                {t('fileUploadSelectedFilesText', {
+                  count: selectedFiles.length,
+                })}
               </p>
             </div>
           )}
@@ -85,7 +91,7 @@ export function FileUpload({
                   <p className="break-all text-sm font-medium">{file.name}</p>
                   {file.size !== undefined && (
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {formatFileSize(file.size)}
+                      {formatFileSize(file.size, t)}
                     </p>
                   )}
                 </li>
@@ -101,10 +107,10 @@ export function FileUpload({
               className="flex-1"
             >
               <Upload aria-hidden="true" />
-              {selectedActionLabel}
+              {selectedActionLabel ?? t('fileUploadChangeFile')}
             </Button>
             <Button variant="ghost" disabled={disabled} onClick={onClearFiles}>
-              Clear
+              {t('fileUploadClear')}
             </Button>
           </div>
         </div>
@@ -122,11 +128,17 @@ export function FileUpload({
             className="mt-5"
           >
             <Upload aria-hidden="true" />
-            Choose {multiple ? 'files' : 'file'}
+            {t(multiple ? 'fileUploadChooseFiles' : 'fileUploadChooseFile')}
           </Button>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
             {supportedFormats.join(' · ')}
-            {hydrated && ` · or drop ${multiple ? 'files' : 'a file'} here`}
+            {hydrated &&
+              ' · ' +
+                t(
+                  multiple
+                    ? 'fileUploadOrDropFilesHere'
+                    : 'fileUploadOrDropFileHere',
+                )}
           </p>
         </div>
       )}
@@ -136,7 +148,9 @@ export function FileUpload({
         accept={acceptedTypes}
         multiple={multiple}
         disabled={disabled}
-        aria-label={multiple ? 'Upload files' : 'Upload file'}
+        aria-label={
+          multiple ? t('fileUploadUploadFiles') : t('fileUploadUploadFile')
+        }
         className="hidden"
         onChange={(event) => {
           if (event.target.files?.length && !disabled)

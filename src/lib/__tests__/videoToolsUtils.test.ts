@@ -191,10 +191,21 @@ describe('getCommonResolutions', () => {
     expect(values).toContain('3840x2160')
   })
 
-  test('includes portrait resolutions', () => {
-    const values = getCommonResolutions().map((r) => r.value)
-    expect(values).toContain('1080x1920')
-    expect(values).toContain('720x1280')
+  test('derives portrait preset labels and values from the same dimensions', () => {
+    const resolutions = getCommonResolutions()
+    for (const value of [
+      '2160x3840',
+      '1440x2560',
+      '1080x1920',
+      '720x1280',
+      '480x854',
+      '360x640',
+    ]) {
+      const preset = resolutions.find(
+        (resolution) => resolution.value === value,
+      )
+      expect(preset?.label).toContain(value.replace('x', ' × '))
+    }
   })
 
   test('includes square resolutions', () => {

@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { loadFFmpeg } from '@/hooks/useInitFFmpeg'
 
@@ -21,7 +22,7 @@ interface MediaInfo {
   }[]
 }
 
-export class MediaInputError extends Error {}
+export class MediaInputError extends MessageError {}
 
 async function execute(ffmpeg: FFmpeg, args: string[], signal: AbortSignal) {
   signal.throwIfAborted()
@@ -35,7 +36,7 @@ async function readOutput(ffmpeg: FFmpeg, path: string, signal: AbortSignal) {
   const data = await ffmpeg.readFile(path, 'binary', { signal })
   signal.throwIfAborted()
   if (!(data instanceof Uint8Array) || !data.byteLength)
-    throw new Error('FFmpeg returned an empty output.')
+    throw new MessageError('mediaFFmpegReturnedAnEmptyOutput')
   return data
 }
 
@@ -76,12 +77,9 @@ async function probe(ffmpeg: FFmpeg, path: string, signal: AbortSignal) {
     ) as MediaInfo
   } catch (error) {
     signal.throwIfAborted()
-    throw new MediaInputError(
-      'This file could not be read. Choose another file.',
-      {
-        cause: error,
-      },
-    )
+    throw new MediaInputError('mediaThisFileCouldNotBeRead', undefined, {
+      cause: error,
+    })
   } finally {
     if (!signal.aborted)
       await ffmpeg.deleteFile(probePath).catch(() => {
@@ -142,7 +140,7 @@ export function convertAudio(
   return withMediaFiles([file], signal, async (ffmpeg, [input]) => {
     const info = await probe(ffmpeg, input, signal)
     const audio = info.streams?.find((stream) => stream.codec_type === 'audio')
-    if (!audio) throw new MediaInputError('This file has no audio track.')
+    if (!audio) throw new MediaInputError('mediaThisFileHasNoAudioTrack')
     const output = `output.${format}`
     const args = ['-i', input, '-map', '0:a:0']
     if (range) {
@@ -155,7 +153,7 @@ export function convertAudio(
         (Number.isFinite(duration) &&
           (start >= duration || (end !== undefined && end > duration + 0.01)))
       ) {
-        throw new MediaInputError('Choose a time range within the audio file.')
+        throw new MediaInputError('mediaChooseATimeRangeWithinThe')
       }
       args.push('-ss', String(start))
       if (end !== undefined) args.push('-t', String(end - start))
@@ -214,9 +212,9 @@ export function joinVideos(files: readonly File[], signal: AbortSignal) {
       const info = await probe(ffmpeg, input, signal)
       const video = primaryVideo(info)
       if (!video?.width || !video.height)
-        throw new MediaInputError(
-          `Clip ${index + 1} has no readable video track.`,
-        )
+        throw new MediaInputError('mediaClipHasNoReadableVideoTrack', {
+          number: index + 1,
+        })
       if (!frameSize) {
         const rotation = video.side_data_list?.find(
           (item) => item.rotation,
@@ -317,9 +315,7 @@ export async function compressVideoToSize(
     Number(info.format?.duration) || 0,
   )
   if (!video || !Number.isFinite(duration) || duration <= 0)
-    throw new MediaInputError(
-      'A readable video with a known duration is required.',
-    )
+    throw new MediaInputError('mediaAReadableVideoWithAKnown')
 
   const hasAudio = info.streams?.some((stream) => stream.codec_type === 'audio')
   // Allow room for MP4 overhead and differences between requested and actual
@@ -404,7 +400,5 @@ export async function compressVideoToSize(
         })
     }
   }
-  throw new MediaInputError(
-    'This video could not fit under the limit. Try a larger limit or a shorter clip.',
-  )
+  throw new MediaInputError('mediaThisVideoCouldNotFitUnder')
 }

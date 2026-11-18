@@ -1,3 +1,7 @@
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { PDFAction, usePDFSource } from '@/components/PDFAction'
@@ -44,7 +48,7 @@ function usePagePreview(file: File | undefined, page: number) {
     page: number
     url: string
   } | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<MessageText>('')
   useEffect(() => {
     if (!file) return
     const controller = new AbortController()
@@ -76,9 +80,10 @@ function usePagePreview(file: File | undefined, page: number) {
       } catch (cause) {
         if (!signal.aborted)
           setError(
-            cause instanceof Error
-              ? cause.message
-              : 'The page preview could not be loaded.',
+            messageFromError(
+              cause,
+              message('pdfsRedactThePagePreviewCouldNotBe'),
+            ),
           )
       }
     })()
@@ -97,6 +102,7 @@ function usePagePreview(file: File | undefined, page: number) {
 }
 
 function PDFRedactRoute() {
+  const t = useTranslator()
   const { file, count, clearFiles } = usePDFSource()
   const [page, setPage] = useWorkspaceState('pdfs.edit.redact.page', 1)
   const [areas, setAreas] = useWorkspaceState<PDFRedaction[]>(
@@ -139,35 +145,39 @@ function PDFRedactRoute() {
       file={file}
       sourceKey={JSON.stringify([file?.name, areas])}
       name="pdfs.edit.redact"
-      label="Redact and download"
-      status="Preparing your redacted PDF…"
+      label={t('pdfsRedactRedactAndDownload')}
+      status={message('pdfsRedactPreparingYourRedactedPDF')}
       disabled={areas.length === 0 || !count}
       onReset={clearFiles}
       run={async (signal, setStatus) => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new MessageError('pdfsRedactChooseAPDFFirst')
         const { redactPDF } = await import('@/lib/pdf-privacy')
         return {
           blob: await redactPDF(file, areas, signal, (index, total) => {
-            setStatus(`Redacting page ${index} of ${total}…`)
+            setStatus(message('pdfsRedactRedactingPageOf', { index, total }))
           }),
           filename: `${pdfBaseName(file.name)}-redacted.pdf`,
           details: [
-            `Covered ${areas.length} ${areas.length === 1 ? 'area' : 'areas'}. Check the downloaded PDF before sharing.`,
+            message(
+              'pdfsRedactCoveredCheckTheDownloadedPDF',
+              { count: areas.length },
+              areas.length,
+            ),
           ],
         }
       }}
     >
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Cover sensitive areas</h2>
+        <h2 className="text-lg font-semibold">
+          {t('pdfsRedactCoverSensitiveAreas')}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Draw black boxes over everything you want to remove. The exported PDF
-          contains only the new page images, with links, selectable text and
-          form fields removed.
+          {t('pdfsRedactDrawBlackBoxesOverEverythingYou')}
         </p>
       </div>
       {count === null && (
         <p role="alert" className="text-sm text-destructive">
-          Choose a readable, unlocked PDF.
+          {t('pdfsRedactChooseAReadableUnlockedPDF')}
         </p>
       )}
       {count ? (
@@ -179,10 +189,10 @@ function PDFRedactRoute() {
               disabled={page <= 1}
               onClick={() => moveTo(page - 1)}
             >
-              Previous page
+              {t('pdfsRedactPreviousPage')}
             </Button>
             <div className="flex items-center gap-2">
-              <Label htmlFor="pdf-redact-page">Page</Label>
+              <Label htmlFor="pdf-redact-page">{t('pdfsRedactPage')}</Label>
               <select
                 id="pdf-redact-page"
                 className="min-h-11 rounded-md border bg-background px-3"
@@ -195,7 +205,9 @@ function PDFRedactRoute() {
                   </option>
                 ))}
               </select>
-              <span className="text-sm text-muted-foreground">of {count}</span>
+              <span className="text-sm text-muted-foreground">
+                {t('pdfsRedactOfCount', { count })}
+              </span>
             </div>
             <Button
               type="button"
@@ -203,17 +215,17 @@ function PDFRedactRoute() {
               disabled={page >= count}
               onClick={() => moveTo(page + 1)}
             >
-              Next page
+              {t('pdfsRedactNextPage')}
             </Button>
           </div>
           {error && (
             <p role="alert" className="break-words text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {!url && !error && (
             <p role="status" className="text-sm">
-              Rendering page preview…
+              {t('pdfsRedactRenderingPagePreview')}
             </p>
           )}
           {url && (
@@ -262,7 +274,7 @@ function PDFRedactRoute() {
               >
                 <img
                   src={url}
-                  alt={`Preview of PDF page ${page}`}
+                  alt={t('pdfsRedactPreviewOfPDFPage', { page })}
                   draggable={false}
                   className="block h-auto max-w-full select-none"
                 />
@@ -286,18 +298,18 @@ function PDFRedactRoute() {
           )}
           <details className="space-y-3 rounded-md border p-3">
             <summary className="cursor-pointer text-sm font-medium">
-              Enter an exact area
+              {t('pdfsRedactEnterAnExactArea')}
             </summary>
             <p className="text-sm text-muted-foreground">
-              Use percentages of this page, starting at the top left.
+              {t('pdfsRedactUsePercentagesOfThisPageStarting')}
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {(
                 [
-                  ['x', 'Left %'],
-                  ['y', 'Top %'],
-                  ['width', 'Width %'],
-                  ['height', 'Height %'],
+                  ['x', t('pdfsRedactLeft')],
+                  ['y', t('pdfsRedactTop')],
+                  ['width', t('pdfsRedactWidth')],
+                  ['height', t('pdfsRedactHeight')],
                 ] as const
               ).map(([key, label]) => (
                 <div key={key} className="space-y-1">
@@ -336,12 +348,15 @@ function PDFRedactRoute() {
                 ])
               }
             >
-              Add redaction area
+              {t('pdfsRedactAddRedactionArea')}
             </Button>
           </details>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm text-muted-foreground" aria-live="polite">
-              {currentAreas.length} on this page · {areas.length} total
+              {t('pdfsRedactAreaCounts', {
+                pageCount: currentAreas.length,
+                total: areas.length,
+              })}
             </p>
             {currentAreas.length > 0 && (
               <Button
@@ -352,7 +367,7 @@ function PDFRedactRoute() {
                   setAreas(areas.filter((_, index) => index !== last))
                 }}
               >
-                Undo last area
+                {t('pdfsRedactUndoLastArea')}
               </Button>
             )}
           </div>

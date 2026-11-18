@@ -1,6 +1,8 @@
 import { expect, test, vi } from 'vitest'
 import { PDFDocument } from 'pdf-lib'
 import { strFromU8, unzipSync } from 'fflate'
+import { renderMessage } from '@/i18n/messages'
+import { workspaceEnglish } from '@/i18n/workspaceMessages'
 import { convertPDFToWord } from '../pdf-to-word'
 
 test('exports selectable PDF text to a local DOCX and reports skipped pages', async () => {
@@ -16,7 +18,9 @@ test('exports selectable PDF text to a local DOCX and reports skipped pages', as
   )
 
   expect(result.filename).toBe('sample.docx')
-  expect(result.details).toContain('Skipped 1 page with no selectable text')
+  expect(
+    result.details.map((detail) => renderMessage(workspaceEnglish, detail)),
+  ).toContain('Skipped 1 page with no selectable text')
   const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()))
   const document = strFromU8(files['word/document.xml'])
   expect(document).toContain('First page with editable text')

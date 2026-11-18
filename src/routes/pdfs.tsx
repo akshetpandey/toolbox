@@ -1,10 +1,12 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createFileRoute,
   Outlet,
-  useLocation,
   useChildMatches,
 } from '@tanstack/react-router'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   invalidateWorkspaceState,
   useWorkspaceState,
@@ -12,7 +14,6 @@ import {
 import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
 import { PDFNavigation } from '@/components/PDFNavigation'
-import { getPage } from '@/lib/seo'
 import { useProcessing } from '@/contexts/ProcessingContext'
 import {
   PDFToolsContext,
@@ -26,7 +27,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
+import type { DragEndEvent, UniqueIdentifier } from '@dnd-kit/core'
 import {
   SortableContext,
   arrayMove,
@@ -66,6 +67,7 @@ function SortableFileItem({
   onRemove,
   onMove,
 }: SortableFileItemProps) {
+  const t = useTranslator()
   const {
     attributes,
     listeners,
@@ -86,7 +88,7 @@ function SortableFileItem({
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={`Drag ${file.name} to reorder`}
+          aria-label={t('pdfsDragToReorder', { filename: file.name })}
           disabled={disabled}
           className="flex size-11 shrink-0 touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"
         >
@@ -98,12 +100,12 @@ function SortableFileItem({
             {file.name}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {formatFileSize(file.size)} ·{' '}
+            {formatFileSize(file.size, t)} ·{' '}
             {pageCount === undefined
-              ? 'Reading pages…'
+              ? t('pdfsReadingPages')
               : pageCount === null
-                ? 'Could not read PDF'
-                : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`}
+                ? t('pdfsCouldNotReadPDF')
+                : t('pdfsMergePageCount', undefined, pageCount)}
           </p>
         </div>
       </div>
@@ -112,7 +114,7 @@ function SortableFileItem({
           variant="ghost"
           size="icon"
           className="size-11"
-          aria-label={`Move ${file.name} up`}
+          aria-label={t('pdfsMoveUp', { filename: file.name })}
           disabled={disabled || index === 0}
           onClick={() => onMove(-1)}
         >
@@ -122,7 +124,7 @@ function SortableFileItem({
           variant="ghost"
           size="icon"
           className="size-11"
-          aria-label={`Move ${file.name} down`}
+          aria-label={t('pdfsMoveDown', { filename: file.name })}
           disabled={disabled || index === count - 1}
           onClick={() => onMove(1)}
         >
@@ -132,7 +134,7 @@ function SortableFileItem({
           variant="ghost"
           size="icon"
           className="size-11 text-destructive"
-          aria-label={`Remove ${file.name}`}
+          aria-label={t('pdfsRemove', { filename: file.name })}
           disabled={disabled}
           onClick={onRemove}
         >
@@ -148,8 +150,8 @@ export const Route = createFileRoute('/pdfs')({
 })
 
 function PDFToolsLayout() {
+  const t = useTranslator()
   const { isProcessing } = useProcessing()
-  const location = useLocation()
   // Outlet can still render the previous child while the location advances.
   // Choose its provider/layout from the same active matches as Outlet.
   const path = useChildMatches({ select: (matches) => matches[0]?.routeId })
@@ -165,10 +167,11 @@ function PDFToolsLayout() {
   const selectedFiles = merging ? mergeFiles : singleFile
   const setSelectedFiles = merging ? setMergeFiles : setSingleFile
   const [activeId, setActiveId] = useState<string | null>(null)
+  const lastAnnouncedPosition = useRef<UniqueIdentifier | null>(null)
   const [pageCounts, setPageCounts] = useState<Record<string, number | null>>(
     {},
   )
-  const [selectionError, setSelectionError] = useState('')
+  const [selectionError, setSelectionError] = useState<MessageText>('')
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -225,9 +228,7 @@ function PDFToolsLayout() {
         }
       }
       if (pdfFiles.length !== files.length)
-        setSelectionError(
-          'Only PDF files were added. Choose PDF files to continue.',
-        )
+        setSelectionError(message('pdfsOnlyPDFFilesWereAddedChoose'))
     },
     [isProcessing, merging, setSelectedFiles],
   )
@@ -280,16 +281,47 @@ function PDFToolsLayout() {
       onFileSelect={handleFileSelect}
       onClearFiles={clearFiles}
       acceptedTypes=".pdf,application/pdf"
-      title="Choose a PDF"
-      description="Select the PDF you want to work with."
+      title={t('pdfsChooseAPDF')}
+      description={t('pdfsSelectThePDFYouWantTo')}
       supportedFormats={['PDF']}
       selectedFileIcon={File}
       disabled={isProcessing}
     />
   )
+  const draggedFile = (id: UniqueIdentifier) =>
+    selectedFiles.find((file) => file.id === id)?.name ?? 'PDF'
+  const filePosition = (id: UniqueIdentifier) =>
+    selectedFiles.findIndex((file) => file.id === id) + 1
+
   const pdfFileUpload = (
     <DndContext
       sensors={sensors}
+      accessibility={{
+        screenReaderInstructions: { draggable: t('pdfsDragInstructions') },
+        announcements: {
+          onDragStart: ({ active }) => {
+            lastAnnouncedPosition.current = active.id
+            return t('pdfsDragPickedUp', { filename: draggedFile(active.id) })
+          },
+          onDragOver: ({ active, over }) => {
+            if (!over || over.id === lastAnnouncedPosition.current) return
+            lastAnnouncedPosition.current = over.id
+            return t('pdfsDragMoved', {
+              filename: draggedFile(active.id),
+              position: filePosition(over.id),
+            })
+          },
+          onDragEnd: ({ active, over }) =>
+            over
+              ? t('pdfsDragDropped', {
+                  filename: draggedFile(active.id),
+                  position: filePosition(over.id),
+                })
+              : t('pdfsDragCancelled', { filename: draggedFile(active.id) }),
+          onDragCancel: ({ active }) =>
+            t('pdfsDragCancelled', { filename: draggedFile(active.id) }),
+        },
+      }}
       onDragStart={({ active }) => setActiveId(String(active.id))}
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
@@ -303,20 +335,20 @@ function PDFToolsLayout() {
         onFileSelect={handleFileSelect}
         onClearFiles={clearFiles}
         acceptedTypes=".pdf,application/pdf"
-        title="Choose PDF files"
-        description="Add two or more PDFs, then arrange them in the order you want."
+        title={t('pdfsChoosePDFFiles')}
+        description={t('pdfsAddTwoOrMorePDFsThen')}
         supportedFormats={['PDF']}
         selectedFileIcon={File}
         multiple
-        selectedActionLabel="Add files"
+        selectedActionLabel={t('pdfsAddFiles')}
         disabled={isProcessing}
       >
         {selectedFiles.length > 0 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Drag to reorder, or use the move up and down buttons.
+              {t('pdfsDragToReorderOrUseThe')}
             </p>
-            <ol aria-label="PDF merge order" className="space-y-2">
+            <ol aria-label={t('pdfsPDFMergeOrder')} className="space-y-2">
               <SortableContext
                 items={selectedFiles}
                 strategy={verticalListSortingStrategy}
@@ -356,7 +388,7 @@ function PDFToolsLayout() {
   return (
     <PDFToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title={getPage(location.pathname).heading}
+        title={t('toolsPDFsCategory')}
         icon={FileText}
         iconColor="text-primary"
         iconBgColor="bg-primary/10"
@@ -365,7 +397,7 @@ function PDFToolsLayout() {
       >
         {selectionError && (
           <p role="alert" className="text-sm text-destructive">
-            {selectionError}
+            {renderMessage(t, selectionError)}
           </p>
         )}
         <Outlet />

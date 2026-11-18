@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { PDFDocument, PDFPage } from 'pdf-lib'
 import { loadEditablePDF, savePDF } from './pdf-edit'
 
@@ -32,9 +33,7 @@ async function editableForm(document: PDFDocument) {
       .lookupMaybe(PDFName.of('AcroForm'), PDFDict)
       ?.has(PDFName.of('XFA'))
   )
-    throw new Error(
-      'This PDF uses XFA forms, which this editor cannot fill. Choose a standard PDF form or a regular PDF.',
-    )
+    throw new MessageError('pdfEditorThisPDFUsesXFAFormsWhich')
   return document.getForm()
 }
 
@@ -89,8 +88,7 @@ function loadEditorFont() {
     '/pdf-engines/pdfjs/standard_fonts/LiberationSans-Regular.ttf',
   )
     .then((response) => {
-      if (!response.ok)
-        throw new Error('The PDF font could not be loaded. Try again.')
+      if (!response.ok) throw new MessageError('pdfEditorThePDFFontCouldNotBe')
       return response.arrayBuffer()
     })
     .catch((error: unknown) => {
@@ -166,13 +164,12 @@ export async function editPDF(
         ),
       )
     )
-      throw new Error(
-        'One of the characters is unavailable in this PDF font. Use Latin, Greek, or Cyrillic text.',
-      )
+      throw new MessageError('pdfEditorOneOfTheCharactersIsUnavailable')
   }
   for (const [name, value] of changes) {
     const field = form.getField(name)
-    if (field.isReadOnly()) throw new Error(`The field “${name}” is read-only.`)
+    if (field.isReadOnly())
+      throw new MessageError('pdfEditorTheFieldIsReadOnly', { filename: name })
     if (field instanceof PDFTextField && typeof value === 'string')
       field.setText(value)
     else if (field instanceof PDFCheckBox && typeof value === 'boolean') {
@@ -189,11 +186,14 @@ export async function editPDF(
           ? [value]
           : []
       if (selected.some((option) => !field.getOptions().includes(option)))
-        throw new Error(`Choose an available option for “${name}”.`)
+        throw new MessageError('pdfEditorChooseAnAvailableOptionFor', {
+          filename: name,
+        })
       if (!selected.length) field.clear()
       else if (field instanceof PDFRadioGroup) field.select(selected[0])
       else field.select(selected)
-    } else throw new Error(`The field “${name}” cannot be filled.`)
+    } else
+      throw new MessageError('pdfEditorTheFieldCannotBe', { filename: name })
   }
   if (changes.length) form.updateFieldAppearances(font)
   if (flatten) form.flatten()
@@ -216,9 +216,7 @@ export async function editPDF(
       mark.fontSize < 6 ||
       mark.fontSize > 96
     )
-      throw new Error(
-        'Keep each added mark inside its page and choose a text size from 6 to 96.',
-      )
+      throw new MessageError('pdfEditorKeepEachAddedMarkInsideIts')
     const crop = page.getCropBox()
     const sideways = page.getRotation().angle % 180 !== 0
     const displayWidth = sideways ? crop.height : crop.width
@@ -230,16 +228,13 @@ export async function editPDF(
     const { x, y, rotation } = displayPosition(page, left, bottom)
     if (mark.type === 'text') {
       const text = mark.text.trim().replace(/[\r\n]+/g, ' ')
-      if (!text || !font) throw new Error('Enter the text to add.')
+      if (!text || !font) throw new MessageError('pdfEditorEnterTheTextToAdd')
       const size = Math.min(
         mark.fontSize,
         height / 1.2,
         width / font.widthOfTextAtSize(text, 1),
       )
-      if (size < 4)
-        throw new Error(
-          'The added text is too long for its box. Increase its width or shorten the text.',
-        )
+      if (size < 4) throw new MessageError('pdfEditorTheAddedTextIsTooLong')
       const position = displayPosition(page, left, bottom + height - size)
       page.drawText(text, {
         x: position.x,

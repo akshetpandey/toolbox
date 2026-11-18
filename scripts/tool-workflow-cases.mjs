@@ -226,7 +226,7 @@ export const workflows = {
     assert.deepEqual(form.getDropdown('Department').getSelected(), ['Research'])
     assert.equal(form.getRadioGroup('Delivery').getSelected(), 'Email')
     assert.match((await pdfText(bytes)).join(' '), /Reviewed by Taylor/)
-    await field(page, 'Flatten form fields in the saved PDF').check()
+    await field(page, 'Make form fields non-editable in the saved PDF').check()
     const flattened = await run(page, 'Save and download PDF')
     assert.equal(
       (await PDFDocument.load(flattened.bytes)).getForm().getFields().length,

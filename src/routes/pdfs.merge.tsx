@@ -1,3 +1,7 @@
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,14 +18,15 @@ export const Route = createFileRoute('/pdfs/merge')({
 })
 
 function PDFMergeRoute() {
+  const t = useTranslator()
   const { selectedFiles, pageCounts, clearFiles } = usePDFTools()
   const { isProcessing, setIsProcessing } = useProcessing()
   const sourceKey = selectedFiles.map((file) => file.id).join('|')
   const currentSource = useRef(sourceKey)
   currentSource.current = sourceKey
   const { result, setResult } = useToolResult(sourceKey, 'pdfs.merge')
-  const [error, setError] = useState('')
-  const [progress, setProgress] = useState('')
+  const [error, setError] = useState<MessageText>('')
+  const [progress, setProgress] = useState<MessageText>('')
   const operation = useRef(0)
   const busy = useRef(false)
   const pagesReady = selectedFiles.every(
@@ -53,28 +58,40 @@ function PDFMergeRoute() {
     busy.current = true
     setIsProcessing(true)
     setError('')
-    setProgress('Preparing your PDFs…')
+    setProgress(message('pdfsMergePreparingYourPDFs'))
     try {
       const merged = await mergePDFs({
         files: selectedFiles,
         onFileProcessed: (index) => {
           if (operation.current === version)
-            setProgress(`Merged ${index + 1} of ${selectedFiles.length} PDFs…`)
+            setProgress(
+              message('pdfsMergeMergedOfPDFs', {
+                number: index + 1,
+                count: selectedFiles.length,
+              }),
+            )
         },
       })
       if (operation.current !== version || currentSource.current !== sourceKey)
         return
       if (!merged.success || !merged.blob)
-        throw new Error(merged.error ?? 'PDF merge failed')
+        throw merged.error
+          ? new Error(merged.error)
+          : new MessageError('pdfsMergePDFMergeFailed')
       setResult({
         blob: merged.blob,
         filename: 'merged-document.pdf',
-        details: [`${totalPages} pages from ${selectedFiles.length} PDFs`],
+        details: [
+          message('pdfsMergePagesFromPDFs', {
+            totalPages,
+            count: selectedFiles.length,
+          }),
+        ],
       })
       downloadBlob(merged.blob, 'merged-document.pdf')
     } catch (cause) {
       if (operation.current === version && currentSource.current === sourceKey)
-        setError(cause instanceof Error ? cause.message : 'Unknown PDF error')
+        setError(messageFromError(cause, message('pdfsMergeUnknownPDFError')))
     } finally {
       if (operation.current === version) {
         busy.current = false
@@ -89,35 +106,33 @@ function PDFMergeRoute() {
       <Card className="shadow-none">
         <CardContent className="space-y-5 p-4 sm:p-6">
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold">Combine your documents</h2>
+            <h2 className="text-lg font-semibold">
+              {t('pdfsMergeCombineYourDocuments')}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Files are combined in the order shown. Add PDFs and use the arrows
-              or drag handles to change their order.
+              {t('pdfsMergeFilesAreCombinedInTheOrder')}
             </p>
           </div>
           {selectedFiles.length > 0 ? (
             <div className="rounded-lg bg-muted/40 p-4">
               <p className="font-medium">
-                {selectedFiles.length}{' '}
-                {selectedFiles.length === 1 ? 'PDF' : 'PDFs'}
-                {pagesReady &&
-                  ` · ${totalPages} ${totalPages === 1 ? 'page' : 'pages'}`}
+                {t('pdfsMergePDFCount', {}, selectedFiles.length)}
+                {pagesReady && ' · ' + t('pdfsMergePageCount', {}, totalPages)}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {pagesReady
-                  ? 'Output: merged-document.pdf'
-                  : 'Reading PDF page counts…'}
+                  ? t('pdfsMergeOutputMergedDocumentPdf')
+                  : t('pdfsMergeReadingPDFPageCounts')}
               </p>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Choose at least two PDF files to get started.
+              {t('pdfsMergeChooseAtLeastTwoPDFFiles')}
             </p>
           )}
           {invalidPDF && (
             <p role="alert" className="text-sm text-destructive">
-              A PDF could not be opened. Remove it and choose a valid copy of
-              the document.
+              {t('pdfsMergeAPDFCouldNotBeOpened')}
             </p>
           )}
           {error && (
@@ -125,18 +140,17 @@ function PDFMergeRoute() {
               role="alert"
               className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
             >
-              <p>
-                These PDFs could not be combined. Try another copy of the files,
-                and make sure they are not password-protected.
-              </p>
+              <p>{t('pdfsMergeThesePDFsCouldNotBeCombined')}</p>
               <details>
                 <summary className="cursor-pointer font-medium">
-                  Technical details
+                  {t('pdfsMergeTechnicalDetails')}
                 </summary>
-                <p className="mt-2 [overflow-wrap:anywhere]">{error}</p>
+                <p className="mt-2 [overflow-wrap:anywhere]">
+                  {renderMessage(t, error)}
+                </p>
               </details>
               <Button variant="outline" onClick={clearFiles}>
-                Choose other PDFs
+                {t('pdfsMergeChooseOtherPDFs')}
               </Button>
             </div>
           )}
@@ -151,12 +165,14 @@ function PDFMergeRoute() {
               <Merge aria-hidden="true" className="size-4" />
             )}
             {busy.current
-              ? 'Merging PDFs…'
-              : `Merge ${selectedFiles.length >= 2 ? selectedFiles.length : ''} PDFs`}
+              ? t('pdfsMergeMergingPDFs')
+              : selectedFiles.length < 2
+                ? t('toolsPdfMergeName')
+                : t('pdfsMergeMergePDFs', { value: selectedFiles.length })}
           </Button>
           {progress && (
             <p role="status" className="text-sm text-muted-foreground">
-              {progress}
+              {renderMessage(t, progress)}
             </p>
           )}
         </CardContent>

@@ -1,3 +1,7 @@
+import { message, renderMessage } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { messageFromError } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useState, useCallback } from 'react'
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 
@@ -63,6 +67,7 @@ export async function loadFFmpeg(ffmpeg: FFmpeg, signal?: AbortSignal) {
 }
 
 export function useInitFFmpeg(): UseInitFFmpegReturn {
+  const t = useTranslator()
   const setProgressCallback = useCallback(
     (callback: (progress: number) => void) => {
       progressCallback = callback
@@ -70,7 +75,9 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
     [],
   )
 
-  const [state, setState] = useState<UseInitFFmpegReturn>({
+  const [state, setState] = useState<
+    Omit<UseInitFFmpegReturn, 'error'> & { error: MessageText | null }
+  >({
     ffmpeg: null,
     isInitialized: false,
     isInitializing: false,
@@ -111,10 +118,10 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
           ...prev,
           isInitialized: false,
           isInitializing: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to initialize FFmpeg',
+          error: messageFromError(
+            error,
+            message('useInitFFmpegFailedToInitializeFFmpeg'),
+          ),
           setProgressCallback,
         }))
       }
@@ -166,10 +173,10 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
         ...prev,
         isInitialized: false,
         isInitializing: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to initialize FFmpeg',
+        error: messageFromError(
+          error,
+          message('useInitFFmpegFailedToInitializeFFmpeg'),
+        ),
         setProgressCallback,
       }))
     }
@@ -180,7 +187,7 @@ export function useInitFFmpeg(): UseInitFFmpegReturn {
     ffmpeg: state.ffmpeg,
     isInitialized: state.isInitialized,
     isInitializing: state.isInitializing,
-    error: state.error,
+    error: state.error === null ? null : renderMessage(t, state.error),
     init,
     setProgressCallback,
   }

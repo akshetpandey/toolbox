@@ -1,3 +1,6 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -14,6 +17,7 @@ export const Route = createFileRoute('/utilities/hash')({
 })
 
 function HashGenerationPage() {
+  const t = useTranslator()
   const {
     selectedFile,
     fileHashes,
@@ -22,7 +26,7 @@ function HashGenerationPage() {
     hashProgress,
   } = useUtilities()
   const { isProcessing } = useProcessing()
-  const [copyStatus, setCopyStatus] = useState('')
+  const [copyStatus, setCopyStatus] = useState<MessageText>('')
   useEffect(() => {
     setCopyStatus('')
   }, [selectedFile])
@@ -40,15 +44,17 @@ function HashGenerationPage() {
       ? hashes.find(({ value }) => value.toLowerCase() === normalized)
       : null
 
-  const copy = async (label: string, value: string) => {
+  const copy = async (label: string | undefined, value: string) => {
     try {
       if (!navigator.clipboard) throw new Error('Clipboard unavailable')
       await navigator.clipboard.writeText(value)
-      setCopyStatus(`${label} copied`)
-    } catch {
       setCopyStatus(
-        'Copy failed. Select the checksum text and copy it manually.',
+        label
+          ? message('utilitiesHashCopied', { label })
+          : message('utilitiesHashAllCopied'),
       )
+    } catch {
+      setCopyStatus(message('utilitiesHashCopyFailedSelectTheChecksumText'))
     }
   }
 
@@ -58,20 +64,22 @@ function HashGenerationPage() {
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Shield className="size-5 text-primary" />
-            File checksums
+            {t('utilitiesHashFileChecksums')}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Copy a checksum or compare it with a value from the file’s source.
+            {t('utilitiesHashCopyAChecksumOrCompareIt')}
           </p>
         </div>
         {selectedFile ? (
           <>
             <div className="space-y-2">
-              <Label htmlFor="expected-hash">Expected hash (optional)</Label>
+              <Label htmlFor="expected-hash">
+                {t('utilitiesHashExpectedHashOptional')}
+              </Label>
               <Input
                 id="expected-hash"
                 type="text"
-                placeholder="Paste a checksum to compare"
+                placeholder={t('utilitiesHashPasteAChecksumToCompare')}
                 autoComplete="off"
                 spellCheck={false}
                 value={expectedHash}
@@ -88,16 +96,17 @@ function HashGenerationPage() {
                   match ? (
                     <>
                       <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                      Matches {match.label}
+                      {t('utilitiesHashMatches') + ' '}
+                      {match.label}
                     </>
                   ) : (
                     <>
                       <X className="mt-0.5 size-4 shrink-0 text-destructive" />
-                      Does not match any calculated hash
+                      {t('utilitiesHashDoesNotMatchAnyCalculatedHash')}
                     </>
                   )
                 ) : normalized && !fileHashes ? (
-                  'Calculating checksums before comparing…'
+                  t('utilitiesHashCalculatingChecksumsBeforeComparing')
                 ) : (
                   ''
                 )}
@@ -106,16 +115,18 @@ function HashGenerationPage() {
             {hashProgress > 0 && hashProgress < 100 && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Generating hashes...</span>
+                  <span>{t('utilitiesHashGeneratingHashes')}</span>
                   <span>{hashProgress}%</span>
                 </div>
-                <Progress value={hashProgress} aria-label="Checksum progress" />
+                <Progress
+                  value={hashProgress}
+                  aria-label={t('utilitiesHashChecksumProgress')}
+                />
               </div>
             )}
             {hashError ? (
               <p role="alert" className="text-sm text-destructive">
-                Checksums could not be calculated. Choose the file again to
-                retry.
+                {t('utilitiesHashChecksumsCouldNotBeCalculatedChoose')}
               </p>
             ) : fileHashes ? (
               <>
@@ -129,11 +140,11 @@ function HashGenerationPage() {
                         <h3 className="text-sm font-medium">{label}</h3>
                         <Button
                           variant="outline"
-                          aria-label={`Copy ${label}`}
+                          aria-label={t('utilitiesHashCopy', { label })}
                           onClick={() => void copy(label, value)}
                         >
                           <Copy className="size-4" />
-                          Copy
+                          {t('utilitiesHashCopyText')}
                         </Button>
                       </div>
                       <p className="select-text break-all rounded-lg bg-muted/40 p-3 font-mono text-sm leading-relaxed">
@@ -147,14 +158,14 @@ function HashGenerationPage() {
                   className="w-full sm:w-auto sm:self-start"
                   onClick={() =>
                     void copy(
-                      'All checksums',
+                      undefined,
                       hashes
                         .map(({ label, value }) => `${label}: ${value}`)
                         .join('\n'),
                     )
                   }
                 >
-                  Copy all checksums
+                  {t('utilitiesHashCopyAllChecksums')}
                 </Button>
               </>
             ) : (
@@ -164,7 +175,7 @@ function HashGenerationPage() {
                   className="flex items-center gap-2 text-sm text-muted-foreground"
                 >
                   <Loader2 className="size-4 animate-spin" />
-                  Calculating hashes...
+                  {t('utilitiesHashCalculatingHashes')}
                 </p>
               )
             )}
@@ -173,12 +184,12 @@ function HashGenerationPage() {
               aria-live="polite"
               className="text-sm text-muted-foreground"
             >
-              {copyStatus}
+              {renderMessage(t, copyStatus)}
             </p>
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Select a file to generate hashes automatically
+            {t('utilitiesHashSelectAFileToGenerateHashes')}
           </p>
         )}
       </CardContent>

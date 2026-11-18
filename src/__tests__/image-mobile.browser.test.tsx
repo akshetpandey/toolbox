@@ -9,6 +9,9 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import type { ImageFile } from '@/lib/shared'
 import { resetWorkspaceState } from '@/hooks/useWorkspaceState'
+import { createMemoryHistory } from '@tanstack/react-router'
+import { LocaleProvider } from '@/i18n/LocaleContext'
+import { loadTranslator } from '@/i18n/catalogs'
 import '@/styles.css'
 
 const { source, download, processing } = vi.hoisted(() => ({
@@ -49,7 +52,7 @@ vi.mock('@/lib/metadata', () => ({
   stripFileMetadata: () =>
     Promise.resolve(new Blob(['clean'], { type: 'image/png' })),
 }))
-vi.mock('emoji-picker-react', () => ({ default: () => null }))
+vi.mock('@/components/RedactionEmojiPicker', () => ({ default: () => null }))
 
 import { Route as RedactRoute } from '@/routes/images.redact'
 import { Route as MetadataRoute } from '@/routes/images.metadata'
@@ -124,7 +127,7 @@ test.each([
     touch('touchmove', 120)
     touch('touchend')
     await screen.findByRole('button', {
-      name: `Area 1 · ${mode.toLowerCase()}`,
+      name: `Area 1 · ${mode}`,
     })
 
     const checkPixels = (context: CanvasRenderingContext2D, factor: number) => {
@@ -205,6 +208,40 @@ test.each([375, 390])(
     ).toBeTruthy()
   },
 )
+
+test('Russian redaction download text stays inside its button at 320 px', async ({
+  onTestFinished,
+}) => {
+  const previousLanguage = document.documentElement.lang
+  onTestFinished(() => {
+    document.documentElement.lang = previousLanguage
+  })
+  await page.viewport(320, 680)
+  await loadTranslator('ru')
+  const history = createMemoryHistory({ initialEntries: ['/ru/images/redact'] })
+  const Redact = RedactRoute.options.component!
+  const view = render(
+    <LocaleProvider history={history}>
+      <div className="min-w-0 px-8">
+        <Redact />
+      </div>
+    </LocaleProvider>,
+  )
+  await waitFor(() =>
+    expect(view.container.querySelector('canvas')!.width).toBe(350),
+  )
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Добавить область' }),
+  )
+  const label = await screen.findByText('Скачать без метаданных')
+  const bounds = label.closest('button')!.getBoundingClientRect()
+  const range = document.createRange()
+  range.selectNodeContents(label)
+  for (const line of range.getClientRects()) {
+    expect(line.left).toBeGreaterThanOrEqual(bounds.left)
+    expect(line.right).toBeLessThanOrEqual(bounds.right)
+  }
+})
 
 test.each([375, 1440])(
   'editing masks invalidates the old export and includes new redactions at %s px',

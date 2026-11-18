@@ -1,3 +1,6 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useRef, type PointerEvent } from 'react'
 import { ResultCard, useToolResult } from '@/components/ResultCard'
@@ -18,20 +21,20 @@ export const Route = createFileRoute('/images/crop')({
 })
 
 const rotations = [0, 90, 180, 270] as const
-const cropRatios = [
-  { label: 'Square (1:1)', ratio: 1 },
-  { label: 'Portrait (4:5)', ratio: 4 / 5 },
-  { label: 'Landscape (16:9)', ratio: 16 / 9 },
-]
-const fields = [
-  { key: 'x', label: 'Left (px)' },
-  { key: 'y', label: 'Top (px)' },
-  { key: 'width', label: 'Crop width (px)' },
-  { key: 'height', label: 'Crop height (px)' },
-] as const
-type CropInput = Record<(typeof fields)[number]['key'], string>
-
 function CropImage() {
+  const t = useTranslator()
+  const cropRatios = [
+    { label: t('imagesCropSquare11'), ratio: 1 },
+    { label: t('imagesCropPortrait45'), ratio: 4 / 5 },
+    { label: t('imagesCropLandscape169'), ratio: 16 / 9 },
+  ]
+  const fields = [
+    { key: 'x', label: t('imagesCropLeftPx') },
+    { key: 'y', label: t('imagesCropTopPx') },
+    { key: 'width', label: t('imagesCropCropWidthPx') },
+    { key: 'height', label: t('imagesCropCropHeightPx') },
+  ] as const
+  type CropInput = Record<(typeof fields)[number]['key'], string>
   const { selectedFile, imageMagickProcessor, clearSelectedFile } =
     useImageTools()
   const { isProcessing } = useProcessing()
@@ -46,7 +49,10 @@ function CropImage() {
     flipHorizontal: false,
     flipVertical: false,
   })
-  const [error, setError] = useWorkspaceState('images.crop.error', '')
+  const [error, setError] = useWorkspaceState<MessageText>(
+    'images.crop.error',
+    '',
+  )
   const drag = useRef<{ x: number; y: number; pointerId: number } | null>(null)
   const dimensions = selectedFile?.dimensions
   const cropInput = settings.crop ?? {
@@ -149,11 +155,19 @@ function CropImage() {
       )
       if (!operation.isCurrent()) return
       const filename = imageOutputFilename(`edited_${selectedFile.name}`, blob)
-      setResult({ blob, filename, details: [`${width} × ${height} px`] })
+      setResult({
+        blob,
+        filename,
+        details: [
+          message('mediaDimensionsPixels', {
+            dimensions: imageDimensions(width, height),
+          }),
+        ],
+      })
       downloadBlob(blob, filename)
     } catch {
       if (operation.isCurrent())
-        setError('The image could not be edited. Try a different image.')
+        setError(message('imagesCropTheImageCouldNotBeEdited'))
     } finally {
       operation.finish()
     }
@@ -166,8 +180,7 @@ function CropImage() {
           {selectedFile && dimensions ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Drag over the image to select an area or enter the crop in
-                pixels.
+                {t('imagesCropDragOverTheImageToSelect')}
               </p>
               <div
                 className="relative inline-flex max-w-full touch-none select-none overflow-hidden rounded-md bg-muted/30"
@@ -190,7 +203,7 @@ function CropImage() {
               >
                 <img
                   src={selectedFile.preview}
-                  alt="Image crop preview"
+                  alt={t('imagesCropImageCropPreview')}
                   draggable={false}
                   className="pointer-events-none block h-auto max-h-[50vh] w-auto max-w-full"
                 />
@@ -208,7 +221,10 @@ function CropImage() {
                 )}
               </div>
               <fieldset className="space-y-4" disabled={isProcessing}>
-                <div className="flex flex-wrap gap-2" aria-label="Crop presets">
+                <div
+                  className="flex flex-wrap gap-2"
+                  aria-label={t('imagesCropCropPresets')}
+                >
                   {cropRatios.map(({ label, ratio }) => (
                     <Button
                       key={label}
@@ -240,7 +256,7 @@ function CropImage() {
                 </div>
                 {!valid && (
                   <p className="text-sm text-destructive">
-                    Enter whole pixels and keep the crop within the image.
+                    {t('imagesCropEnterWholePixelsAndKeepThe')}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
@@ -256,7 +272,7 @@ function CropImage() {
                       })
                     }
                   >
-                    Rotate 90°
+                    {t('imagesCropRotate90')}
                   </Button>
                   <Button
                     variant="outline"
@@ -265,7 +281,7 @@ function CropImage() {
                       update({ flipHorizontal: !settings.flipHorizontal })
                     }
                   >
-                    Flip horizontally
+                    {t('imagesCropFlipHorizontally')}
                   </Button>
                   <Button
                     variant="outline"
@@ -274,7 +290,7 @@ function CropImage() {
                       update({ flipVertical: !settings.flipVertical })
                     }
                   >
-                    Flip vertically
+                    {t('imagesCropFlipVertically')}
                   </Button>
                   <Button
                     variant="ghost"
@@ -287,15 +303,16 @@ function CropImage() {
                       })
                     }
                   >
-                    Reset edits
+                    {t('imagesCropResetEdits')}
                   </Button>
                 </div>
               </fieldset>
               <p role="status" className="text-sm text-muted-foreground">
-                Rotation {settings.rotation}°. Rotate and flip apply after the
-                crop.
+                {t('imagesCropRotateAndFlipApplyAfter', {
+                  rotation: settings.rotation,
+                })}
                 {isHeifImage(selectedFile) &&
-                  ' HEIC and HEIF are saved as PNG.'}
+                  ' ' + t('imagesCropHEICAndHEIFAreSavedAs')}
               </p>
               {valid &&
               (settings.crop ||
@@ -304,11 +321,13 @@ function CropImage() {
                 settings.flipVertical) ? (
                 <details className="space-y-3 rounded-md border p-3">
                   <summary className="cursor-pointer text-sm font-medium">
-                    Preview edited image ({outputWidth} × {outputHeight} px)
+                    {t('imagesCropPreviewEditedImage', {
+                      dimensions: imageDimensions(outputWidth, outputHeight),
+                    })}
                   </summary>
                   <svg
                     role="img"
-                    aria-label="Edited image preview"
+                    aria-label={t('imagesCropEditedImagePreview')}
                     width={outputWidth}
                     height={outputHeight}
                     viewBox={`0 0 ${outputWidth} ${outputHeight}`}
@@ -331,12 +350,12 @@ function CropImage() {
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Choose an image to crop, rotate or flip.
+              {t('imagesCropChooseAnImageToCropRotate')}
             </p>
           )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <Button
@@ -344,7 +363,9 @@ function CropImage() {
             disabled={!valid || isProcessing}
             onClick={() => void save()}
           >
-            {isProcessing ? 'Preparing image…' : 'Apply edits & download'}
+            {isProcessing
+              ? t('imagesCropPreparingImage')
+              : t('imagesCropApplyEditsDownload')}
           </Button>
         </CardContent>
       </Card>

@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import wasmModuleUrl from 'onnxruntime-web/ort-wasm-simd-threaded.mjs?url'
 import wasmBinaryUrl from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url'
 
@@ -14,7 +15,8 @@ async function loadModel() {
     wasm: new URL(wasmBinaryUrl, window.location.href).href,
   }
   const response = await fetch(`${import.meta.env.BASE_URL}models/u2netp.onnx`)
-  if (!response.ok) throw new Error('The background model could not be loaded.')
+  if (!response.ok)
+    throw new MessageError('imageBackgroundTheBackgroundModelCouldNotBe')
   const session = await InferenceSession.create(await response.arrayBuffer(), {
     executionProviders: ['wasm'],
   })
@@ -39,7 +41,8 @@ export async function removeImageBackground(previewUrl: string): Promise<Blob> {
   const mask = document.createElement('canvas')
   mask.width = mask.height = modelSize
   const maskContext = mask.getContext('2d', { willReadFrequently: true })
-  if (!maskContext) throw new Error('The browser could not open this image.')
+  if (!maskContext)
+    throw new MessageError('imageBackgroundTheBrowserCouldNotOpenThis')
   maskContext.imageSmoothingQuality = 'high'
   maskContext.drawImage(image, 0, 0, modelSize, modelSize)
   const pixels = maskContext.getImageData(0, 0, modelSize, modelSize).data
@@ -74,7 +77,9 @@ export async function removeImageBackground(previewUrl: string): Promise<Blob> {
     try {
       const values = output.data
       if (!(values instanceof Float32Array) || values.length !== pixelCount) {
-        throw new Error('The background model returned an invalid mask.')
+        throw new MessageError(
+          'imageBackgroundTheBackgroundModelReturnedAnInvalid',
+        )
       }
       let min = Infinity
       let max = -Infinity
@@ -84,7 +89,7 @@ export async function removeImageBackground(previewUrl: string): Promise<Blob> {
       }
       const range = max - min
       if (!Number.isFinite(range) || range <= Number.EPSILON) {
-        throw new Error('A subject could not be isolated in this image.')
+        throw new MessageError('imageBackgroundASubjectCouldNotBeIsolated')
       }
       for (let pixel = 0; pixel < pixelCount; pixel++) {
         alphaMask.data[pixel * 4 + 3] = ((values[pixel] - min) / range) * 255
@@ -102,7 +107,7 @@ export async function removeImageBackground(previewUrl: string): Promise<Blob> {
   canvas.height = image.naturalHeight
   const context = canvas.getContext('2d')
   if (!context)
-    throw new Error('The browser could not create the output image.')
+    throw new MessageError('imageBackgroundTheBrowserCouldNotCreateThe')
   context.drawImage(image, 0, 0)
   context.globalCompositeOperation = 'destination-in'
   context.imageSmoothingQuality = 'high'
@@ -110,7 +115,7 @@ export async function removeImageBackground(previewUrl: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob)
-      else reject(new Error('The output image could not be saved.'))
+      else reject(new MessageError('imageBackgroundTheOutputImageCouldNotBe'))
     }, 'image/png')
   })
 }

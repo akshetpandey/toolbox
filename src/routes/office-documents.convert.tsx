@@ -1,3 +1,6 @@
+import { errorMessage, MessageError } from '@/i18n/MessageError'
+import { message, renderMessage } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -38,6 +41,7 @@ export const Route = createFileRoute('/office-documents/convert')({
 })
 
 function ConvertTool() {
+  const t = useTranslator()
   const { isProcessing, setIsProcessing } = useProcessing()
   const {
     selectedFile,
@@ -60,7 +64,7 @@ function ConvertTool() {
       if (conversionInProgress.current) {
         conversionInProgress.current = false
         setIsProcessing(false)
-        setConversionStatus('')
+        setConversionStatus(null)
       }
     },
     [setIsProcessing, setConversionStatus],
@@ -72,7 +76,11 @@ function ConvertTool() {
     const version = ++conversionVersion.current
     conversionInProgress.current = true
     setIsProcessing(true)
-    setConversionStatus(`Converting ${selectedFile.name}...`)
+    setConversionStatus(
+      message('officeDocumentsConvertConverting', {
+        filename: selectedFile.name,
+      }),
+    )
 
     try {
       const result = await convertDocument(selectedFile.file)
@@ -84,22 +92,25 @@ function ConvertTool() {
         setResult({
           blob: result.output,
           filename: outputName,
-          details: ['PDF document'],
+          details: [message('officeDocumentsConvertPDFDocument')],
         })
         downloadBlob(result.output, outputName)
-        setConversionStatus(`${selectedFile.name} converted to PDF`)
-      } else {
-        throw new Error(
-          result.error ?? `Failed to convert ${selectedFile.name}`,
+        setConversionStatus(
+          message('officeDocumentsConvertConvertedToPDF', {
+            filename: selectedFile.name,
+          }),
         )
+      } else {
+        if (result.error) throw new Error(result.error)
+        throw new MessageError('officeDocumentsConvertFailedToConvert', {
+          filename: selectedFile.name,
+        })
       }
     } catch (error) {
       if (conversionVersion.current !== version || !isCurrentFile(selectedFile))
         return
       console.error('Conversion error:', error)
-      setConversionStatus(
-        `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      )
+      setConversionStatus({ error })
     } finally {
       if (conversionVersion.current === version) {
         conversionInProgress.current = false
@@ -121,9 +132,18 @@ function ConvertTool() {
     }
   }, [selectedFile, isProcessing, conversionStatus, handleConvertToPDF, result])
 
-  const error = conversionStatus.startsWith('❌ Error: ')
-    ? conversionStatus.slice('❌ Error: '.length)
-    : ''
+  const error =
+    conversionStatus && 'error' in conversionStatus
+      ? errorMessage(
+          t,
+          conversionStatus.error,
+          t('officeDocumentsConvertUnknownError'),
+        )
+      : ''
+  const statusText =
+    conversionStatus && 'key' in conversionStatus
+      ? renderMessage(t, conversionStatus)
+      : ''
 
   return (
     <div className="space-y-4">
@@ -134,20 +154,18 @@ function ConvertTool() {
               <div role="alert" className="space-y-4">
                 <div className="space-y-2">
                   <h2 className="text-lg font-semibold">
-                    This document could not be opened
+                    {t('officeDocumentsConvertThisDocumentCouldNotBeOpened')}
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    It may be damaged or use an unsupported format. Open it in
-                    the app that created it, save a new copy, then choose that
-                    file.
+                    {t('officeDocumentsConvertItMayBeDamagedOrUse')}
                   </p>
                 </div>
                 <Button onClick={chooseAnotherFile} disabled={isProcessing}>
-                  Choose another file
+                  {t('officeDocumentsConvertChooseAnotherFile')}
                 </Button>
                 <details className="text-sm">
                   <summary className="cursor-pointer font-medium">
-                    Technical details
+                    {t('officeDocumentsConvertTechnicalDetails')}
                   </summary>
                   <p className="mt-2 text-muted-foreground [overflow-wrap:anywhere]">
                     {error}
@@ -162,11 +180,11 @@ function ConvertTool() {
                 />
                 <div className="min-w-0 space-y-2">
                   <p className="font-medium [overflow-wrap:anywhere]">
-                    {conversionStatus || 'Preparing conversion…'}
+                    {statusText ||
+                      t('officeDocumentsConvertPreparingConversion')}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Your document is being converted in this browser. Larger
-                    documents can take a little longer.
+                    {t('officeDocumentsConvertYourDocumentIsBeingConvertedIn')}
                   </p>
                 </div>
               </div>
@@ -177,23 +195,22 @@ function ConvertTool() {
                   className="size-6 text-muted-foreground"
                 />
                 <h2 className="text-lg font-semibold">
-                  A PDF copy of your document
+                  {t('officeDocumentsConvertAPDFCopyOfYourDocument')}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Choose a Word, PowerPoint, or Excel document. Conversion
-                  starts automatically and keeps your original file unchanged.
+                  {t('officeDocumentsConvertChooseAWordPowerPointOrExcel')}
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
       )}
-      {result && conversionStatus && (
+      {result && statusText && (
         <p
           role="status"
           className="text-sm text-muted-foreground [overflow-wrap:anywhere]"
         >
-          {conversionStatus}
+          {statusText}
         </p>
       )}
       <ResultCard result={result} onReset={clearSelectedFile} />

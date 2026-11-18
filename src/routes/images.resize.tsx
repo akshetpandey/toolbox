@@ -1,3 +1,6 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
@@ -20,6 +23,7 @@ export const Route = createFileRoute('/images/resize')({
 })
 
 function ResizePage() {
+  const t = useTranslator()
   const { selectedFile, imageMagickProcessor, clearSelectedFile } =
     useImageTools()
   const { isProcessing } = useProcessing()
@@ -30,7 +34,7 @@ function ResizePage() {
     height: '',
     maintainAspectRatio: true,
   })
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<MessageText | null>(null)
   const { result, setResult, clearResult } = useToolResult(
     selectedFile?.file,
     'images.resize',
@@ -116,14 +120,16 @@ function ResizePage() {
         blob,
         filename,
         sourceSize: selectedFile.size,
-        details: [`${width} × ${height} px`],
+        details: [
+          message('mediaDimensionsPixels', {
+            dimensions: imageDimensions(width, height),
+          }),
+        ],
       })
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setError(
-        'This image could not be resized. Check the dimensions or choose another image.',
-      )
+      setError(message('imagesResizeThisImageCouldNotBeResized'))
     } finally {
       operation.finish()
     }
@@ -134,12 +140,17 @@ function ResizePage() {
       <Card>
         <CardContent className="flex flex-col gap-5 p-4 sm:p-6">
           <div>
-            <h2 className="text-lg font-semibold">Image dimensions</h2>
+            <h2 className="text-lg font-semibold">
+              {t('imagesResizeImageDimensions')}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Start with the original size or choose a percentage.
+              {t('imagesResizeStartWithTheOriginalSizeOr')}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2" aria-label="Resize presets">
+          <div
+            className="flex flex-wrap gap-2"
+            aria-label={t('imagesResizeResizePresets')}
+          >
             {[0.25, 0.5, 0.75, 1].map((percentage) => (
               <Button
                 key={percentage}
@@ -147,13 +158,15 @@ function ResizePage() {
                 disabled={!selectedFile || isProcessing}
                 onClick={() => applyPercentage(percentage)}
               >
-                {percentage === 1 ? 'Original size' : `${percentage * 100}%`}
+                {percentage === 1
+                  ? t('imagesResizeOriginalSize')
+                  : `${percentage * 100}%`}
               </Button>
             ))}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="width">Width (px)</Label>
+              <Label htmlFor="width">{t('imagesResizeWidthPx')}</Label>
               <Input
                 id="width"
                 type="number"
@@ -165,7 +178,7 @@ function ResizePage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="height">Height (px)</Label>
+              <Label htmlFor="height">{t('imagesResizeHeightPx')}</Label>
               <Input
                 id="height"
                 type="number"
@@ -193,16 +206,16 @@ function ResizePage() {
                 }))
               }}
             />
-            Keep aspect ratio
+            {t('imagesResizeKeepAspectRatio')}
           </Label>
           {selectedFile && isHeifImage(selectedFile) && (
             <p className="text-sm text-muted-foreground">
-              HEIC and HEIF are saved as PNG.
+              {t('imagesResizeHEICAndHEIFAreSavedAs')}
             </p>
           )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <Button
@@ -211,7 +224,7 @@ function ResizePage() {
             className="w-full sm:w-auto sm:self-end"
           >
             {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Resize & download
+            {t('imagesResizeResizeDownload')}
           </Button>
         </CardContent>
       </Card>

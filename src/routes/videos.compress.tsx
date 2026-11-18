@@ -1,43 +1,48 @@
+import { message, imageDimensions } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { ResultCard } from '@/components/ResultCard'
+import { normalizeNumericInput } from '@/lib/shared'
 import {
   useVideoSettings,
   useVideoAction,
   VideoActionStatus,
+  encodingPresets,
 } from '@/lib/videoToolsUtils'
 
 export const Route = createFileRoute('/videos/compress')({
   component: VideoCompressComponent,
 })
 
-const qualityGoals = [
-  {
-    value: 'smaller',
-    label: 'Smaller file',
-    description: 'More compression, less detail.',
-    crf: 32,
-    preset: 'veryfast',
-  },
-  {
-    value: 'balanced',
-    label: 'Balanced',
-    description: 'A useful starting point for most videos.',
-    crf: 28,
-    preset: 'veryfast',
-  },
-  {
-    value: 'quality',
-    label: 'Higher quality',
-    description: 'Keeps more detail; files may be larger.',
-    crf: 22,
-    preset: 'fast',
-  },
-]
 function VideoCompressComponent() {
+  const t = useTranslator()
+  const qualityGoals = [
+    {
+      value: 'smaller',
+      label: t('videosCompressSmallerFile'),
+      description: t('videosCompressMoreCompressionLessDetail'),
+      crf: 32,
+      preset: 'veryfast',
+    },
+    {
+      value: 'balanced',
+      label: t('videosCompressBalanced'),
+      description: t('videosCompressAUsefulStartingPointForMost'),
+      crf: 28,
+      preset: 'veryfast',
+    },
+    {
+      value: 'quality',
+      label: t('videosCompressHigherQuality'),
+      description: t('videosCompressKeepsMoreDetailFilesMayBe'),
+      crf: 22,
+      preset: 'fast',
+    },
+  ]
   const [settings, setSettings] = useVideoSettings('videos.compress.settings', {
     mode: 'quality',
     target: '10',
@@ -46,15 +51,20 @@ function VideoCompressComponent() {
     preset: 'veryfast',
   })
   const bySize = settings.mode === 'size'
-  const targetMB = Number(settings.target)
+  const target = normalizeNumericInput(settings.target).trim()
+  const targetMB = /^[+-]?(?:\d+(?:[.,٫]\d*)?|[.,٫]\d+)(?:e[+-]?\d+)?$/iu.test(
+    target,
+  )
+    ? Number(target.replace(/[,٫]/u, '.'))
+    : NaN
   const maxBytes = Math.floor(targetMB * 1_000_000)
   const invalidSize =
     bySize && (!Number.isSafeInteger(maxBytes) || maxBytes < 10_000)
   const action = useVideoAction(
     'videos.compress',
     bySize
-      ? 'The video could not be compressed. Try a larger size limit or choose another file.'
-      : 'The video could not be compressed. Try another quality setting or choose another file.',
+      ? message('videosCompressTheVideoCouldNotBeCompressed')
+      : message('videosCompressTheVideoCouldNotBeCompressedText'),
   )
   const updateSettings = (changes: Partial<typeof settings>) => {
     setSettings({ ...settings, ...changes })
@@ -64,12 +74,16 @@ function VideoCompressComponent() {
     <div className="flex min-w-0 flex-col gap-5">
       <Card>
         <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold">Compression settings</h2>
+          <h2 className="text-lg font-semibold">
+            {t('videosCompressCompressionSettings')}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Downloads as MP4 with H.264 video and AAC audio.
+            {t('videosCompressDownloadsAsMP4WithH264Video')}
           </p>
           <div className="space-y-2">
-            <Label htmlFor="video-compression-mode">Compress by</Label>
+            <Label htmlFor="video-compression-mode">
+              {t('videosCompressCompressBy')}
+            </Label>
             <select
               id="video-compression-mode"
               className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -77,18 +91,18 @@ function VideoCompressComponent() {
               disabled={action.busy}
               onChange={(event) => updateSettings({ mode: event.target.value })}
             >
-              <option value="quality">Video quality</option>
-              <option value="size">Maximum file size</option>
+              <option value="quality">{t('videosCompressVideoQuality')}</option>
+              <option value="size">{t('videosCompressMaximumFileSize')}</option>
             </select>
           </div>
           {bySize ? (
             <div className="space-y-2">
-              <Label htmlFor="video-target-mb">Maximum size (MB)</Label>
+              <Label htmlFor="video-target-mb">
+                {t('videosCompressMaximumSizeMB')}
+              </Label>
               <Input
                 id="video-target-mb"
-                type="number"
-                min="0.01"
-                step="any"
+                type="text"
                 inputMode="decimal"
                 value={settings.target}
                 aria-invalid={invalidSize}
@@ -103,19 +117,19 @@ function VideoCompressComponent() {
                 className="text-sm text-muted-foreground"
               >
                 {invalidSize
-                  ? 'Enter a size of at least 0.01 MB.'
-                  : 'The tool may reduce resolution and make more than one attempt to fit the limit.'}
+                  ? t('videosCompressEnterASizeOfAtLeast')
+                  : t('videosCompressTheToolMayReduceResolutionAnd')}
               </p>
             </div>
           ) : (
             <>
               <fieldset disabled={action.busy} className="space-y-3">
                 <legend className="mb-3 text-sm font-medium">
-                  Choose your goal
+                  {t('videosCompressChooseYourGoal')}
                 </legend>
                 <div
                   role="radiogroup"
-                  aria-label="Compression goal"
+                  aria-label={t('videosCompressCompressionGoal')}
                   className="grid gap-2 sm:grid-cols-3"
                 >
                   {qualityGoals.map((goal) => (
@@ -149,14 +163,16 @@ function VideoCompressComponent() {
               </fieldset>
               <details className="rounded-lg border p-4">
                 <summary className="cursor-pointer text-sm font-medium">
-                  Advanced settings
+                  {t('videosCompressAdvancedSettings')}
                 </summary>
                 <fieldset
                   disabled={action.busy}
                   className="mt-4 grid gap-4 sm:grid-cols-2"
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="video-crf">Quality (CRF)</Label>
+                    <Label htmlFor="video-crf">
+                      {t('videosCompressQualityCRF')}
+                    </Label>
                     <Input
                       id="video-crf"
                       type="number"
@@ -174,11 +190,13 @@ function VideoCompressComponent() {
                       }
                     />
                     <p className="text-sm text-muted-foreground">
-                      Lower values keep more detail. Balanced uses 28.
+                      {t('videosCompressLowerValuesKeepMoreDetailBalanced')}
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="video-encoding-speed">Encoding speed</Label>
+                    <Label htmlFor="video-encoding-speed">
+                      {t('videosCompressEncodingSpeed')}
+                    </Label>
                     <select
                       id="video-encoding-speed"
                       value={settings.preset}
@@ -190,24 +208,16 @@ function VideoCompressComponent() {
                       }
                       className="h-11 w-full rounded-md border bg-background px-3 text-base"
                     >
-                      {[
-                        'ultrafast',
-                        'superfast',
-                        'veryfast',
-                        'faster',
-                        'fast',
-                        'medium',
-                        'slow',
-                        'slower',
-                        'veryslow',
-                      ].map((preset) => (
-                        <option key={preset} value={preset}>
-                          {preset}
-                        </option>
-                      ))}
+                      {Object.entries(encodingPresets).map(
+                        ([preset, label]) => (
+                          <option key={preset} value={preset}>
+                            {t(label)}
+                          </option>
+                        ),
+                      )}
                     </select>
                     <p className="text-sm text-muted-foreground">
-                      Slower encoding can produce smaller files.
+                      {t('videosCompressSlowerEncodingCanProduceSmallerFiles')}
                     </p>
                   </div>
                 </fieldset>
@@ -215,7 +225,11 @@ function VideoCompressComponent() {
             </>
           )}
           <VideoActionStatus
-            label={bySize ? 'Compressing to size limit' : 'Compressing video'}
+            label={
+              bySize
+                ? t('videosCompressCompressingToSizeLimit')
+                : t('videosCompressCompressingVideo')
+            }
             indeterminate={bySize}
             error={action.error}
             diagnostic={action.diagnostic}
@@ -235,20 +249,33 @@ function VideoCompressComponent() {
                 filename: `${action.selectedFile!.name.replace(/\.[^/.]+$/, '')}_compressed.mp4`,
                 details: [
                   'MP4 · H.264 video · AAC audio',
-                  ...(bySize ? [`Meets the ${targetMB} MB limit`] : []),
+                  ...(bySize
+                    ? [message('videosCompressMeetsTheMBLimit', { targetMB })]
+                    : []),
                   ...(!bySize && action.selectedFile?.dimensions
                     ? [
-                        `${action.selectedFile.dimensions.width} × ${action.selectedFile.dimensions.height} pixels`,
+                        message('mediaDimensionsPixels', {
+                          dimensions: imageDimensions(
+                            action.selectedFile.dimensions.width,
+                            action.selectedFile.dimensions.height,
+                          ),
+                        }),
                       ]
                     : []),
                   ...(action.selectedFile?.duration
-                    ? [`${action.selectedFile.duration.toFixed(2)} seconds`]
+                    ? [
+                        message('videosCompressSeconds', {
+                          duration: action.selectedFile.duration.toFixed(2),
+                        }),
+                      ]
                     : []),
                 ],
               }))
             }
           >
-            {action.isProcessing ? 'Compressing…' : 'Compress video'}
+            {action.isProcessing
+              ? t('videosCompressCompressing')
+              : t('videosCompressCompressVideo')}
           </Button>
         </CardContent>
       </Card>

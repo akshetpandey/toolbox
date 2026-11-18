@@ -1,3 +1,7 @@
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState, type MouseEvent } from 'react'
 import { PDFAction, usePDFSource } from '@/components/PDFAction'
@@ -16,6 +20,13 @@ import { openBrowserPDF, renderPDFPage } from '@/lib/pdf-render'
 
 export const Route = createFileRoute('/pdfs/edit')({ component: PDFEditorPage })
 
+const markLabels = {
+  text: 'pdfsEditText',
+  check: 'pdfsEditCheckmark',
+  highlight: 'pdfsEditHighlight',
+  box: 'pdfsEditRectangleOutline',
+} as const
+
 const defaultMark = {
   type: 'text' as PDFMark['type'],
   text: '',
@@ -28,6 +39,7 @@ const defaultMark = {
 const selectClass = 'min-h-11 w-full rounded-md border bg-background px-3'
 
 function PDFEditorPage() {
+  const t = useTranslator()
   const { file, count, clearFiles } = usePDFSource()
   const { isProcessing } = useProcessing()
   const [values, setValues] = useWorkspaceState<Record<string, PDFFieldValue>>(
@@ -51,9 +63,9 @@ function PDFEditorPage() {
     file: File
     data: Awaited<ReturnType<typeof readPDFForm>>
   } | null>(null)
-  const [loadError, setLoadError] = useState('')
-  const [markError, setMarkError] = useState('')
-  const [previewError, setPreviewError] = useState('')
+  const [loadError, setLoadError] = useState<MessageText>('')
+  const [markError, setMarkError] = useState<MessageText>('')
+  const [previewError, setPreviewError] = useState<MessageText>('')
   const [preview, setPreview] = useState<{
     file: File
     key: string
@@ -76,9 +88,7 @@ function PDFEditorPage() {
       (cause: unknown) => {
         if (active)
           setLoadError(
-            cause instanceof Error
-              ? cause.message
-              : 'This PDF could not be opened for editing.',
+            messageFromError(cause, message('pdfsEditThisPDFCouldNotBeOpened')),
           )
       },
     )
@@ -122,9 +132,10 @@ function PDFEditorPage() {
       })().catch((cause: unknown) => {
         if (!abort.signal.aborted)
           setPreviewError(
-            cause instanceof Error
-              ? cause.message
-              : 'The page preview could not be loaded.',
+            messageFromError(
+              cause,
+              message('pdfsEditThePagePreviewCouldNotBe'),
+            ),
           )
       })
     }, 200)
@@ -172,9 +183,7 @@ function PDFEditorPage() {
       geometry.fontSize < 6 ||
       geometry.fontSize > 96
     ) {
-      setMarkError(
-        'Enter text if needed, keep the mark inside the page, and choose a text size from 6 to 96.',
-      )
+      setMarkError(message('pdfsEditEnterTextIfNeededKeepThe'))
       return
     }
     setMarks((previous) => [
@@ -195,46 +204,49 @@ function PDFEditorPage() {
       file={file}
       name="pdfs.edit.editor"
       sourceKey={sourceKey}
-      label="Save and download PDF"
+      label={t('pdfsEditSaveAndDownloadPDF')}
       onReset={clearFiles}
       disabled={!currentModel || Boolean(loadError)}
       run={async (signal) => {
-        if (!file) throw new Error('Choose a PDF first.')
+        if (!file) throw new MessageError('pdfsEditChooseAPDFFirst')
         return {
           blob: await editPDF(file, values, marks, flatten, signal),
           filename: `${pdfBaseName(file.name)}-edited.pdf`,
           details: [
-            flatten ? 'Form fields flattened' : 'Form fields kept fillable',
-            `${marks.length} added ${marks.length === 1 ? 'mark' : 'marks'}`,
+            flatten
+              ? message('pdfsEditFormFieldsFlattened')
+              : message('pdfsEditFormFieldsKeptFillable'),
+            message('pdfsEditAdded', { count: marks.length }, marks.length),
           ],
         }
       }}
     >
       <h2 className="text-lg font-semibold">
-        Fill forms and add text or marks
+        {t('pdfsEditFillFormsAndAddTextOr')}
       </h2>
       <p className="text-sm text-muted-foreground">
-        Fill standard PDF form fields or add content to a regular PDF. Existing
-        page text stays in place. To hide private details, use Redact PDF.
+        {t('pdfsEditFillStandardPDFFormFieldsOr')}
       </p>
       {loadError && (
         <p role="alert" className="text-sm text-destructive">
-          {loadError}
+          {renderMessage(t, loadError)}
         </p>
       )}
       {file && !currentModel && !loadError && (
         <p role="status" className="text-sm text-muted-foreground">
-          Reading form fields…
+          {t('pdfsEditReadingFormFields')}
         </p>
       )}
       {currentModel && (
         <>
-          <section aria-label="PDF form fields" className="space-y-4">
-            <h3 className="font-medium">Form fields</h3>
+          <section
+            aria-label={t('pdfsEditPDFFormFields')}
+            className="space-y-4"
+          >
+            <h3 className="font-medium">{t('pdfsEditFormFields')}</h3>
             {!currentModel.fields.length && (
               <p className="text-sm text-muted-foreground">
-                No fillable fields found. Use the text and mark controls below
-                to fill in this document.
+                {t('pdfsEditNoFillableFieldsFoundUseThe')}
               </p>
             )}
             {currentModel.fields.map((field, index) => {
@@ -248,7 +260,7 @@ function PDFEditorPage() {
                 <div key={field.name} className="space-y-2">
                   <Label htmlFor={id}>
                     {field.name}
-                    {field.readOnly ? ' (read-only)' : ''}
+                    {field.readOnly ? ' ' + t('pdfsEditReadOnly') : ''}
                   </Label>
                   {field.type === 'checkbox' ? (
                     <input
@@ -308,7 +320,7 @@ function PDFEditorPage() {
                       }
                     >
                       {!field.multiple && (
-                        <option value="">Choose an option</option>
+                        <option value="">{t('pdfsEditChooseAnOption')}</option>
                       )}
                       {field.options?.map((option) => (
                         <option key={option} value={option}>
@@ -322,8 +334,9 @@ function PDFEditorPage() {
             })}
             {currentModel.unsupported > 0 && (
               <p className="text-sm text-muted-foreground">
-                {currentModel.unsupported} other form fields cannot be edited
-                here.
+                {t('pdfsEditOtherFormFieldsCannotBeEdited', {
+                  count: currentModel.unsupported,
+                })}
               </p>
             )}
             {currentModel.fields.length > 0 && (
@@ -334,18 +347,18 @@ function PDFEditorPage() {
                   disabled={currentModel.unsupported > 0}
                   onChange={(event) => setFlatten(event.target.checked)}
                 />
-                Flatten form fields in the saved PDF
+                {t('pdfsEditFlattenFormFieldsInTheSaved')}
               </label>
             )}
           </section>
           <section
-            aria-label="Add PDF content"
+            aria-label={t('pdfsEditAddPDFContent')}
             className="space-y-4 border-t pt-4"
           >
-            <h3 className="font-medium">Add text or a mark</h3>
+            <h3 className="font-medium">{t('pdfsEditAddTextOrAMark')}</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="editor-page">Page</Label>
+                <Label htmlFor="editor-page">{t('pdfsEditPage')}</Label>
                 <select
                   id="editor-page"
                   className={selectClass}
@@ -360,7 +373,7 @@ function PDFEditorPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="editor-mark">Mark type</Label>
+                <Label htmlFor="editor-mark">{t('pdfsEditMarkType')}</Label>
                 <select
                   id="editor-mark"
                   className={selectClass}
@@ -374,16 +387,17 @@ function PDFEditorPage() {
                     }))
                   }
                 >
-                  <option value="text">Text</option>
-                  <option value="check">Checkmark</option>
-                  <option value="highlight">Highlight</option>
-                  <option value="box">Rectangle outline</option>
+                  {Object.entries(markLabels).map(([type, label]) => (
+                    <option key={type} value={type}>
+                      {t(label)}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
             {draft.type === 'text' && (
               <div className="space-y-2">
-                <Label htmlFor="editor-text">Text to add</Label>
+                <Label htmlFor="editor-text">{t('pdfsEditTextToAdd')}</Label>
                 <Input
                   id="editor-text"
                   maxLength={200}
@@ -400,10 +414,10 @@ function PDFEditorPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {(
                 [
-                  ['x', 'Left %'],
-                  ['y', 'Top %'],
-                  ['width', 'Width %'],
-                  ['height', 'Height %'],
+                  ['x', t('pdfsEditLeft')],
+                  ['y', t('pdfsEditTop')],
+                  ['width', t('pdfsEditWidth')],
+                  ['height', t('pdfsEditHeight')],
                 ] as const
               ).map(([key, label]) => (
                 <div key={key} className="space-y-2">
@@ -427,7 +441,7 @@ function PDFEditorPage() {
             </div>
             {draft.type === 'text' && (
               <div className="max-w-40 space-y-2">
-                <Label htmlFor="editor-size">Text size (pt)</Label>
+                <Label htmlFor="editor-size">{t('pdfsEditTextSizePt')}</Label>
                 <Input
                   id="editor-size"
                   type="number"
@@ -444,71 +458,80 @@ function PDFEditorPage() {
               </div>
             )}
             <p className="text-sm text-muted-foreground">
-              Click the preview to set the next mark’s position, or enter
-              percentages. Text shrinks to fit its box.
+              {t('pdfsEditClickThePreviewToSetThe')}
             </p>
             <Button variant="outline" onClick={addMark}>
-              Add to page
+              {t('pdfsEditAddToPage')}
             </Button>
             {markError && (
               <p role="alert" className="text-sm text-destructive">
-                {markError}
+                {renderMessage(t, markError)}
               </p>
             )}
             {marks.length > 0 && (
-              <ul aria-label="Added PDF marks" className="space-y-2">
+              <ul aria-label={t('pdfsEditAddedPDFMarks')} className="space-y-2">
                 {marks.map((mark, index) => (
                   <li
                     key={mark.id}
                     className="flex items-center justify-between gap-3 rounded border p-2 text-sm"
                   >
                     <span className="min-w-0 break-words">
-                      Page {mark.page}:{' '}
-                      {mark.type === 'text' ? mark.text : mark.type}
+                      {t('pdfsEditMarkSummary', {
+                        page: mark.page,
+                        mark:
+                          mark.type === 'text'
+                            ? mark.text
+                            : t(markLabels[mark.type]),
+                      })}
                     </span>
                     <Button
                       variant="ghost"
                       disabled={isProcessing}
-                      aria-label={`Remove mark ${index + 1}`}
+                      aria-label={t('pdfsEditRemoveMark', {
+                        number: index + 1,
+                      })}
                       onClick={() =>
                         setMarks((previous) =>
                           previous.filter((entry) => entry.id !== mark.id),
                         )
                       }
                     >
-                      Remove
+                      {t('pdfsEditRemove')}
                     </Button>
                   </li>
                 ))}
               </ul>
             )}
           </section>
-          <section aria-label="PDF preview" className="space-y-2">
-            <h3 className="font-medium">Preview of page {page}</h3>
+          <section aria-label={t('pdfsEditPDFPreview')} className="space-y-2">
+            <h3 className="font-medium">
+              {t('pdfsEditPreviewOfPage') + ' '}
+              {page}
+            </h3>
             {preview && preview.file === file && preview.key === previewKey ? (
               <button
                 type="button"
                 disabled={isProcessing}
-                aria-label="Position next mark on page"
+                aria-label={t('pdfsEditPositionNextMarkOnPage')}
                 onClick={positionMark}
                 className="block max-w-full cursor-crosshair rounded border bg-white focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <img
                   src={preview.url}
-                  alt={`Preview of PDF page ${page}`}
+                  alt={t('pdfsEditPreviewOfPDFPage', { page })}
                   className="max-h-[70vh] max-w-full object-contain"
                 />
               </button>
             ) : (
               !previewError && (
                 <p role="status" className="text-sm text-muted-foreground">
-                  Updating preview…
+                  {t('pdfsEditUpdatingPreview')}
                 </p>
               )
             )}
             {previewError && (
               <p role="alert" className="text-sm text-destructive">
-                {previewError}
+                {renderMessage(t, previewError)}
               </p>
             )}
           </section>
@@ -522,7 +545,7 @@ function PDFEditorPage() {
               setMarkError('')
             }}
           >
-            Reset edits
+            {t('pdfsEditResetEdits')}
           </Button>
         </>
       )}

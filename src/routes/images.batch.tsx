@@ -1,3 +1,6 @@
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ResultCard, useToolResult } from '@/components/ResultCard'
@@ -32,6 +35,7 @@ function uniqueName(name: string, usedNames: Set<string>) {
 }
 
 function BatchImages() {
+  const t = useTranslator()
   const { batchFiles, imageMagickProcessor, clearBatchFiles } = useImageTools()
   const { isProcessing } = useProcessing()
   const beginOperation = useFileOperation(batchFiles[0])
@@ -46,8 +50,8 @@ function BatchImages() {
     height: '1600',
     failed: [] as string[],
   })
-  const [progress, setProgress] = useState('')
-  const [error, setError] = useState('')
+  const [progress, setProgress] = useState<MessageText>('')
+  const [error, setError] = useState<MessageText>('')
   const width = Number(options.width)
   const height = Number(options.height)
   const valid =
@@ -73,10 +77,15 @@ function BatchImages() {
     const usedNames = new Set<string>()
     const failed: string[] = []
     try {
-      setProgress('Loading image tools…')
+      setProgress(message('imagesBatchLoadingImageTools'))
       for (const [index, file] of batchFiles.entries()) {
         if (!operation.isCurrent()) return
-        setProgress(`Processing image ${index + 1} of ${batchFiles.length}…`)
+        setProgress(
+          message('imagesBatchProcessingImageOf', {
+            number: index + 1,
+            count: batchFiles.length,
+          }),
+        )
         const imageFile = {
           file,
           name: file.name,
@@ -112,12 +121,10 @@ function BatchImages() {
       if (!operation.isCurrent()) return
       setOptions({ ...options, failed })
       if (!results.size) {
-        setError(
-          'None of the selected images could be processed. Choose another set of images.',
-        )
+        setError(message('imagesBatchNoneOfTheSelectedImagesCould'))
         return
       }
-      setProgress('Preparing the ZIP download…')
+      setProgress(message('imagesBatchPreparingTheZIPDownload'))
       const { zipSync } = await import('fflate')
       if (!operation.isCurrent()) return
       const bytes = zipSync(Object.fromEntries(results), { level: 0 })
@@ -131,12 +138,17 @@ function BatchImages() {
       setResult({
         blob,
         filename,
-        details: [`${results.size} of ${batchFiles.length} images processed`],
+        details: [
+          message('imagesBatchImagesProcessed', {
+            processed: results.size,
+            total: batchFiles.length,
+          }),
+        ],
       })
       downloadBlob(blob, filename)
     } catch {
       if (operation.isCurrent())
-        setError('The ZIP could not be created. Try a smaller batch.')
+        setError(message('imagesBatchTheZIPCouldNotBeCreated'))
     } finally {
       if (operation.isCurrent()) setProgress('')
       operation.finish()
@@ -149,20 +161,26 @@ function BatchImages() {
         <CardContent className="space-y-5 p-4 sm:p-6">
           <fieldset disabled={isProcessing} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="batch-action">Apply to every image</Label>
+              <Label htmlFor="batch-action">
+                {t('imagesBatchApplyToEveryImage')}
+              </Label>
               <select
                 id="batch-action"
                 className="h-11 w-full rounded-md border border-input bg-background px-3 text-base"
                 value={options.mode}
                 onChange={(event) => update({ mode: event.target.value })}
               >
-                <option value="convert">Convert to another format</option>
-                <option value="resize">Resize to fit</option>
+                <option value="convert">
+                  {t('imagesBatchConvertToAnotherFormat')}
+                </option>
+                <option value="resize">{t('imagesBatchResizeToFit')}</option>
               </select>
             </div>
             {options.mode === 'convert' ? (
               <div className="space-y-2">
-                <Label htmlFor="batch-format">Output format</Label>
+                <Label htmlFor="batch-format">
+                  {t('imagesBatchOutputFormat')}
+                </Label>
                 <select
                   id="batch-format"
                   className="h-11 w-full rounded-md border border-input bg-background px-3 text-base"
@@ -174,14 +192,16 @@ function BatchImages() {
                   <option value="webp">WebP</option>
                 </select>
                 <p className="text-sm text-muted-foreground">
-                  Animated images export their first frame.
+                  {t('imagesBatchAnimatedImagesExportTheirFirstFrame')}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="batch-width">Maximum width (px)</Label>
+                    <Label htmlFor="batch-width">
+                      {t('imagesBatchMaximumWidthPx')}
+                    </Label>
                     <Input
                       id="batch-width"
                       type="number"
@@ -195,7 +215,9 @@ function BatchImages() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="batch-height">Maximum height (px)</Label>
+                    <Label htmlFor="batch-height">
+                      {t('imagesBatchMaximumHeightPx')}
+                    </Label>
                     <Input
                       id="batch-height"
                       type="number"
@@ -210,28 +232,29 @@ function BatchImages() {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Keeps proportions and leaves smaller images at their original
-                  dimensions. HEIC and HEIF are saved as PNG.
+                  {t('imagesBatchKeepsProportionsAndLeavesSmallerImages')}
                 </p>
               </div>
             )}
           </fieldset>
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {progress && (
             <p role="status" className="text-sm text-muted-foreground">
-              {progress}
+              {renderMessage(t, progress)}
             </p>
           )}
           {options.failed.length > 0 && (
             <details className="text-sm text-muted-foreground">
               <summary>
-                {options.failed.length}{' '}
-                {options.failed.length === 1 ? 'image could' : 'images could'}{' '}
-                not be processed
+                {t(
+                  'imagesBatchImagesCouldNotBeProcessed',
+                  {},
+                  options.failed.length,
+                )}
               </summary>
               <ul className="list-inside list-disc pt-2 break-all">
                 {options.failed.map((name, index) => (
@@ -246,8 +269,8 @@ function BatchImages() {
             onClick={() => void process()}
           >
             {isProcessing
-              ? 'Processing images…'
-              : 'Process images & download ZIP'}
+              ? t('imagesBatchProcessingImages')
+              : t('imagesBatchProcessImagesDownloadZIP')}
           </Button>
         </CardContent>
       </Card>

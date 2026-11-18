@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type LibImageQuant from 'libimagequant-wasm'
 import type { QuantizationOptions } from 'libimagequant-wasm'
 import type { ImageFile } from './shared'
@@ -16,7 +17,7 @@ export class LibImageQuantProcessor {
       const initializing = import('libimagequant-wasm').then(
         ({ default: Quantizer }) => {
           if (generation !== this.generation) {
-            throw new Error('PNG compression was cancelled')
+            throw new MessageError('libimagequantPNGCompressionWasCancelled')
           }
           this.quantizer = new Quantizer({
             initTimeout: 30 * 1000,

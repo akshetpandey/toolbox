@@ -1,3 +1,7 @@
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResultCard, useToolResult } from '@/components/ResultCard'
@@ -13,6 +17,7 @@ import { downloadBlob } from '@/lib/shared'
 export const Route = createFileRoute('/images/ocr')({ component: ImageOCRPage })
 
 function ImageOCRPage() {
+  const t = useTranslator()
   const { selectedFile, clearSelectedFile } = useImageTools()
   const { isProcessing } = useProcessing()
   const begin = useFileOperation(selectedFile?.file)
@@ -20,9 +25,9 @@ function ImageOCRPage() {
     'images.ocr.text',
     null,
   )
-  const [error, setError] = useState('')
-  const [status, setStatus] = useState('')
-  const [copyStatus, setCopyStatus] = useState('')
+  const [error, setError] = useState<MessageText>('')
+  const [status, setStatus] = useState<MessageText>('')
+  const [copyStatus, setCopyStatus] = useState<MessageText>('')
   const controller = useRef<AbortController | null>(null)
   const sourceKey = useMemo(
     () => ({ file: selectedFile?.file, text }),
@@ -45,7 +50,7 @@ function ImageOCRPage() {
     setError('')
     setCopyStatus('')
     setText(null)
-    setStatus('Loading text recognition…')
+    setStatus(message('imagesOcrLoadingTextRecognition'))
     try {
       const { recognizeImageText } = await import('@/lib/ocr')
       const recognized = await recognizeImageText(
@@ -56,17 +61,15 @@ function ImageOCRPage() {
         },
       )
       if (!operation.isCurrent() || abort.signal.aborted) return
-      if (!recognized)
-        throw new Error(
-          'No text was found. Try a clearer image with larger, upright text.',
-        )
+      if (!recognized) throw new MessageError('imagesOcrNoTextWasFoundTryA')
       setText(recognized)
     } catch (cause) {
       if (operation.isCurrent() && !abort.signal.aborted)
         setError(
-          cause instanceof Error
-            ? cause.message
-            : 'Text recognition failed. Try another image.',
+          messageFromError(
+            cause,
+            message('imagesOcrTextRecognitionFailedTryAnotherImage'),
+          ),
         )
     } finally {
       if (controller.current === abort) controller.current = null
@@ -82,7 +85,7 @@ function ImageOCRPage() {
     setResult({
       blob,
       filename,
-      details: ['Recognized text · review for accuracy'],
+      details: [message('imagesOcrRecognizedTextReviewForAccuracy')],
     })
     downloadBlob(blob, filename)
   }
@@ -91,15 +94,16 @@ function ImageOCRPage() {
     <>
       <Card className="shadow-none">
         <CardContent className="space-y-4 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold">Recognize text in an image</h2>
+          <h2 className="text-lg font-semibold">
+            {t('imagesOcrRecognizeTextInAnImage')}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Extract printed English text from a photo or screenshot. Review and
-            correct the text before copying or downloading it.
+            {t('imagesOcrExtractPrintedEnglishTextFromA')}
           </p>
           {selectedFile && (
             <img
               src={selectedFile.preview}
-              alt="Image to recognize"
+              alt={t('imagesOcrImageToRecognize')}
               className="max-h-72 max-w-full rounded border object-contain"
             />
           )}
@@ -108,33 +112,33 @@ function ImageOCRPage() {
               disabled={!selectedFile || isProcessing}
               onClick={() => void recognize()}
             >
-              Recognize text
+              {t('imagesOcrRecognizeText')}
             </Button>
             {status && (
               <Button
                 variant="outline"
                 onClick={() => {
                   controller.current?.abort()
-                  setStatus('Cancelling…')
+                  setStatus(message('imagesOcrCancelling'))
                 }}
               >
-                Cancel
+                {t('imagesOcrCancel')}
               </Button>
             )}
           </div>
           {status && (
             <p role="status" className="text-sm text-muted-foreground">
-              {status}
+              {renderMessage(t, status)}
             </p>
           )}
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {text !== null && (
             <div className="space-y-3">
-              <Label htmlFor="ocr-text">Recognized text</Label>
+              <Label htmlFor="ocr-text">{t('imagesOcrRecognizedText')}</Label>
               <textarea
                 id="ocr-text"
                 rows={12}
@@ -151,7 +155,7 @@ function ImageOCRPage() {
                   disabled={isProcessing || !text?.trim()}
                   onClick={download}
                 >
-                  Download text
+                  {t('imagesOcrDownloadText')}
                 </Button>
                 <Button
                   variant="outline"
@@ -162,20 +166,20 @@ function ImageOCRPage() {
                         ? navigator.clipboard.writeText(text)
                         : Promise.reject(new Error('Clipboard unavailable'))
                     ).then(
-                      () => setCopyStatus('Text copied.'),
+                      () => setCopyStatus(message('imagesOcrTextCopied')),
                       () =>
                         setCopyStatus(
-                          'Copy failed. Select the text and copy it manually.',
+                          message('imagesOcrCopyFailedSelectTheTextAnd'),
                         ),
                     )
                   }}
                 >
-                  Copy text
+                  {t('imagesOcrCopyText')}
                 </Button>
               </div>
               {copyStatus && (
                 <p role="status" className="text-sm text-muted-foreground">
-                  {copyStatus}
+                  {renderMessage(t, copyStatus)}
                 </p>
               )}
             </div>

@@ -1,3 +1,5 @@
+import { message } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -14,9 +16,10 @@ export const Route = createFileRoute('/videos/extract')({
 })
 
 function VideoExtractComponent() {
+  const t = useTranslator()
   const action = useVideoAction(
     'videos.extract',
-    'The audio could not be extracted. Check that your video has an audio track or choose another file.',
+    message('videosExtractTheAudioCouldNotBeExtracted'),
   )
   const [audioFormat, setAudioFormat] = useVideoSettings(
     'videos.extract.format',
@@ -33,9 +36,13 @@ function VideoExtractComponent() {
     <div className="flex min-w-0 flex-col gap-5">
       <Card>
         <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold">Audio settings</h2>
+          <h2 className="text-lg font-semibold">
+            {t('videosExtractAudioSettings')}
+          </h2>
           <div className="space-y-2">
-            <Label htmlFor="audio-format">Audio format</Label>
+            <Label htmlFor="audio-format">
+              {t('videosExtractAudioFormat')}
+            </Label>
             <select
               id="audio-format"
               className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -43,22 +50,27 @@ function VideoExtractComponent() {
               onChange={(event) => setAudioFormat(event.target.value)}
               disabled={action.busy}
             >
-              <option value="mp3">MP3 — works almost everywhere</option>
-              <option value="aac">AAC — compact, high quality</option>
-              <option value="wav">WAV — uncompressed, larger file</option>
+              <option value="mp3">
+                {t('videosExtractMP3WorksAlmostEverywhere')}
+              </option>
+              <option value="aac">
+                {t('videosExtractAACCompactHighQuality')}
+              </option>
+              <option value="wav">
+                {t('videosExtractWAVUncompressedLargerFile')}
+              </option>
             </select>
             <p className="text-sm text-muted-foreground">
-              Save the audio track without the video.
+              {t('videosExtractSaveTheAudioTrackWithoutThe')}
             </p>
           </div>
           {noAudio && (
             <p role="status" className="text-sm text-muted-foreground">
-              This video has no audio track. Choose a video with sound to
-              extract audio.
+              {t('videosExtractThisVideoHasNoAudioTrack')}
             </p>
           )}
           <VideoActionStatus
-            label="Extracting audio"
+            label={t('videosExtractExtractingAudio')}
             error={action.error}
             diagnostic={action.diagnostic}
           />
@@ -69,11 +81,17 @@ function VideoExtractComponent() {
               void action.run(async (processor, signal) => ({
                 blob: await processor.extractAudio({ audioFormat, signal }),
                 filename: `${action.selectedFile!.name.replace(/\.[^/.]+$/, '')}.${audioFormat}`,
-                details: [`${audioFormat.toUpperCase()} audio`],
+                details: [
+                  message('videosExtractAudio', {
+                    audioFormat: audioFormat.toUpperCase(),
+                  }),
+                ],
               }))
             }
           >
-            {action.isProcessing ? 'Extracting…' : 'Extract audio'}
+            {action.isProcessing
+              ? t('videosExtractExtracting')
+              : t('videosExtractExtractAudio')}
           </Button>
         </CardContent>
       </Card>

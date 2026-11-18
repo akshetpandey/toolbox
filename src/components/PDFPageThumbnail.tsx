@@ -1,3 +1,4 @@
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useEffect, useRef, useState } from 'react'
 import { FileText } from 'lucide-react'
 import { canvasBlob } from '@/lib/pdf-edit'
@@ -91,6 +92,7 @@ export function PDFPageThumbnail({
   rotation: number
   watch: WatchThumbnail | undefined
 }) {
+  const t = useTranslator()
   const tile = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState<{
     watch: WatchThumbnail
@@ -118,13 +120,13 @@ export function PDFPageThumbnail({
       {url ? (
         <img
           src={url}
-          alt={`Preview of page ${index + 1}`}
+          alt={t('pDFPageThumbnailPreviewOfPage', { number: index + 1 })}
           className="size-full min-h-0 min-w-0 object-contain"
           style={{ transform: `rotate(${rotation}deg)` }}
         />
       ) : url === null ? (
         <span className="text-center text-xs text-muted-foreground">
-          Preview unavailable
+          {t('pDFPageThumbnailPreviewUnavailable')}
         </span>
       ) : (
         <FileText aria-hidden="true" className="size-5 text-muted-foreground" />

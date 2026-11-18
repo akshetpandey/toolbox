@@ -1,3 +1,6 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react'
 import {
@@ -8,6 +11,7 @@ import { ToolLayout } from '@/components/ToolLayout'
 import { FileUpload } from '@/components/FileUpload'
 import {
   OfficeToolsContext,
+  type ConversionStatus,
   type OfficeToolsContextType,
 } from '@/contexts/OfficeToolsContext'
 
@@ -32,22 +36,21 @@ export const Route = createFileRoute('/office-documents')({
 })
 
 function OfficeDocumentsLayout() {
-  const [selectionError, setSelectionError] = useState('')
+  const t = useTranslator()
+  const [selectionError, setSelectionError] = useState<MessageText>('')
   const [selectedFile, updateSelectedFile] =
     useWorkspaceState<OfficeFile | null>('office.file', null)
   const selectedFileRef = useRef<OfficeFile | null>(selectedFile)
   const fileUploadRef = useRef<HTMLDivElement>(null)
-  const [conversionStatus, setConversionStatus] = useWorkspaceState<string>(
-    'office.status',
-    '',
-  )
+  const [conversionStatus, setConversionStatus] =
+    useWorkspaceState<ConversionStatus>('office.status', null)
 
   const setSelectedFile = useCallback(
     (file: OfficeFile | null) => {
       selectedFileRef.current = file
       setSelectionError('')
       updateSelectedFile(file)
-      setConversionStatus('')
+      setConversionStatus(null)
       invalidateWorkspaceState(['result.office.'])
     },
     [updateSelectedFile, setConversionStatus],
@@ -95,9 +98,7 @@ function OfficeDocumentsLayout() {
         const officeFile = createOfficeFile(file)
         setSelectedFile(officeFile)
       } else {
-        setSelectionError(
-          'Choose a DOCX, PPTX, or XLSX file. For older Office files, save a copy in one of these formats first.',
-        )
+        setSelectionError(message('officeDocumentsChooseADOCXPPTXOrXLSX'))
       }
     },
     [setSelectedFile],
@@ -153,8 +154,8 @@ function OfficeDocumentsLayout() {
         acceptedTypes={officePdfInputFormats
           .map((format) => `.${format}`)
           .join(',')}
-        title="Drop an office file here"
-        description="Choose a Word, PowerPoint, or Excel file in a current Office format."
+        title={t('officeDocumentsDropAnOfficeFileHere')}
+        description={t('officeDocumentsChooseAWordPowerPointOrExcel')}
         supportedFormats={['DOCX', 'PPTX', 'XLSX']}
         emptyStateIcon={Upload}
         selectedFileIcon={FileText}
@@ -168,7 +169,7 @@ function OfficeDocumentsLayout() {
                   {selectedFile.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatFileSize(selectedFile.size)}
+                  {formatFileSize(selectedFile.size, t)}
                 </p>
               </div>
             </div>
@@ -177,7 +178,7 @@ function OfficeDocumentsLayout() {
       </FileUpload>
       {selectionError && (
         <p role="alert" className="mt-3 text-sm text-destructive">
-          {selectionError}
+          {renderMessage(t, selectionError)}
         </p>
       )}
     </div>
@@ -186,7 +187,7 @@ function OfficeDocumentsLayout() {
   return (
     <OfficeToolsContext.Provider value={contextValue}>
       <ToolLayout
-        title="Convert document to PDF"
+        title={t('officeDocumentsConvertDocumentToPDF')}
         icon={Building}
         iconColor="text-primary"
         iconBgColor="bg-primary/10"

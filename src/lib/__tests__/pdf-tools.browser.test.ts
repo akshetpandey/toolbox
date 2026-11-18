@@ -44,6 +44,9 @@ describe('browser-only PDF tools', () => {
   test('extracts, splits and organizes pages in the chosen order', async () => {
     const input = await sample()
     expect(parsePageRanges('2, 1-2', 2)).toEqual([[1], [0, 1]])
+    expect(parsePageRanges('１－３、５', 5)).toEqual([[0, 1, 2], [4]])
+    expect(parsePageRanges('١–٣، ٥', 5)).toEqual([[0, 1, 2], [4]])
+    expect(parsePageRanges('۱-۳، ۵', 5)).toEqual([[0, 1, 2], [4]])
     expect(() => parsePageRanges('0-1', 2)).toThrow('between 1 and 2')
     const extracted = await extractPDFPages(input, '2', false, signal)
     expect(await renderedText(extracted.blob)).toBe('Second page')

@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
 import { expect, test } from 'vitest'
-import { homePage } from '@/lib/seo'
+import { canonicalUrl, homePage } from '@/lib/seo'
+import { languagePath, supportedLanguages } from '@/i18n/locales'
 import { allTools } from '@/lib/tools'
 import { pandocWasmPlugin } from '../../vite-plugin-pandoc-wasm.ts'
 import { seoPagesPlugin } from '../../vite-plugin-seo-pages.ts'
@@ -27,9 +28,10 @@ test('the build publishes the React workspace for each available tool', async ()
     const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
       (match) => match[1],
     )
+    const paths = ['/', ...allTools.map((tool) => tool.route)]
     expect(urls).toEqual(
-      ['/', ...allTools.map((tool) => tool.route)].map(
-        (path) => `https://toolbox.computer${path}`,
+      supportedLanguages.flatMap((language) =>
+        paths.map((path) => canonicalUrl(path, language)),
       ),
     )
 
@@ -67,8 +69,40 @@ test('the build publishes the React workspace for each available tool', async ()
       titles.add(title(html))
       descriptions.add(description(html))
     }
-    expect(titles.size).toBe(urls.length)
-    expect(descriptions.size).toBe(urls.length)
+    expect(titles.size).toBe(paths.length)
+    expect(descriptions.size).toBe(paths.length)
+
+    for (const language of supportedLanguages.filter(
+      (language) => language !== 'en',
+    )) {
+      const localizedHome = await read(
+        `${languagePath(language, '/').slice(1)}.html`,
+      )
+      expect(localizedHome).toContain(
+        `<html lang="${language}" dir="${language === 'ar' ? 'rtl' : 'ltr'}">`,
+      )
+      expect(title(localizedHome)).not.toBe(title(home))
+      for (const path of paths) {
+        const localized =
+          path === '/'
+            ? localizedHome
+            : await read(`${languagePath(language, path).slice(1)}.html`)
+        expect(localized).toContain(
+          `rel="canonical" href="${canonicalUrl(path, language)}"`,
+        )
+        for (const alternate of supportedLanguages) {
+          expect(localized).toContain(
+            `hrefLang="${alternate}" href="${canonicalUrl(path, alternate)}"`,
+          )
+        }
+        expect(localized).toContain(
+          `hrefLang="x-default" href="${canonicalUrl(path, 'en')}"`,
+        )
+      }
+      expect(localizedHome).toContain(
+        `href="${languagePath(language, '/pdfs/merge')}"`,
+      )
+    }
 
     const notFound = await read('404.html')
     expect(notFound).toContain('name="robots" content="noindex"')
@@ -76,4 +110,4 @@ test('the build publishes the React workspace for each available tool', async ()
   } finally {
     await rm(outDir, { recursive: true, force: true })
   }
-}, 30_000)
+}, 60_000)

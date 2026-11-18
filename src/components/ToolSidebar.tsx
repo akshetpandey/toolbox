@@ -1,12 +1,17 @@
+import { useLocale, useTranslator } from '@/i18n/LocaleContext'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Hammer, Menu, X, ArrowUpRight, ShieldCheck } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { LanguageSettings } from '@/components/LanguageSettings'
 import { useProcessing } from '@/contexts/ProcessingContext'
-import { toolCategories } from '@/lib/tools'
+import { getToolCatalog } from '@/lib/toolCatalog'
 
 export function ToolSidebar() {
+  const { language } = useLocale()
+  const t = useTranslator()
+  const { categories } = getToolCatalog(t)
   const pathname = useLocation().pathname.replace(/\/$/u, '') || '/'
   const { isProcessing } = useProcessing()
   const [open, setOpen] = useState(false)
@@ -49,14 +54,14 @@ export function ToolSidebar() {
   const navigation = (
     <>
       <nav
-        aria-label="File tools"
+        aria-label={t('toolSidebarFileTools')}
         className="min-h-0 flex-1 overflow-y-auto px-3 py-4 xl:flex xl:flex-col xl:py-3"
       >
         <p className="shrink-0 px-3 pb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Your toolbox
+          {t('toolSidebarYourToolbox')}
         </p>
         <div className="space-y-1 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:gap-1 xl:space-y-0">
-          {toolCategories.map((category) => {
+          {categories.map((category) => {
             const active =
               pathname.startsWith(`${category.path}/`) ||
               pathname === category.path
@@ -69,6 +74,7 @@ export function ToolSidebar() {
                 }
               >
                 <Link
+                  key={language}
                   to={category.tools[0].route}
                   aria-disabled={isProcessing || undefined}
                   onClick={(event) => {
@@ -84,10 +90,11 @@ export function ToolSidebar() {
                   {category.name}
                 </Link>
                 {expanded && (
-                  <ul className="ml-5 space-y-1 border-l border-border pl-3 pb-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-gutter:stable]">
+                  <ul className="ms-5 space-y-1 border-s border-border ps-3 pb-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-gutter:stable]">
                     {category.tools.map((tool) => (
                       <li key={tool.route}>
                         <Link
+                          key={language}
                           to={tool.route}
                           aria-current={
                             pathname === tool.route ? 'page' : undefined
@@ -113,16 +120,17 @@ export function ToolSidebar() {
       <div className="shrink-0 space-y-4 border-t border-border px-5 py-5 xl:space-y-2 xl:py-3">
         <p className="flex gap-2 text-sm text-muted-foreground">
           <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          Files stay on your device.
+          {t('toolSidebarFilesStayOnYourDevice')}
         </p>
         <ThemeToggle />
+        <LanguageSettings disabled={isProcessing} />
         <a
           href="https://github.com/akshetpandey/toolbox"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
-          Open source on GitHub
+          {t('toolSidebarOpenSourceOnGitHub')}
           <ArrowUpRight aria-hidden="true" className="size-3.5" />
         </a>
       </div>
@@ -130,8 +138,9 @@ export function ToolSidebar() {
   )
   const brand = (
     <Link
+      key={language}
       to="/"
-      aria-label="Toolbox home"
+      aria-label={t('toolSidebarToolboxHome')}
       onClick={(event) => {
         if (isProcessing) event.preventDefault()
         else close()
@@ -161,12 +170,12 @@ export function ToolSidebar() {
           }}
         >
           <Menu aria-hidden="true" />
-          Tools
+          {t('toolSidebarTools')}
         </button>
       </header>
       <aside
         ref={sidebar}
-        className="hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-card xl:flex"
+        className="hidden h-dvh w-60 shrink-0 flex-col border-e border-border bg-card xl:flex"
       >
         <div className="shrink-0 px-6 py-4">{brand}</div>
         {navigation}
@@ -188,17 +197,17 @@ export function ToolSidebar() {
           )
             close()
         }}
-        className="tool-drawer fixed inset-y-0 left-0 m-0 h-dvh max-h-none w-80 max-w-[calc(100vw-24px)] border-0 border-r border-border bg-card p-0 text-foreground shadow-xl backdrop:bg-black/40"
+        className="tool-drawer fixed inset-y-0 start-0 m-0 h-dvh max-h-none w-80 max-w-[calc(100vw-24px)] border-0 border-e border-border bg-card p-0 text-foreground shadow-xl backdrop:bg-black/40"
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 id="tools-drawer-title" className="text-lg font-semibold">
-              Choose a tool
+              {t('toolSidebarChooseATool')}
             </h2>
             <button
               type="button"
               className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-              aria-label="Close tools menu"
+              aria-label={t('toolSidebarCloseToolsMenu')}
               onClick={close}
             >
               <X aria-hidden="true" />

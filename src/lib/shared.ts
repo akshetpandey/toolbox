@@ -1,12 +1,21 @@
+import { english } from '@/i18n/messages'
+
 // Shared utility functions for file processing tools
+
+export function normalizeNumericInput(value: string) {
+  return value.normalize('NFKC').replace(/[٠-٩۰-۹]/gu, (digit) => {
+    const zero = digit >= '۰' ? '۰' : '٠'
+    return String(digit.charCodeAt(0) - zero.charCodeAt(0))
+  })
+}
 
 /**
  * Format a file size in bytes to a human readable string
  */
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
+export function formatFileSize(bytes: number, t = english): string {
+  if (bytes < 1024) return t('fileSizeBytes', { bytes })
   const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const sizes = ['', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }

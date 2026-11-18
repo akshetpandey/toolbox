@@ -1,3 +1,6 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { useWorkspaceState } from '@/hooks/useWorkspaceState'
@@ -17,6 +20,7 @@ export const Route = createFileRoute('/images/compress')({
 })
 
 function CompressPage() {
+  const t = useTranslator()
   const { selectedFile, imageMagickProcessor, clearSelectedFile } =
     useImageTools()
   const { isProcessing } = useProcessing()
@@ -34,7 +38,7 @@ function CompressPage() {
     'images.compress.allowResize',
     false,
   )
-  const [error, setError] = useWorkspaceState<string | null>(
+  const [error, setError] = useWorkspaceState<MessageText | null>(
     'images.compress.error',
     null,
   )
@@ -76,17 +80,28 @@ function CompressPage() {
       if (!output || (mode === 'limit' && output.blob.size > maximumBytes)) {
         setError(
           allowResize
-            ? 'This image could not meet the limit. Try a larger file size.'
-            : 'The image could not meet the limit at its current dimensions. Allow smaller dimensions or try a larger file size.',
+            ? message('imagesCompressThisImageCouldNotMeetThe')
+            : message('imagesCompressTheImageCouldNotMeetThe'),
         )
         return
       }
 
       const { blob, width, height } = output
       const filename = imageOutputFilename(`compressed_${imageFile.name}`, blob)
-      const details = width && height ? [`${width} × ${height} px`] : []
+      const details =
+        width && height
+          ? [
+              message('mediaDimensionsPixels', {
+                dimensions: imageDimensions(width, height),
+              }),
+            ]
+          : []
       if (mode === 'limit')
-        details.push(`Meets the ${maximumBytes.toLocaleString()}-byte limit`)
+        details.push(
+          message('imagesCompressMeetsTheByteLimit', {
+            maximumBytes: maximumBytes.toLocaleString(),
+          }),
+        )
       setResult({
         blob,
         filename,
@@ -96,9 +111,7 @@ function CompressPage() {
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setError(
-        'This image could not be compressed. Try another format or choose another image.',
-      )
+      setError(message('imagesCompressThisImageCouldNotBeCompressed'))
     } finally {
       operation.finish()
     }
@@ -110,11 +123,11 @@ function CompressPage() {
         <CardContent className="p-4 sm:p-6 flex flex-col gap-5">
           <fieldset className="flex flex-wrap gap-2" disabled={isProcessing}>
             <legend className="mb-2 text-sm font-medium">
-              Compression goal
+              {t('imagesCompressCompressionGoal')}
             </legend>
             {[
-              { value: 'quality', label: 'Choose quality' },
-              { value: 'limit', label: 'Set a file size limit' },
+              { value: 'quality', label: t('imagesCompressChooseQuality') },
+              { value: 'limit', label: t('imagesCompressSetAFileSizeLimit') },
             ].map(({ value, label }) => (
               <Button
                 key={value}
@@ -133,12 +146,12 @@ function CompressPage() {
             <>
               <div
                 className="flex flex-wrap gap-2"
-                aria-label="Compression presets"
+                aria-label={t('imagesCompressCompressionPresets')}
               >
                 {[
-                  ['Smaller file', 60],
-                  ['Balanced', 85],
-                  ['Higher quality', 95],
+                  [t('imagesCompressSmallerFile'), 60],
+                  [t('imagesCompressBalanced'), 85],
+                  [t('imagesCompressHigherQuality'), 95],
                 ].map(([label, value]) => (
                   <Button
                     key={label}
@@ -157,7 +170,8 @@ function CompressPage() {
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="quality" className="text-sm font-medium">
-                    Quality: {quality}%
+                    {t('imagesCompressQuality') + ' '}
+                    {quality}%
                   </Label>
                 </div>
                 <Input
@@ -174,19 +188,21 @@ function CompressPage() {
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Smaller file</span>
-                  <span>Better quality</span>
+                  <span>{t('imagesCompressSmallerFile')}</span>
+                  <span>{t('imagesCompressBetterQuality')}</span>
                 </div>
               </div>
               {selectedFile && isHeifImage(selectedFile) && (
                 <p className="text-sm text-muted-foreground">
-                  HEIC and HEIF are saved as JPG.
+                  {t('imagesCompressHEICAndHEIFAreSavedAs')}
                 </p>
               )}
             </>
           ) : (
             <fieldset className="flex flex-col gap-3" disabled={isProcessing}>
-              <Label htmlFor="image-size-limit">Maximum file size (KB)</Label>
+              <Label htmlFor="image-size-limit">
+                {t('imagesCompressMaximumFileSizeKB')}
+              </Label>
               <Input
                 id="image-size-limit"
                 type="number"
@@ -208,18 +224,17 @@ function CompressPage() {
                     resetOutput()
                   }}
                 />
-                Allow smaller dimensions if needed
+                {t('imagesCompressAllowSmallerDimensionsIfNeeded')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Saves a still JPG with a white background where the image is
-                transparent. One KB is 1,000 bytes.
+                {t('imagesCompressSavesAStillJPGWithA')}
               </p>
             </fieldset>
           )}
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           <div className="flex justify-end">
@@ -235,7 +250,7 @@ function CompressPage() {
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              Compress & download
+              {t('imagesCompressCompressDownload')}
             </Button>
           </div>
         </CardContent>

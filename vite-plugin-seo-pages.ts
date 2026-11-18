@@ -3,8 +3,30 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { build } from 'vite'
 import type { Plugin } from 'vite'
-import { indexedPages, pages } from './src/lib/seo.ts'
+import { canonicalUrl, notFoundPath } from './src/lib/seo.ts'
+import {
+  languageDirection,
+  languagePath,
+  supportedLanguages,
+} from './src/i18n/locales.ts'
+import type { Language } from './src/i18n/locales.ts'
+import { english } from './src/i18n/messages.ts'
 import { categoryRedirects } from './src/lib/toolPaths.ts'
+import { allTools } from './src/lib/tools.ts'
+
+const indexedPaths = ['/', ...allTools.map((tool) => tool.route)]
+
+const indexedPages = supportedLanguages.flatMap((language) =>
+  indexedPaths.map((toolPath) => ({
+    path: languagePath(language, toolPath),
+    toolPath,
+    language,
+  })),
+)
+const pages = [
+  ...indexedPages,
+  { path: notFoundPath, toolPath: notFoundPath, language: 'en' as Language },
+]
 
 function escapeHtml(value: string) {
   return value
@@ -48,9 +70,14 @@ async function renderPages(root: string, template: string) {
     )) as typeof import('./src/prerender.tsx')
 
     const results = []
-    for (const { path } of pages) {
-      const { head, body } = await renderPage(path)
+    for (const { path, language } of pages) {
+      const { head, body, noscript } = await renderPage(path)
       const html = template
+        .replace(
+          '<html lang="en">',
+          `<html lang="${language}" dir="${languageDirection(language)}">`,
+        )
+        .replace('<!-- toolbox-noscript -->', () => escapeHtml(noscript))
         .replace('</head>', () => `    ${head}\n  </head>`)
         .replace(rootPlaceholder, () => body)
       results.push({ path, html })
@@ -66,7 +93,12 @@ export function seoPagesPlugin(): Plugin {
   let root: string
   return {
     name: 'seo-pages',
-    apply: 'build',
+    transformIndexHtml(html, context) {
+      if (context.server)
+        return html.replace('<!-- toolbox-noscript -->', () =>
+          escapeHtml(english('noscriptEnableJavaScript')),
+        )
+    },
     configResolved(config) {
       root = config.root
     },
@@ -89,8 +121,8 @@ export function seoPagesPlugin(): Plugin {
 
         const urls = indexedPages
           .map(
-            ({ canonical }) =>
-              `  <url><loc>${escapeHtml(canonical)}</loc></url>`,
+            ({ toolPath, language }) =>
+              `  <url><loc>${escapeHtml(canonicalUrl(toolPath, language))}</loc></url>`,
           )
           .join('\n')
         this.emitFile({
@@ -104,10 +136,15 @@ export function seoPagesPlugin(): Plugin {
           source:
             [
               '/index.html / 301',
-              ...Object.entries(categoryRedirects).flatMap(([from, to]) => [
-                `${from} ${to} 301`,
-                `${from}/ ${to} 301`,
-              ]),
+              ...supportedLanguages.flatMap((language) =>
+                Object.entries(categoryRedirects).flatMap(
+                  ([category, tool]) => {
+                    const from = languagePath(language, category)
+                    const to = languagePath(language, tool)
+                    return [`${from} ${to} 301`, `${from}/ ${to} 301`]
+                  },
+                ),
+              ),
               ...indexedPages
                 .slice(1)
                 .flatMap(({ path }) => [

@@ -1,3 +1,4 @@
+import { MessageError } from '@/i18n/MessageError'
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 import { canvasBlob, zipPDFResults } from './pdf-edit'
 
@@ -41,7 +42,7 @@ export async function renderPDFPage(
     dimensions.width <= 0 ||
     dimensions.height <= 0
   )
-    throw new Error('This PDF contains a page with invalid dimensions.')
+    throw new MessageError('pdfRenderThisPDFContainsAPageWith')
 
   const scale = Math.min(
     preferredScale,
@@ -53,7 +54,8 @@ export async function renderPDFPage(
   canvas.width = Math.max(1, Math.ceil(viewport.width))
   canvas.height = Math.max(1, Math.ceil(viewport.height))
   const canvasContext = canvas.getContext('2d', { alpha: false })
-  if (!canvasContext) throw new Error('PDF rendering is unavailable.')
+  if (!canvasContext)
+    throw new MessageError('pdfRenderPDFRenderingIsUnavailable')
   const rendering = page.render({
     canvas,
     canvasContext,

@@ -1,3 +1,7 @@
+import { message, renderMessage, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { MessageError, messageFromError } from '@/i18n/MessageError'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import {
   createFileRoute,
   Outlet,
@@ -28,7 +32,7 @@ import {
 } from '@/contexts/VideoToolsContext'
 
 import { Upload, FileVideo, Loader2, Video as VideoIcon } from 'lucide-react'
-import { videoTabs } from '@/lib/videoToolsUtils'
+import { getVideoTabs } from '@/lib/videoToolsUtils'
 
 function invalidateVideoWork() {
   invalidateWorkspaceState(['videos.', 'result.videos.'], {
@@ -69,6 +73,7 @@ function VideoFileUpload({
   disabled: boolean
   showPreview: boolean
 }) {
+  const t = useTranslator()
   const [failedPreview, setFailedPreview] = useState<string | null>(null)
   // Convert VideoFile to simple format for FileUpload component
   const simpleFiles = selectedFiles.map((file) => ({
@@ -87,8 +92,8 @@ function VideoFileUpload({
       onFileSelect={(files) => void onFileSelect(files)}
       onClearFiles={onClear}
       acceptedTypes="video/*,image/gif,image/apng,image/png,.mp4,.webm,.avi,.mov,.mkv,.gif,.apng,.png"
-      title="Drop a video or animation here"
-      description="Video files, GIFs, and animated PNGs"
+      title={t('videosDropAVideoOrAnimationHere')}
+      description={t('videosVideoFilesGIFsAndAnimatedPNGs')}
       supportedFormats={['MP4', 'WebM', 'AVI', 'MOV', 'MKV', 'GIF', 'APNG']}
       emptyStateIcon={Upload}
       selectedFileIcon={FileVideo}
@@ -103,32 +108,40 @@ function VideoFileUpload({
                     {file.name}
                   </p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{formatFileSize(file.size)}</span>
+                    <span>{formatFileSize(file.size, t)}</span>
                     {file.dimensions && (
                       <span>
-                        {file.dimensions.width} × {file.dimensions.height}
+                        {t('mediaDimensions', {
+                          dimensions: imageDimensions(
+                            file.dimensions.width,
+                            file.dimensions.height,
+                          ),
+                        })}
                       </span>
                     )}
                   </div>
                   {file.duration && (
                     <div className="text-xs text-muted-foreground">
-                      Duration: {formatDuration(file.duration)}
+                      {t('videosDuration') + ' '}
+                      {formatDuration(file.duration)}
                     </div>
                   )}
                 </div>
                 <details open={showPreview} className="mt-2">
                   <summary className="cursor-pointer py-2 text-sm font-medium">
-                    {file.animation ? 'Preview animation' : 'Preview video'}
+                    {file.animation
+                      ? t('videosPreviewAnimation')
+                      : t('videosPreviewVideo')}
                   </summary>
                   {file.animation ? (
                     <img
                       src={file.preview}
-                      alt="Source animation preview"
+                      alt={t('videosSourceAnimationPreview')}
                       className="mt-2 max-h-64 max-w-full rounded-lg object-contain"
                     />
                   ) : (
                     <video
-                      aria-label="Source video preview"
+                      aria-label={t('videosSourceVideoPreview')}
                       src={file.preview}
                       className="mt-2 max-h-64 w-full rounded-lg bg-muted"
                       controls
@@ -138,8 +151,7 @@ function VideoFileUpload({
                   )}
                   {failedPreview === file.preview && (
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Preview is unavailable for this video. You can still
-                      process the file.
+                      {t('videosPreviewIsUnavailableForThisVideo')}
                     </p>
                   )}
                 </details>
@@ -160,6 +172,7 @@ function VideoToolsLayout() {
 }
 
 function SingleVideoWorkspace() {
+  const t = useTranslator()
   const { ffmpeg, isInitialized, error, init, setProgressCallback } =
     useInitFFmpeg()
   const { isProcessing, setIsProcessing } = useProcessing()
@@ -173,10 +186,12 @@ function SingleVideoWorkspace() {
     Record<string, VideoMetadata>
   >('videos.metadata', {})
   const [isPreparing, setIsPreparing] = useState(false)
-  const [preparationMessage, setPreparationMessage] = useState(
-    'Preparing video tools…',
+  const [preparationMessage, setPreparationMessage] = useState<MessageText>(
+    message('videosPreparingVideoTools'),
   )
-  const [preparationError, setPreparationError] = useState<string | null>(null)
+  const [preparationError, setPreparationError] = useState<MessageText | null>(
+    null,
+  )
   const [progress, setProgress] = useState(0)
   const [progressStartTime, setProgressStartTime] = useState<number | null>(
     null,
@@ -281,8 +296,7 @@ function SingleVideoWorkspace() {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (isProcessing) {
         event.preventDefault()
-        event.returnValue =
-          'Video processing is in progress. Are you sure you want to leave? Your progress will be lost.'
+        event.returnValue = t('videosVideoProcessingIsInProgressAre')
       }
     }
 
@@ -299,7 +313,7 @@ function SingleVideoWorkspace() {
     async (videoFile: VideoFile) => {
       const selectionId = ++fileSelectionId.current
       setIsPreparing(true)
-      setPreparationMessage('Preparing video tools…')
+      setPreparationMessage(message('videosPreparingVideoTools'))
       setPreparationError(null)
       // FFprobe supports containers/codecs the native <video> element cannot
       // decode (including many AVI/MKV files). Preview support is optional.
@@ -307,7 +321,7 @@ function SingleVideoWorkspace() {
         const task = fileSelectionTask.current.then(async () => {
           if (selectionId !== fileSelectionId.current) return
           const processor = await getFfmpegProcessor(videoFile)
-          setPreparationMessage('Reading video information…')
+          setPreparationMessage(message('videosReadingVideoInformation'))
           if (selectionId !== fileSelectionId.current) return
           const meta = await processor.extractMetadata()
           if (selectionId !== fileSelectionId.current) return
@@ -331,9 +345,7 @@ function SingleVideoWorkspace() {
       } catch (error) {
         console.error('🎬 VideoTools: Error extracting metadata:', error)
         if (selectionId === fileSelectionId.current)
-          setPreparationError(
-            'We could not prepare this video. Choose another file or try replacing it.',
-          )
+          setPreparationError(message('videosWeCouldNotPrepareThisVideo'))
       } finally {
         if (selectionId === fileSelectionId.current) setIsPreparing(false)
       }
@@ -365,7 +377,7 @@ function SingleVideoWorkspace() {
         const animation = video ? null : await readAnimationInfo(file)
         if (request !== fileSelectionId.current) return
         if (!video && !animation)
-          throw new Error('Choose a video, GIF, or animated PNG file.')
+          throw new MessageError('videosChooseAVideoGIFOrAnimated')
         console.log('🎬 VideoTools: Processing video file', {
           name: file.name,
           size: file.size,
@@ -392,9 +404,7 @@ function SingleVideoWorkspace() {
       } catch (cause) {
         if (request === fileSelectionId.current) {
           setPreparationError(
-            cause instanceof Error
-              ? cause.message
-              : 'This file could not be opened.',
+            messageFromError(cause, message('videosThisFileCouldNotBeOpened')),
           )
           setIsPreparing(false)
         }
@@ -485,12 +495,12 @@ function SingleVideoWorkspace() {
       <ToolLayout
         title={
           {
-            metadata: 'Video information',
-            convert: 'Convert video',
-            compress: 'Compress video',
-            trim: 'Trim video',
-            extract: 'Extract audio',
-          }[currentTab] ?? 'Video tools'
+            metadata: t('videosVideoInformation'),
+            convert: t('videosConvertVideo'),
+            compress: t('videosCompressVideo'),
+            trim: t('videosTrimVideo'),
+            extract: t('videosExtractAudioText'),
+          }[currentTab] ?? t('videosVideoTools')
         }
         icon={VideoIcon}
         iconColor="text-purple-500"
@@ -511,7 +521,7 @@ function SingleVideoWorkspace() {
                 className="flex items-center gap-2 rounded-lg border p-3 text-sm"
               >
                 <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                {preparationMessage}
+                {renderMessage(t, preparationMessage)}
               </div>
             )}
             {(preparationError ?? error) && (
@@ -519,8 +529,9 @@ function SingleVideoWorkspace() {
                 role="alert"
                 className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
               >
-                {preparationError ??
-                  'Video tools could not load. Check your connection, then replace the file to try again.'}
+                {preparationError
+                  ? renderMessage(t, preparationError)
+                  : t('videosVideoToolsCouldNotLoadCheck')}
               </div>
             )}
             {!isPreparing &&
@@ -530,14 +541,14 @@ function SingleVideoWorkspace() {
               !preparationError &&
               !error && (
                 <p role="status" className="text-sm text-muted-foreground">
-                  Ready to process. Your video stays on this device.
+                  {t('videosReadyToProcessYourVideoStays')}
                 </p>
               )}
           </div>
         }
         navigationComponent={
           <ResponsiveTabs
-            tabs={videoTabs}
+            tabs={getVideoTabs(t)}
             currentTab={currentTab}
             onTabChange={handleTabChange}
             isProcessing={isProcessing}

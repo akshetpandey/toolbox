@@ -1,3 +1,7 @@
+import { renderMessage, message } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { useLocale } from '@/i18n/LocaleContext'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
@@ -32,13 +36,8 @@ import {
   type AudioFormat,
 } from '@/lib/media'
 import { downloadBlob, formatFileSize } from '@/lib/shared'
-import { videoTabs } from '@/lib/videoToolsUtils'
+import { getVideoTabs } from '@/lib/videoToolsUtils'
 
-const audioTabs = [
-  { value: 'convert', label: 'Convert', icon: Settings },
-  { value: 'trim', label: 'Trim', icon: Scissors },
-  { value: 'join', label: 'Join', icon: Merge },
-]
 const audioExtensions = /\.(m4a|wav|mp3|aac|flac|ogg|opus)$/i
 const videoExtensions = /\.(mp4|webm|avi|mov|mkv)$/i
 const maxJoinFiles = 20
@@ -50,6 +49,8 @@ interface SelectedFile {
 }
 
 function AudioPreview({ file }: { file: File }) {
+  const t = useTranslator()
+  const { language } = useLocale()
   const [url, setURL] = useState<string>()
   const [failed, setFailed] = useState(false)
   const [duration, setDuration] = useState<number>()
@@ -61,7 +62,7 @@ function AudioPreview({ file }: { file: File }) {
   if (failed)
     return (
       <p className="text-sm text-muted-foreground">
-        Preview is unavailable. You can still enter a time range.
+        {t('mediaToolPreviewIsUnavailableYouCanStill')}
       </p>
     )
   return (
@@ -71,13 +72,19 @@ function AudioPreview({ file }: { file: File }) {
         controls
         preload="metadata"
         src={url}
-        aria-label="Preview audio"
+        aria-label={t('mediaToolPreviewAudio')}
         onError={() => setFailed(true)}
         onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
       />
       {duration && Number.isFinite(duration) ? (
         <p className="text-sm text-muted-foreground">
-          Original length {duration.toFixed(2)} seconds
+          {t('mediaToolOriginalLength', {
+            duration: duration.toLocaleString(language, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+              useGrouping: false,
+            }),
+          })}
         </p>
       ) : null}
     </div>
@@ -85,6 +92,12 @@ function AudioPreview({ file }: { file: File }) {
 }
 
 export function MediaTool({ mode }: { mode: Mode }) {
+  const t = useTranslator()
+  const audioTabs = [
+    { value: 'convert', label: t('mediaToolConvert'), icon: Settings },
+    { value: 'trim', label: t('mediaToolTrim'), icon: Scissors },
+    { value: 'join', label: t('mediaToolJoin'), icon: Merge },
+  ]
   const video = mode === 'video-join'
   const joining = video || mode === 'audio-join'
   const trimming = mode === 'audio-trim'
@@ -93,8 +106,14 @@ export function MediaTool({ mode }: { mode: Mode }) {
   const key = `${category}.${tool}`
   const media = video ? 'video' : 'audio'
   const title = video
-    ? 'Join videos'
-    : `${joining ? 'Join' : trimming ? 'Trim' : 'Convert'} audio`
+    ? t('mediaToolJoinVideos')
+    : t(
+        joining
+          ? 'toolsAudioJoinName'
+          : trimming
+            ? 'toolsAudioTrimName'
+            : 'toolsAudioConvertName',
+      )
   const Icon = video ? FileVideo : FileAudio
   const navigate = useNavigate()
   const { isProcessing, setIsProcessing } = useProcessing()
@@ -108,7 +127,7 @@ export function MediaTool({ mode }: { mode: Mode }) {
     end: string
   }>(`${key}.settings`, { format: 'mp3', start: '0', end: '' })
   const { result, setResult, clearResult } = useToolResult(files, key)
-  const [error, setError] = useState<string>()
+  const [error, setError] = useState<MessageText>()
   const [cancelled, setCancelled] = useState(false)
   const operation = useRef<AbortController | null>(null)
   useEffect(
@@ -157,12 +176,18 @@ export function MediaTool({ mode }: { mode: Mode }) {
           (!file.type.startsWith(`${media}/`) && !pattern.test(file.name)),
       )
     ) {
-      setError(`Choose a supported ${media} file.`)
+      setError(
+        message(
+          video
+            ? 'mediaToolChooseSupportedVideo'
+            : 'mediaToolChooseSupportedAudio',
+        ),
+      )
       return
     }
     const current = joining ? files : []
     if (current.length + accepted.length > maxJoinFiles) {
-      setError(`Choose up to ${maxJoinFiles} files at a time.`)
+      setError(message('mediaToolChooseUpToFilesAtA', { maxJoinFiles }))
       return
     }
     updateFiles([
@@ -216,18 +241,21 @@ export function MediaTool({ mode }: { mode: Mode }) {
       setResult({
         blob,
         filename,
-        details: joining ? [`${sources.length} files joined`] : undefined,
+        details: joining
+          ? [message('mediaToolFilesJoined', { count: sources.length })]
+          : undefined,
       })
       downloadBlob(blob, filename)
     } catch (cause) {
       if (operation.current !== controller) return
       if (signal.aborted) setCancelled(true)
-      else if (cause instanceof MediaInputError) setError(cause.message)
+      else if (cause instanceof MediaInputError)
+        setError(message(cause.key, cause.values))
       else
         setError(
           joining
-            ? 'These files could not be joined. Check that each one plays and try again.'
-            : 'This audio file could not be processed. Choose another file and try again.',
+            ? message('mediaToolTheseFilesCouldNotBeJoined')
+            : message('mediaToolThisAudioFileCouldNotBe'),
         )
     } finally {
       if (operation.current === controller) {
@@ -255,11 +283,19 @@ export function MediaTool({ mode }: { mode: Mode }) {
               ? 'video/*,.mp4,.webm,.avi,.mov,.mkv'
               : 'audio/*,.m4a,.wav,.mp3,.aac,.flac,.ogg,.opus'
           }
-          title={joining ? `Choose ${media} files` : 'Choose an audio file'}
+          title={
+            joining
+              ? t(
+                  video
+                    ? 'mediaToolChooseVideoFiles'
+                    : 'mediaToolChooseAudioFiles',
+                )
+              : t('mediaToolChooseAnAudioFile')
+          }
           description={
             joining
-              ? 'Add files in the order you want them to play.'
-              : 'Your audio stays on this device.'
+              ? t('mediaToolAddFilesInTheOrderYou')
+              : t('mediaToolYourAudioStaysOnThisDevice')
           }
           supportedFormats={
             video
@@ -268,19 +304,21 @@ export function MediaTool({ mode }: { mode: Mode }) {
           }
           emptyStateIcon={Icon}
           selectedFileIcon={Icon}
-          selectedActionLabel={joining ? 'Add files' : 'Change file'}
+          selectedActionLabel={
+            joining ? t('mediaToolAddFiles') : t('mediaToolChangeFile')
+          }
           disabled={isProcessing}
           multiple={joining}
         >
           {joining ? (
-            <ol className="space-y-3" aria-label="Playback order">
+            <ol className="space-y-3" aria-label={t('mediaToolPlaybackOrder')}>
               {files.map(({ id, file }, index) => (
                 <li key={id} className="rounded-md border p-2">
                   <p className="break-all text-sm font-medium">
                     {index + 1}. {file.name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.size)}
+                    {formatFileSize(file.size, t)}
                   </p>
                   <div className="mt-1 flex flex-wrap">
                     <Button
@@ -288,7 +326,9 @@ export function MediaTool({ mode }: { mode: Mode }) {
                       variant="ghost"
                       size="icon"
                       className="size-11"
-                      aria-label={`Move file ${index + 1} up`}
+                      aria-label={t('mediaToolMoveFileUp', {
+                        number: index + 1,
+                      })}
                       disabled={isProcessing || index === 0}
                       onClick={() => moveFile(index, -1)}
                     >
@@ -299,7 +339,9 @@ export function MediaTool({ mode }: { mode: Mode }) {
                       variant="ghost"
                       size="icon"
                       className="size-11"
-                      aria-label={`Move file ${index + 1} down`}
+                      aria-label={t('mediaToolMoveFileDown', {
+                        number: index + 1,
+                      })}
                       disabled={isProcessing || index === files.length - 1}
                       onClick={() => moveFile(index, 1)}
                     >
@@ -310,7 +352,9 @@ export function MediaTool({ mode }: { mode: Mode }) {
                       variant="ghost"
                       size="icon"
                       className="size-11"
-                      aria-label={`Remove file ${index + 1}`}
+                      aria-label={t('mediaToolRemoveFile', {
+                        number: index + 1,
+                      })}
                       disabled={isProcessing}
                       onClick={() =>
                         updateFiles(files.filter((entry) => entry.id !== id))
@@ -327,7 +371,7 @@ export function MediaTool({ mode }: { mode: Mode }) {
       }
       navigationComponent={
         <ResponsiveTabs
-          tabs={video ? videoTabs : audioTabs}
+          tabs={video ? getVideoTabs(t) : audioTabs}
           currentTab={tool}
           onTabChange={(value) =>
             void navigate({ to: `/${category}/${value}` })
@@ -339,13 +383,15 @@ export function MediaTool({ mode }: { mode: Mode }) {
       <Card className="shadow-none">
         <CardContent className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
           <h2 className="text-lg font-semibold">
-            {trimming ? 'Clip settings' : 'Export settings'}
+            {trimming
+              ? t('mediaToolClipSettings')
+              : t('mediaToolExportSettings')}
           </h2>
           {joining && (
             <p className="text-sm text-muted-foreground">
               {video
-                ? 'Join at least two clips into one 720p MP4. The first clip sets the frame orientation. Other clips fit inside it without cropping.'
-                : 'Join at least two audio files into one track in the order shown.'}
+                ? t('mediaToolJoinAtLeastTwoClipsInto')
+                : t('mediaToolJoinAtLeastTwoAudioFiles')}
             </p>
           )}
           {trimming && (
@@ -355,7 +401,9 @@ export function MediaTool({ mode }: { mode: Mode }) {
               )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="audio-clip-start">Start (seconds)</Label>
+                  <Label htmlFor="audio-clip-start">
+                    {t('mediaToolStartSeconds')}
+                  </Label>
                   <Input
                     id="audio-clip-start"
                     type="number"
@@ -370,14 +418,16 @@ export function MediaTool({ mode }: { mode: Mode }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="audio-clip-end">End (seconds)</Label>
+                  <Label htmlFor="audio-clip-end">
+                    {t('mediaToolEndSeconds')}
+                  </Label>
                   <Input
                     id="audio-clip-end"
                     type="number"
                     min="0"
                     step="any"
                     inputMode="decimal"
-                    placeholder="End of file"
+                    placeholder={t('mediaToolEndOfFile')}
                     value={settings.end}
                     disabled={isProcessing}
                     onChange={(event) =>
@@ -388,15 +438,16 @@ export function MediaTool({ mode }: { mode: Mode }) {
               </div>
               {invalidRange && (
                 <p className="text-sm text-destructive" role="alert">
-                  Enter a start at or after 0 and leave the end blank or enter a
-                  later time.
+                  {t('mediaToolEnterAStartAtOrAfter')}
                 </p>
               )}
             </>
           )}
           {!video && (
             <div className="space-y-2">
-              <Label htmlFor="audio-output-format">Output format</Label>
+              <Label htmlFor="audio-output-format">
+                {t('mediaToolOutputFormat')}
+              </Label>
               <select
                 id="audio-output-format"
                 className="h-11 w-full rounded-md border bg-background px-3 text-base"
@@ -406,9 +457,11 @@ export function MediaTool({ mode }: { mode: Mode }) {
                   updateSettings({ format: event.target.value as AudioFormat })
                 }
               >
-                <option value="mp3">MP3 — works almost everywhere</option>
-                <option value="m4a">M4A — compact AAC audio</option>
-                <option value="wav">WAV — uncompressed</option>
+                <option value="mp3">
+                  {t('mediaToolMP3WorksAlmostEverywhere')}
+                </option>
+                <option value="m4a">{t('mediaToolM4ACompactAACAudio')}</option>
+                <option value="wav">{t('mediaToolWAVUncompressed')}</option>
               </select>
             </div>
           )}
@@ -416,18 +469,18 @@ export function MediaTool({ mode }: { mode: Mode }) {
             <div className="space-y-3 rounded-lg border p-4">
               <p role="status" className="text-sm font-medium">
                 {joining
-                  ? 'Joining files in your browser…'
-                  : 'Processing audio in your browser…'}
+                  ? t('mediaToolJoiningFilesInYourBrowser')
+                  : t('mediaToolProcessingAudioInYourBrowser')}
               </p>
               <progress
                 className="h-2 w-full accent-primary"
-                aria-label="Processing files"
+                aria-label={t('mediaToolProcessingFiles')}
               />
               <Button
                 variant="outline"
                 onClick={() => operation.current?.abort()}
               >
-                Cancel processing
+                {t('mediaToolCancelProcessing')}
               </Button>
             </div>
           )}
@@ -436,12 +489,12 @@ export function MediaTool({ mode }: { mode: Mode }) {
               role="alert"
               className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
             >
-              {error}
+              {renderMessage(t, error)}
             </p>
           )}
           {cancelled && (
             <p role="status" className="text-sm text-muted-foreground">
-              Processing cancelled. You can try again.
+              {t('mediaToolProcessingCancelledYouCanTryAgain')}
             </p>
           )}
           <Button
@@ -449,7 +502,7 @@ export function MediaTool({ mode }: { mode: Mode }) {
             disabled={isProcessing || !ready}
             onClick={() => void process()}
           >
-            {trimming ? 'Create audio clip' : title}
+            {trimming ? t('mediaToolCreateAudioClip') : title}
           </Button>
         </CardContent>
       </Card>

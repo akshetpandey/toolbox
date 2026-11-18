@@ -153,7 +153,7 @@ test('retains redaction work, accessible modes, and generated output across leav
       .getByRole('button', { name: 'Pixelate' })
       .getAttribute('aria-pressed'),
   ).toBe('true')
-  fireEvent.click(screen.getByRole('button', { name: 'Area 1 · box' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Area 1 · Box' }))
   expect(screen.getByLabelText<HTMLInputElement>('Left').value).toBe('6')
   fireEvent.click(screen.getByRole('button', { name: 'Download again' }))
   expect(mockDownload).toHaveBeenCalledTimes(2)
@@ -196,13 +196,13 @@ test.each(['replace', 'clear'])(
     expect(screen.queryByRole('region', { name: 'Result' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add area' }))
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
-    expect(screen.queryByRole('button', { name: 'Area 1 · box' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Area 1 · Box' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add area' }))
     fireEvent.click(screen.getByRole('button', { name: 'Clear All' }))
-    expect(screen.queryByRole('button', { name: 'Area 1 · box' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Area 1 · Box' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add area' }))
     fireEvent.keyDown(window, { key: 'Delete' })
-    expect(screen.queryByRole('button', { name: 'Area 1 · box' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Area 1 · Box' })).toBeNull()
   },
 )
 

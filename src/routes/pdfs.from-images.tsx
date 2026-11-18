@@ -1,3 +1,6 @@
+import type { MessageText } from '@/i18n/messages'
+import { message, renderMessage } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ArrowDown, ArrowUp, FileImage, Trash2 } from 'lucide-react'
@@ -19,6 +22,7 @@ export const Route = createFileRoute('/pdfs/from-images')({
 })
 
 function ImagesToPDFRoute() {
+  const t = useTranslator()
   const { isProcessing } = useProcessing()
   const [images, setImages] = useWorkspaceState<{ id: string; file: File }[]>(
     'pdfs.photos.files',
@@ -28,7 +32,7 @@ function ImagesToPDFRoute() {
     'pdfs.photos.layout',
     'photo',
   )
-  const [selectionError, setSelectionError] = useState('')
+  const [selectionError, setSelectionError] = useState<MessageText>('')
   const reset = () => {
     setImages([])
     setSelectionError('')
@@ -36,7 +40,7 @@ function ImagesToPDFRoute() {
   }
   return (
     <ToolLayout
-      title="Images to PDF"
+      title={t('pdfsFromImagesImagesToPDF')}
       icon={FileImage}
       iconColor="text-primary"
       iconBgColor="bg-primary/10"
@@ -59,19 +63,21 @@ function ImagesToPDFRoute() {
                 ...added.map((file) => ({ id: crypto.randomUUID(), file })),
               ])
             setSelectionError(
-              added.length === files.length ? '' : 'Choose JPG or PNG images.',
+              added.length === files.length
+                ? ''
+                : message('pdfsFromImagesChooseJPGOrPNGImages'),
             )
           }}
           onClearFiles={reset}
-          title="Choose your images"
-          description="Add a JPG or PNG for each page."
+          title={t('pdfsFromImagesChooseYourImages')}
+          description={t('pdfsFromImagesAddAJPGOrPNGFor')}
           acceptedTypes="image/jpeg,image/png,.jpg,.jpeg,.png"
           supportedFormats={['JPG', 'PNG']}
-          selectedActionLabel="Add images"
+          selectedActionLabel={t('pdfsFromImagesAddImages')}
           multiple
           disabled={isProcessing}
         >
-          <ol aria-label="Image order" className="space-y-2">
+          <ol aria-label={t('pdfsFromImagesImageOrder')} className="space-y-2">
             {images.map(({ id, file }, index) => (
               <li key={id} className="rounded-md border p-2">
                 <p className="break-all px-1 text-sm font-medium">
@@ -82,7 +88,9 @@ function ImagesToPDFRoute() {
                     variant="ghost"
                     size="icon"
                     className="size-11"
-                    aria-label={`Move ${file.name} up`}
+                    aria-label={t('pdfsFromImagesMoveUp', {
+                      filename: file.name,
+                    })}
                     disabled={isProcessing || index === 0}
                     onClick={() =>
                       setImages(arrayMove(images, index, index - 1))
@@ -94,7 +102,9 @@ function ImagesToPDFRoute() {
                     variant="ghost"
                     size="icon"
                     className="size-11"
-                    aria-label={`Move ${file.name} down`}
+                    aria-label={t('pdfsFromImagesMoveDown', {
+                      filename: file.name,
+                    })}
                     disabled={isProcessing || index === images.length - 1}
                     onClick={() =>
                       setImages(arrayMove(images, index, index + 1))
@@ -106,7 +116,9 @@ function ImagesToPDFRoute() {
                     variant="ghost"
                     size="icon"
                     className="size-11 text-destructive"
-                    aria-label={`Remove ${file.name}`}
+                    aria-label={t('pdfsFromImagesRemove', {
+                      filename: file.name,
+                    })}
                     disabled={isProcessing}
                     onClick={() =>
                       setImages(images.filter((image) => image.id !== id))
@@ -123,14 +135,14 @@ function ImagesToPDFRoute() {
     >
       {selectionError && (
         <p role="alert" className="text-sm text-destructive">
-          {selectionError}
+          {renderMessage(t, selectionError)}
         </p>
       )}
       <PDFAction
         file={images.at(0)?.file}
         sourceKey={JSON.stringify([images.map((image) => image.id), layout])}
         name="pdfs.from-images"
-        label="Create PDF and download"
+        label={t('pdfsFromImagesCreatePDFAndDownload')}
         onReset={reset}
         run={async (signal) => ({
           blob: await imagesToPDF(
@@ -144,12 +156,16 @@ function ImagesToPDFRoute() {
           ],
         })}
       >
-        <h2 className="text-lg font-semibold">Put your images in one PDF</h2>
+        <h2 className="text-lg font-semibold">
+          {t('pdfsFromImagesPutYourImagesInOnePDF')}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Use the arrows to arrange the images. Each image goes on its own page.
+          {t('pdfsFromImagesUseTheArrowsToArrangeThe')}
         </p>
         <div className="space-y-2">
-          <Label htmlFor="image-pdf-page-size">Page size</Label>
+          <Label htmlFor="image-pdf-page-size">
+            {t('pdfsFromImagesPageSize')}
+          </Label>
           <select
             id="image-pdf-page-size"
             className="min-h-11 w-full rounded-md border bg-background px-3"
@@ -158,9 +174,9 @@ function ImagesToPDFRoute() {
               setLayout(event.target.value as 'photo' | 'a4' | 'letter')
             }
           >
-            <option value="photo">Fit each image</option>
+            <option value="photo">{t('pdfsFromImagesFitEachImage')}</option>
             <option value="a4">A4</option>
-            <option value="letter">US Letter</option>
+            <option value="letter">{t('pdfsFromImagesUSLetter')}</option>
           </select>
         </div>
       </PDFAction>

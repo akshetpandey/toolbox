@@ -4,9 +4,13 @@ import {
   RouterServer,
 } from '@tanstack/react-router/ssr/server'
 import { AppProviders, createAppRouter } from './app'
-import { notFoundPage, siteUrl } from './lib/seo'
+import { notFoundPath, siteUrl } from './lib/seo'
+import { loadTranslator } from './i18n/catalogs'
+import { splitLanguagePath } from './i18n/locales'
 
 export async function renderPage(path: string) {
+  const { language } = splitLanguagePath(path)
+  const translate = await loadTranslator(language)
   const handleRequest = createRequestHandler({
     createRouter: createAppRouter,
     request: new Request(new URL(path, siteUrl)),
@@ -17,7 +21,7 @@ export async function renderPage(path: string) {
       responseHeaders,
       children: (
         <div id="root" data-prerender-path={path}>
-          <AppProviders>
+          <AppProviders router={router}>
             <RouterServer router={router} />
           </AppProviders>
         </div>
@@ -25,7 +29,7 @@ export async function renderPage(path: string) {
     }),
   )
   const html = (await response.text()).replace(/^<!doctype html>/i, '')
-  const expectedStatus = path === notFoundPage.path ? 404 : 200
+  const expectedStatus = path === notFoundPath ? 404 : 200
   if (response.status !== expectedStatus) {
     throw new Error(`Failed to prerender ${path}: HTTP ${response.status}`)
   }
@@ -33,5 +37,9 @@ export async function renderPage(path: string) {
   const bodyStart = html.indexOf('<div id="root"')
   if (bodyStart === -1)
     throw new Error(`Missing rendered workspace for ${path}`)
-  return { head: html.slice(0, bodyStart), body: html.slice(bodyStart) }
+  return {
+    head: html.slice(0, bodyStart),
+    body: html.slice(bodyStart),
+    noscript: translate('noscriptEnableJavaScript'),
+  }
 }

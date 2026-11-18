@@ -1,3 +1,6 @@
+import { renderMessage, message, imageDimensions } from '@/i18n/messages'
+import type { MessageText } from '@/i18n/messages'
+import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useFileOperation } from '@/contexts/FileOperation'
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +19,7 @@ export const Route = createFileRoute('/images/metadata')({
 })
 
 function MetadataPage() {
+  const t = useTranslator()
   const {
     selectedFile,
     metadata,
@@ -26,7 +30,7 @@ function MetadataPage() {
   const { isProcessing } = useProcessing()
   const beginOperation = useFileOperation(selectedFile?.file)
   const [isStrippingMetadata, setIsStrippingMetadata] = useState(false)
-  const [stripError, setStripError] = useState<string | null>(null)
+  const [stripError, setStripError] = useState<MessageText | null>(null)
   const { result, setResult } = useToolResult(
     selectedFile?.file,
     'images.metadata',
@@ -59,18 +63,21 @@ function MetadataPage() {
         details: [
           ...(selectedFile.dimensions
             ? [
-                `${selectedFile.dimensions.width} × ${selectedFile.dimensions.height} px`,
+                message('mediaDimensionsPixels', {
+                  dimensions: imageDimensions(
+                    selectedFile.dimensions.width,
+                    selectedFile.dimensions.height,
+                  ),
+                }),
               ]
             : []),
-          'Embedded metadata removed; ICC color profile retained. The source image is unchanged.',
+          message('imagesMetadataEmbeddedMetadataRemovedICCColorProfile'),
         ],
       })
       downloadBlob(blob, filename)
     } catch {
       if (!operation.isCurrent()) return
-      setStripError(
-        'Failed to strip metadata. No file was downloaded. Please try again.',
-      )
+      setStripError(message('imagesMetadataFailedToStripMetadataNoFile'))
     } finally {
       if (operation.isCurrent()) setIsStrippingMetadata(false)
       operation.finish()
@@ -83,20 +90,28 @@ function MetadataPage() {
         <CardContent className="p-4 sm:p-6">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
             <Settings className="size-5 text-primary" />
-            Image information
+            {t('imagesMetadataImageInformation')}
           </h2>
           {imageMetadata ? (
             <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               {[
                 [
-                  'Dimensions',
-                  `${imageMetadata.width} × ${imageMetadata.height} px`,
+                  t('imagesMetadataDimensions'),
+                  t('mediaDimensionsPixels', {
+                    dimensions: imageDimensions(
+                      imageMetadata.width,
+                      imageMetadata.height,
+                    ),
+                  }),
                 ],
-                ['Format', imageMetadata.format],
-                ['Color space', imageMetadata.colorspace],
-                ['Bit depth', String(imageMetadata.depth)],
-                ['Compression', imageMetadata.compression],
-                ['File size', formatFileSize(imageMetadata.size)],
+                [t('imagesMetadataFormat'), imageMetadata.format],
+                [t('imagesMetadataColorSpace'), imageMetadata.colorspace],
+                [t('imagesMetadataBitDepth'), String(imageMetadata.depth)],
+                [t('imagesMetadataCompression'), imageMetadata.compression],
+                [
+                  t('imagesMetadataFileSize'),
+                  formatFileSize(imageMetadata.size, t),
+                ],
               ].map(([label, value]) => (
                 <div key={label} className="min-w-0">
                   <dt className="text-muted-foreground">{label}</dt>
@@ -107,8 +122,8 @@ function MetadataPage() {
           ) : (
             <p className="text-sm text-muted-foreground">
               {selectedFile
-                ? 'Reading image information…'
-                : 'Choose an image to view its information.'}
+                ? t('imagesMetadataReadingImageInformation')
+                : t('imagesMetadataChooseAnImageToViewIts')}
             </p>
           )}
         </CardContent>
@@ -117,7 +132,7 @@ function MetadataPage() {
         <CardContent className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Info className="size-5 text-primary" />
-            Embedded metadata
+            {t('imagesMetadataEmbeddedMetadata')}
           </h2>
           {isExtractingExif ? (
             <p
@@ -125,7 +140,7 @@ function MetadataPage() {
               className="flex items-center gap-2 text-sm text-muted-foreground"
             >
               <Loader2 className="size-4 animate-spin" />
-              Reading image metadata…
+              {t('imagesMetadataReadingImageMetadata')}
             </p>
           ) : selectedFile && Object.keys(exifMetadata).length > 0 ? (
             <dl className="max-h-96 min-w-0 overflow-y-auto divide-y divide-border text-sm">
@@ -146,19 +161,17 @@ function MetadataPage() {
           ) : (
             <p className="text-sm text-muted-foreground">
               {selectedFile
-                ? 'No embedded image metadata was found.'
-                : 'Choose an image to inspect its embedded metadata.'}
+                ? t('imagesMetadataNoEmbeddedImageMetadataWasFound')
+                : t('imagesMetadataChooseAnImageToInspectIts')}
             </p>
           )}
           {selectedFile && (
             <div className="space-y-3 border-t pt-4">
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Remove embedded EXIF, GPS, XMP, and other supported metadata
-                from a new copy. Color profiles are retained. This does not hide
-                visible text, faces, or other image content.
+                {t('imagesMetadataRemoveEmbeddedEXIFGPSXMPAnd')}
               </p>
               <p className="text-sm text-muted-foreground">
-                Available for JPEG, PNG, WebP, and TIFF images.
+                {t('imagesMetadataAvailableForJPEGPNGWebPAnd')}
               </p>
               {supportsRemoval && (
                 <Button
@@ -172,15 +185,15 @@ function MetadataPage() {
                     <ShieldOff className="size-4" />
                   )}
                   {isStrippingMetadata
-                    ? 'Removing metadata…'
-                    : 'Download Without Metadata'}
+                    ? t('imagesMetadataRemovingMetadata')
+                    : t('imagesMetadataDownloadWithoutMetadata')}
                 </Button>
               )}
             </div>
           )}
           {stripError && (
             <p role="alert" className="break-words text-sm text-destructive">
-              {stripError}
+              {renderMessage(t, stripError)}
             </p>
           )}
         </CardContent>

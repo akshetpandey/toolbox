@@ -1,6 +1,46 @@
 import { expect, test } from 'vitest'
 import { allTools } from '@/lib/tools'
 import { findTools } from '@/lib/toolSearch'
+import { createTranslator } from '@/i18n/messages'
+import es from '@/i18n/locales/es.json'
+import ja from '@/i18n/locales/ja.json'
+import ru from '@/i18n/locales/ru.json'
+import ar from '@/i18n/locales/ar.json'
+import nl from '@/i18n/locales/nl.json'
+import pl from '@/i18n/locales/pl.json'
+import id from '@/i18n/locales/id.json'
+import de from '@/i18n/locales/de.json'
+import fr from '@/i18n/locales/fr.json'
+import ptBR from '@/i18n/locales/pt-BR.json'
+
+const localizedCatalogs = { es, ja, ru, ar, nl, pl, id, de, fr, 'pt-BR': ptBR }
+
+test.each([
+  ['es', 'JPG a PNG', '/images/convert'],
+  ['ja', 'JPGからPNG', '/images/convert'],
+  ['ja', 'WordをPDFに変換', '/office-documents/convert'],
+  ['ru', 'JPG в PNG', '/images/convert'],
+  ['ar', 'تحويل JPG إلى PNG', '/images/convert'],
+  ['nl', 'JPG naar PNG', '/images/convert'],
+  ['pl', 'JPG na PNG', '/images/convert'],
+  ['id', 'JPG ke PNG', '/images/convert'],
+  ['de', 'JPG in PNG umwandeln', '/images/convert'],
+  ['fr', 'JPG en PNG', '/images/convert'],
+  ['pt-BR', 'JPG para PNG', '/images/convert'],
+  ['pl', 'połącz PDF-y', '/pdfs/merge'],
+  ['id', 'gabungkan PDF', '/pdfs/merge'],
+  ['de', 'PDFs zusammenfügen', '/pdfs/merge'],
+  ['fr', 'fusionner des PDF', '/pdfs/merge'],
+  ['pt-BR', 'unir PDFs', '/pdfs/merge'],
+] as const)(
+  'finds the right tool for %s search %s',
+  (language, query, route) => {
+    const t = createTranslator(language, localizedCatalogs[language])
+    expect(findTools(query, t, language).map((tool) => tool.route)).toEqual([
+      route,
+    ])
+  },
+)
 
 const routes = (query: string) => findTools(query).map((tool) => tool.route)
 

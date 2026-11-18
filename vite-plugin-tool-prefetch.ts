@@ -138,6 +138,12 @@ export function toolPrefetchPlugin(startupChunk: string): Plugin {
               chunk?.type !== 'chunk'
             )
               return
+            // Locale-only chunks are UI assets even when engines use their messages.
+            if (
+              chunk.moduleIds.length > 0 &&
+              chunk.moduleIds.every((id) => id.includes('/src/i18n/'))
+            )
+              return
             files.add(file)
             for (const dep of chunk.imports) addChunk(dep)
             for (const asset of chunk.viteMetadata?.importedAssets ?? [])
