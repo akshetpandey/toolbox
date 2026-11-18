@@ -81,14 +81,14 @@ function App() {
               ref={searchInput}
               id="tool-search"
               type="search"
-              placeholder={t('indexTryJPGToPNGOrMerge')}
+              aria-describedby="tool-search-hint"
               value={query}
               onFocus={loadSearch}
               onChange={(event) => {
                 setQuery(event.target.value)
                 if (event.target.value.trim()) loadSearch()
               }}
-              className="flex h-14 w-full min-w-0 rounded-xl border border-input bg-card py-1 px-12 text-base shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 dark:bg-input/30"
+              className="flex h-14 w-full min-w-0 rounded-xl border border-input bg-card py-1 px-12 text-base shadow-xs outline-none transition-[color,box-shadow] selection:bg-primary selection:text-primary-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 dark:bg-input/30"
             />
             {query && (
               <button
@@ -105,6 +105,12 @@ function App() {
               </button>
             )}
           </div>
+          <p
+            id="tool-search-hint"
+            className="mt-2 text-sm text-muted-foreground"
+          >
+            {t('indexTryJPGToPNGOrMerge')}
+          </p>
         </div>
         <section aria-labelledby="popular-tools" className="mt-9">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

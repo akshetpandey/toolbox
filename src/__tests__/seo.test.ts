@@ -75,7 +75,9 @@ test('the build publishes the React workspace for each available tool', async ()
     for (const language of supportedLanguages.filter(
       (language) => language !== 'en',
     )) {
-      const localizedHome = await read(`${language}.html`)
+      const localizedHome = await read(
+        `${languagePath(language, '/').slice(1)}.html`,
+      )
       expect(localizedHome).toContain(
         `<html lang="${language}" dir="${language === 'ar' ? 'rtl' : 'ltr'}">`,
       )

@@ -1,12 +1,17 @@
 import EmojiPicker, { Categories } from 'emoji-picker-react'
-import type { EmojiClickData } from 'emoji-picker-react'
+import type { EmojiClickData, EmojiDataLoader } from 'emoji-picker-react'
 import { useLocale } from '@/i18n/LocaleContext'
+import type { Language } from '@/i18n/locales'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 
-const emojiData = {
+const emojiData: Partial<Record<Language, EmojiDataLoader>> = {
+  de: () => import('emoji-picker-react/data/emojis-de'),
   es: () => import('emoji-picker-react/data/emojis-es'),
+  fr: () => import('emoji-picker-react/data/emojis-fr'),
   ja: () => import('emoji-picker-react/data/emojis-ja'),
   nl: () => import('emoji-picker-react/data/emojis-nl'),
+  pl: () => import('emoji-picker-react/data/emojis-pl'),
+  'pt-BR': () => import('emoji-picker-react/data/emojis-pt'),
   ru: () => import('emoji-picker-react/data/emojis-ru'),
 }
 
@@ -21,9 +26,7 @@ export default function RedactionEmojiPicker({
     <EmojiPicker
       emojiStyle="native"
       lang={language}
-      emojiData={
-        language === 'en' || language === 'ar' ? undefined : emojiData[language]
-      }
+      emojiData={emojiData[language]}
       onEmojiClick={onEmojiClick}
       width="100%"
       height={400}

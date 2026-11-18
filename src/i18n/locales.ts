@@ -5,6 +5,11 @@ export const languages = {
   ru: 'Русский',
   ar: 'العربية',
   nl: 'Nederlands',
+  pl: 'Polski',
+  id: 'Bahasa Indonesia',
+  de: 'Deutsch',
+  fr: 'Français',
+  'pt-BR': 'Português (Brasil)',
 } as const
 
 export type Language = keyof typeof languages
@@ -19,6 +24,7 @@ export function isLanguage(value: unknown): value is Language {
 export function matchBrowserLanguage(preferences: readonly string[]): Language {
   for (const preference of preferences) {
     const base = preference.toLowerCase().split('-')[0]
+    if (base === 'pt') return 'pt-BR'
     if (isLanguage(base)) return base
   }
   return 'en'
@@ -26,9 +32,10 @@ export function matchBrowserLanguage(preferences: readonly string[]): Language {
 
 export function splitLanguagePath(pathname: string) {
   const segment = pathname.split('/')[1]
-  if (isLanguage(segment) && segment !== 'en') {
+  const language = segment === 'pt-br' ? 'pt-BR' : segment
+  if (isLanguage(language) && language !== 'en') {
     return {
-      language: segment,
+      language,
       path: pathname.slice(segment.length + 1) || '/',
     }
   }
@@ -36,7 +43,9 @@ export function splitLanguagePath(pathname: string) {
 }
 
 export function languagePath(language: Language, path: string) {
-  return language === 'en' ? path : '/' + language + (path === '/' ? '' : path)
+  return language === 'en'
+    ? path
+    : '/' + language.toLowerCase() + (path === '/' ? '' : path)
 }
 
 export function languageDirection(language: Language) {

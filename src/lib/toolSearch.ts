@@ -165,6 +165,11 @@ const localizedFormatPairs: Partial<Record<Language, RegExp>> = {
   ru: /(?:^| )([a-z0-9]+) (?:в|на) ([a-z0-9]+)$/u,
   ar: /(?:^| )([a-z0-9]+) ال[ىي] ([a-z0-9]+)$/u,
   nl: /(?:^| )([a-z0-9]+) naar ([a-z0-9]+)$/u,
+  pl: /(?:^| )([a-z0-9]+) (?:na|do) ([a-z0-9]+)$/u,
+  id: /(?:^| )([a-z0-9]+) (?:ke|menjadi) ([a-z0-9]+)$/u,
+  de: /(?:^| )([a-z0-9]+) (?:in|zu) ([a-z0-9]+)(?: (?:umwandeln|konvertieren))?$/u,
+  fr: /(?:^| )([a-z0-9]+) (?:en|vers) ([a-z0-9]+)$/u,
+  'pt-BR': /(?:^| )([a-z0-9]+) (?:em|para) ([a-z0-9]+)$/u,
 }
 
 export function findTools(

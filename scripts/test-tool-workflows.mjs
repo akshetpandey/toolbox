@@ -135,6 +135,20 @@ async function checkLanguageSettings(browser, origin) {
     await qr.waitForURL('**/es/utilities/qr')
     await alert.filter({ hasText: 'dirección' }).waitFor()
     assert.equal(await qr.locator('#qr-content').inputValue(), 'not-a-website')
+
+    await qr
+      .locator('aside [data-slot="language-settings"] select')
+      .selectOption('pt-BR')
+    await qr.waitForURL('**/pt-br/utilities/qr')
+    await qr.waitForFunction(
+      () =>
+        document.documentElement.lang === 'pt-BR' &&
+        document.cookie.split('; ').includes('toolbox-language=pt-BR'),
+    )
+    await qr.goto(origin + '/images/convert')
+    await qr.waitForURL('**/pt-br/images/convert')
+    await qr.locator('aside a[href="/pt-br"]').waitFor()
+
     assert.deepEqual(errors, [])
     console.log(
       'PASS language settings, cookie, localized links and retained file',

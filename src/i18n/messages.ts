@@ -8,7 +8,11 @@ export type MessageValues = Record<
   string,
   string | number | boolean | null | undefined | LeftToRightText
 >
-export type Catalog = Partial<Record<MessageKey, string>>
+type SingularKey = Extract<MessageKey, `${string}One`>
+type PluralKey = SingularKey extends `${infer Stem}One`
+  ? `${Stem}${Capitalize<Intl.LDMLPluralRule>}`
+  : never
+export type Catalog = Partial<Record<MessageKey | PluralKey, string>>
 export type Translator = (
   key: MessageKey,
   values?: MessageValues,
@@ -65,7 +69,7 @@ export function createTranslator(
 }
 
 function variantKey(key: MessageKey, category: Intl.LDMLPluralRule) {
-  return (key + category[0].toUpperCase() + category.slice(1)) as MessageKey
+  return (key + category[0].toUpperCase() + category.slice(1)) as PluralKey
 }
 
 export const english = createTranslator('en')
