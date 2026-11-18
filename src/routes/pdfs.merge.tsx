@@ -166,9 +166,9 @@ function PDFMergeRoute() {
             )}
             {busy.current
               ? t('pdfsMergeMergingPDFs')
-              : t('pdfsMergeMergePDFs', {
-                  value: selectedFiles.length >= 2 ? selectedFiles.length : '',
-                })}
+              : selectedFiles.length < 2
+                ? t('toolsPdfMergeName')
+                : t('pdfsMergeMergePDFs', { value: selectedFiles.length })}
           </Button>
           {progress && (
             <p role="status" className="text-sm text-muted-foreground">

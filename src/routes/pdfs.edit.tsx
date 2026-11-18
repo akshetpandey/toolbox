@@ -334,8 +334,9 @@ function PDFEditorPage() {
             })}
             {currentModel.unsupported > 0 && (
               <p className="text-sm text-muted-foreground">
-                {currentModel.unsupported}
-                {' ' + t('pdfsEditOtherFormFieldsCannotBeEdited')}
+                {t('pdfsEditOtherFormFieldsCannotBeEdited', {
+                  count: currentModel.unsupported,
+                })}
               </p>
             )}
             {currentModel.fields.length > 0 && (

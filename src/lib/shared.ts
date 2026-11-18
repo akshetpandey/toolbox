@@ -2,6 +2,13 @@ import { english } from '@/i18n/messages'
 
 // Shared utility functions for file processing tools
 
+export function normalizeNumericInput(value: string) {
+  return value.normalize('NFKC').replace(/[٠-٩۰-۹]/gu, (digit) => {
+    const zero = digit >= '۰' ? '۰' : '٠'
+    return String(digit.charCodeAt(0) - zero.charCodeAt(0))
+  })
+}
+
 /**
  * Format a file size in bytes to a human readable string
  */

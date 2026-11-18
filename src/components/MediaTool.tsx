@@ -1,5 +1,6 @@
 import { renderMessage, message } from '@/i18n/messages'
 import type { MessageText } from '@/i18n/messages'
+import { useLocale } from '@/i18n/LocaleContext'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -49,6 +50,7 @@ interface SelectedFile {
 
 function AudioPreview({ file }: { file: File }) {
   const t = useTranslator()
+  const { language } = useLocale()
   const [url, setURL] = useState<string>()
   const [failed, setFailed] = useState(false)
   const [duration, setDuration] = useState<number>()
@@ -76,9 +78,13 @@ function AudioPreview({ file }: { file: File }) {
       />
       {duration && Number.isFinite(duration) ? (
         <p className="text-sm text-muted-foreground">
-          {t('mediaToolOriginalLength') + ' '}
-          {duration.toFixed(2)}
-          {' ' + t('mediaToolSeconds')}
+          {t('mediaToolOriginalLength', {
+            duration: duration.toLocaleString(language, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+              useGrouping: false,
+            }),
+          })}
         </p>
       ) : null}
     </div>

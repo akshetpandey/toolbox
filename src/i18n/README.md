@@ -21,9 +21,22 @@ second release. Polish and Indonesian had the clearest query evidence in the
 October 20–November 14, 2026 sample. Brazil's country impressions informed
 the Brazilian Portuguese choice.
 
-The translations were back-translated and checked for placeholder coverage.
-The review focused on workflow directions, privacy claims, and ambiguous
-terms such as redaction and archive extraction.
+## Translation verification
+
+1. Back-translate each changed target string using an independent model that
+   sees only the target text. Review differences in meaning, including omitted
+   conditions, negation, units, and the objects named in an action.
+2. Have a separate reviewer compare the English source and target text in the
+   tool that uses them. Check that the wording is natural for its role as a
+   label, action, status, instruction, or accessibility announcement. For
+   privacy claims and other ambiguous terms, verify the underlying behavior.
+   Accept equivalent phrasing and use the round trip to find issues to review.
+3. Use complete messages with named placeholders for counts, file names, and
+   dimensions. Audit catalog coverage, placeholder multiplicity, count forms,
+   examples that users can type, and fixed format or unit names.
+4. Render representative empty, populated, progress, result, and error states
+   in both browsers. Check narrow layouts, keyboard announcements, and
+   right-to-left values where applicable. Record the locales and states covered.
 
 ## URLs and preferences
 

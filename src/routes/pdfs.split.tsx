@@ -1,4 +1,5 @@
 import { MessageError } from '@/i18n/MessageError'
+import { message } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { createFileRoute } from '@tanstack/react-router'
 import { PDFAction, PDFPageRanges, usePDFSource } from '@/components/PDFAction'
@@ -36,7 +37,12 @@ function PDFSplitRoute() {
           blob: result.blob,
           filename: `${pdfBaseName(file.name)}-${separate ? 'parts' : 'pages'}.${result.extension}`,
           details: [
-            `${result.count} ${separate ? t('pdfsSplitPDFsInTheZIP') : t('pdfsSplitPagesSelected')}`,
+            message(
+              separate ? 'pdfsSplitPDFsInTheZIP' : 'pdfsSplitPagesSelected',
+              {
+                count: result.count,
+              },
+            ),
           ],
         }
       }}

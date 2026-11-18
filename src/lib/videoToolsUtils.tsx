@@ -1,4 +1,4 @@
-import { message, renderMessage } from '@/i18n/messages'
+import { imageDimensions, message, renderMessage } from '@/i18n/messages'
 import type { LocalizedMessage } from '@/i18n/messages'
 import { useWorkspaceTranslator as useTranslator } from '@/i18n/useWorkspaceTranslator'
 import { workspaceEnglish as english } from '@/i18n/workspaceMessages'
@@ -173,6 +173,15 @@ export const isCodecCompatible = (
   return compatibleCodecs.includes(codec)
 }
 
+const portraitResolutions = [
+  ['4K', 2160, 3840, 'videoToolsUtilsUltraHDPortrait'],
+  ['1440p', 1440, 2560, 'videoToolsUtilsQHDPortrait'],
+  ['1080p', 1080, 1920, 'videoToolsUtilsFullHDPortrait'],
+  ['720p', 720, 1280, 'videoToolsUtilsHDPortrait'],
+  ['480p', 480, 854, 'videoToolsUtilsSDPortrait'],
+  ['360p', 360, 640, 'videoToolsUtilsLowPortrait'],
+] as const
+
 // Common resolution presets for both orientations
 export const getCommonResolutions = (t = english) => {
   return [
@@ -197,36 +206,14 @@ export const getCommonResolutions = (t = english) => {
     },
 
     // Widescreen (16:9) - Vertical
-    {
-      value: '2160x3840',
-      label: t('videoToolsUtils4KVertical21603840'),
-      description: t('videoToolsUtilsUltraHDPortrait'),
-    },
-    {
-      value: '1440x2560',
-      label: t('videoToolsUtils1440pVertical14402560'),
-      description: t('videoToolsUtilsQHDPortrait'),
-    },
-    {
-      value: '1080x1920',
-      label: t('videoToolsUtils1080pVertical10801920'),
-      description: t('videoToolsUtilsFullHDPortrait'),
-    },
-    {
-      value: '720x1280',
-      label: t('videoToolsUtils720pVertical7201280'),
-      description: t('videoToolsUtilsHDPortrait'),
-    },
-    {
-      value: '480x854',
-      label: t('videoToolsUtils480pVertical480854'),
-      description: t('videoToolsUtilsSDPortrait'),
-    },
-    {
-      value: '360x640',
-      label: t('videoToolsUtils360pVertical360640'),
-      description: t('videoToolsUtilsLowPortrait'),
-    },
+    ...portraitResolutions.map(([resolution, width, height, description]) => ({
+      value: `${width}x${height}`,
+      label: t('videoToolsUtilsPortraitResolution', {
+        resolution,
+        dimensions: imageDimensions(width, height),
+      }),
+      description: t(description),
+    })),
 
     // Standard (4:3) - Horizontal
     {

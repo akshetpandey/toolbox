@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { ResultCard } from '@/components/ResultCard'
+import { normalizeNumericInput } from '@/lib/shared'
 import {
   useVideoSettings,
   useVideoAction,
@@ -50,7 +51,12 @@ function VideoCompressComponent() {
     preset: 'veryfast',
   })
   const bySize = settings.mode === 'size'
-  const targetMB = Number(settings.target)
+  const target = normalizeNumericInput(settings.target).trim()
+  const targetMB = /^[+-]?(?:\d+(?:[.,٫]\d*)?|[.,٫]\d+)(?:e[+-]?\d+)?$/iu.test(
+    target,
+  )
+    ? Number(target.replace(/[,٫]/u, '.'))
+    : NaN
   const maxBytes = Math.floor(targetMB * 1_000_000)
   const invalidSize =
     bySize && (!Number.isSafeInteger(maxBytes) || maxBytes < 10_000)
@@ -96,9 +102,7 @@ function VideoCompressComponent() {
               </Label>
               <Input
                 id="video-target-mb"
-                type="number"
-                min="0.01"
-                step="any"
+                type="text"
                 inputMode="decimal"
                 value={settings.target}
                 aria-invalid={invalidSize}

@@ -1,5 +1,6 @@
 import { MessageError } from '@/i18n/MessageError'
 import type { PDFDocument } from 'pdf-lib'
+import { normalizeNumericInput } from './shared'
 
 export function pdfBaseName(filename: string) {
   return filename.replace(/\.[^.]+$/, '') || 'document'
@@ -7,15 +8,19 @@ export function pdfBaseName(filename: string) {
 
 export function parsePageRanges(value: string, pageCount: number): number[][] {
   if (!value.trim()) return [Array.from({ length: pageCount }, (_, i) => i)]
-  return value.split(',').map((part) => {
-    const match = /^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/.exec(part)
-    if (!match) throw new MessageError('pdfEditEnterPageNumbersOrRangesSuch')
-    const first = Number(match[1])
-    const last = Number(match[2] ?? first)
-    if (first < 1 || last < first || last > pageCount)
-      throw new MessageError('pdfEditEachPageRangeMustBeBetween', { pageCount })
-    return Array.from({ length: last - first + 1 }, (_, i) => first + i - 1)
-  })
+  return normalizeNumericInput(value)
+    .split(/[,،、]/u)
+    .map((part) => {
+      const match = /^\s*(\d+)\s*(?:[-–]\s*(\d+)\s*)?$/.exec(part)
+      if (!match) throw new MessageError('pdfEditEnterPageNumbersOrRangesSuch')
+      const first = Number(match[1])
+      const last = Number(match[2] ?? first)
+      if (first < 1 || last < first || last > pageCount)
+        throw new MessageError('pdfEditEachPageRangeMustBeBetween', {
+          pageCount,
+        })
+      return Array.from({ length: last - first + 1 }, (_, i) => first + i - 1)
+    })
 }
 
 export async function loadEditablePDF(file: Blob) {

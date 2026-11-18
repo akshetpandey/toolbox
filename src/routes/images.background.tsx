@@ -214,8 +214,7 @@ function RemoveImageBackground() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="background-tolerance">
-                  {t('imagesBackgroundColorTolerance')}
-                  {tolerance}%)
+                  {t('imagesBackgroundColorTolerance', { percent: tolerance })}
                 </Label>
                 <Input
                   id="background-tolerance"

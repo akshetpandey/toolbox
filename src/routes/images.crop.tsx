@@ -308,9 +308,9 @@ function CropImage() {
                 </div>
               </fieldset>
               <p role="status" className="text-sm text-muted-foreground">
-                {t('imagesCropRotation') + ' '}
-                {settings.rotation}
-                {t('imagesCropRotateAndFlipApplyAfter')}
+                {t('imagesCropRotateAndFlipApplyAfter', {
+                  rotation: settings.rotation,
+                })}
                 {isHeifImage(selectedFile) &&
                   ' ' + t('imagesCropHEICAndHEIFAreSavedAs')}
               </p>
@@ -321,11 +321,9 @@ function CropImage() {
                 settings.flipVertical) ? (
                 <details className="space-y-3 rounded-md border p-3">
                   <summary className="cursor-pointer text-sm font-medium">
-                    {t('imagesCropPreviewEditedImage')}
-                    {t('mediaDimensions', {
+                    {t('imagesCropPreviewEditedImage', {
                       dimensions: imageDimensions(outputWidth, outputHeight),
                     })}
-                    {' ' + t('imagesCropPx')}
                   </summary>
                   <svg
                     role="img"

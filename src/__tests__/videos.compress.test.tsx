@@ -166,7 +166,11 @@ test('the maximum-size mode validates the limit and clears results when it chang
   })
   fireEvent.change(limit, { target: { value: '0' } })
   expect(button.disabled).toBe(true)
-  fireEvent.change(limit, { target: { value: '2.5' } })
+  fireEvent.change(limit, { target: { value: '2,5.1' } })
+  expect(button.disabled).toBe(true)
+  fireEvent.change(limit, { target: { value: '٢٫٥' } })
+  expect(button.disabled).toBe(false)
+  fireEvent.change(limit, { target: { value: '2,5' } })
   fireEvent.click(button)
   await waitFor(() => expect(processor.compressToSize).toHaveBeenCalledOnce())
   expect(processor.compressToSize).toHaveBeenCalledWith(
